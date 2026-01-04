@@ -2,7 +2,7 @@ import { Flame, LogOut, LogIn, User, FileText, LayoutDashboard } from 'lucide-re
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { useNavigate, useLocation } from 'react-router-dom';
-import walnutLogo from '@/assets/walnut-logo.png';
+import membraneLogo from '@/assets/membrane-logo.jpg';
 import { cn } from '@/lib/utils';
 
 export function Header() {
@@ -27,18 +27,10 @@ export function Header() {
           <div className="flex items-center gap-8">
             <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate('/')}>
               <img 
-                src={walnutLogo} 
-                alt="Walnut" 
+                src={membraneLogo} 
+                alt="Membrane" 
                 className="h-8 w-auto"
               />
-              <div>
-                <h1 className="text-2xl font-bold tracking-tight leading-none">
-                  <span className="bg-gradient-to-r from-foreground via-foreground/90 to-muted-foreground bg-clip-text text-transparent">
-                    Thought Leadership
-                  </span>
-                </h1>
-                <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground mt-1">Content Scheduler</p>
-              </div>
             </div>
 
             {/* Navigation */}
