@@ -1,0 +1,253 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 264 88% 20%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 264 88% 20%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 264 88% 20%;
+
+    --primary: 264 88% 54%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 264 30% 95%;
+    --secondary-foreground: 264 88% 35%;
+
+    --muted: 264 15% 92%;
+    --muted-foreground: 264 20% 45%;
+
+    --accent: 264 88% 54%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 264 20% 88%;
+    --input: 264 20% 88%;
+    --ring: 264 88% 54%;
+
+    --radius: 1rem;
+
+    --success: 152 69% 40%;
+    --success-foreground: 0 0% 100%;
+    
+    --warning: 43 96% 56%;
+    --warning-foreground: 264 88% 20%;
+    
+    --info: 200 98% 48%;
+    --info-foreground: 0 0% 100%;
+
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 264 88% 30%;
+    --sidebar-primary: 264 88% 54%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 264 30% 95%;
+    --sidebar-accent-foreground: 264 88% 35%;
+    --sidebar-border: 264 20% 90%;
+    --sidebar-ring: 264 88% 54%;
+  }
+
+  .dark {
+    --background: 0 0% 100%;
+    --foreground: 264 88% 20%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 264 88% 20%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 264 88% 20%;
+
+    --primary: 264 88% 54%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 264 30% 95%;
+    --secondary-foreground: 264 88% 35%;
+
+    --muted: 264 15% 92%;
+    --muted-foreground: 264 20% 45%;
+
+    --accent: 264 88% 54%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 72% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 264 20% 88%;
+    --input: 264 20% 88%;
+    --ring: 264 88% 54%;
+    
+    --success: 152 69% 40%;
+    --success-foreground: 0 0% 100%;
+    
+    --warning: 43 96% 56%;
+    --warning-foreground: 264 88% 20%;
+    
+    --info: 200 98% 48%;
+    --info-foreground: 0 0% 100%;
+
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 264 88% 30%;
+    --sidebar-primary: 264 88% 54%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 264 30% 95%;
+    --sidebar-accent-foreground: 264 88% 35%;
+    --sidebar-border: 264 20% 90%;
+    --sidebar-ring: 264 88% 54%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    /* Light mode by default with Electric Violet theme */
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Sora', system-ui, sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Sora', system-ui, sans-serif;
+    font-weight: 600;
+  }
+
+  code, pre, .mono {
+    font-family: 'IBM Plex Mono', monospace;
+  }
+}
+
+@layer components {
+  .gradient-text {
+    background: linear-gradient(135deg, hsl(264 88% 54%) 0%, hsl(264 88% 40%) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  
+  .gradient-bg {
+    background: linear-gradient(135deg, hsl(264 88% 54%) 0%, hsl(264 88% 40%) 100%);
+  }
+  
+  .card-elevated {
+    @apply bg-card border border-border/60 rounded-2xl;
+    box-shadow: 0 4px 20px hsl(264 88% 54% / 0.08), 
+                0 1px 3px hsl(264 88% 54% / 0.05);
+  }
+  
+  .card-elevated:hover {
+    @apply border-primary/30;
+    box-shadow: 0 8px 30px hsl(264 88% 54% / 0.12), 
+                0 2px 6px hsl(264 88% 54% / 0.08);
+    transform: translateY(-2px);
+  }
+  
+  .card-glass {
+    @apply bg-card/80 backdrop-blur-xl border border-border/40 rounded-2xl;
+    box-shadow: 0 4px 20px hsl(264 88% 54% / 0.06);
+  }
+  
+  .glow-primary {
+    box-shadow: 0 0 30px hsl(264 88% 54% / 0.25), 
+                0 0 60px hsl(264 88% 54% / 0.10);
+  }
+  
+  .hover-lift {
+    @apply transition-all duration-300 ease-out;
+  }
+  
+  .hover-lift:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 40px hsl(264 88% 54% / 0.15);
+  }
+  
+  .dot-pattern {
+    background-image: radial-gradient(hsl(264 88% 54% / 0.08) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+  
+  .border-glow {
+    position: relative;
+  }
+  
+  .border-glow::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    background: linear-gradient(135deg, hsl(264 88% 54%) 0%, hsl(264 88% 40%) 100%);
+    z-index: -1;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+  
+  .border-glow:hover::before {
+    opacity: 1;
+  }
+}
+
+@layer utilities {
+  .animate-fade-in {
+    animation: fadeIn 0.5s ease-out forwards;
+  }
+  
+  .animate-slide-up {
+    animation: slideUp 0.5s ease-out forwards;
+  }
+  
+  .animate-scale-in {
+    animation: scaleIn 0.3s ease-out forwards;
+  }
+  
+  .stagger-1 { animation-delay: 0.05s; }
+  .stagger-2 { animation-delay: 0.1s; }
+  .stagger-3 { animation-delay: 0.15s; }
+  .stagger-4 { animation-delay: 0.2s; }
+  .stagger-5 { animation-delay: 0.25s; }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: hsl(var(--muted));
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(264 88% 54% / 0.25);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(264 88% 54% / 0.4);
+}
