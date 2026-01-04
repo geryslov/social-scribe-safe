@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Calendar, User, Plus, Trash2, Shuffle } from 'lucide-react';
+import { Calendar, User, Plus, Trash2, Shuffle, Sparkles, Loader2 } from 'lucide-react';
 import { Document } from '@/types/document';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,6 +20,8 @@ import {
 import { usePublishers } from '@/hooks/usePublishers';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface ParsedPost {
   content: string;
@@ -111,6 +113,7 @@ export function DocumentSplitModal({ open, onOpenChange, document, onSave }: Doc
   const { publishers } = usePublishers();
   const [parsedPosts, setParsedPosts] = useState<ParsedPost[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isSplitting, setIsSplitting] = useState(false);
 
   // Use document upload date as default scheduled date
   const documentUploadDate = document?.createdAt 
@@ -151,6 +154,38 @@ export function DocumentSplitModal({ open, onOpenChange, document, onSave }: Doc
       ...post,
       publisherId: publishers[Math.floor(Math.random() * publishers.length)].id,
     })));
+  };
+
+  const handleAISplit = async () => {
+    if (!document) return;
+    
+    setIsSplitting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('split-document', {
+        body: { content: document.content, title: document.title }
+      });
+
+      if (error) {
+        console.error('Error splitting document:', error);
+        toast.error('Failed to split document with AI');
+        return;
+      }
+
+      if (data?.success && data.posts?.length > 0) {
+        setParsedPosts(data.posts.map((content: string) => ({
+          content,
+          scheduledDate: documentUploadDate,
+        })));
+        toast.success(`Split into ${data.posts.length} posts`);
+      } else {
+        toast.error(data?.error || 'No posts generated');
+      }
+    } catch (err) {
+      console.error('Error calling split function:', err);
+      toast.error('Failed to split document');
+    } finally {
+      setIsSplitting(false);
+    }
   };
 
   const handleSave = () => {
@@ -202,8 +237,22 @@ export function DocumentSplitModal({ open, onOpenChange, document, onSave }: Doc
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto space-y-4 py-4">
-          {parsedPosts.length > 0 && publishers.length > 0 && (
-            <div className="flex justify-end">
+          <div className="flex justify-between items-center">
+            <Button 
+              variant="outline" 
+              onClick={handleAISplit}
+              disabled={isSplitting}
+              className="gap-2"
+            >
+              {isSplitting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Sparkles className="h-4 w-4" />
+              )}
+              {isSplitting ? 'Splitting...' : 'AI Split to Posts'}
+            </Button>
+            
+            {parsedPosts.length > 0 && publishers.length > 0 && (
               <Button 
                 variant="outline" 
                 size="sm" 
@@ -213,8 +262,8 @@ export function DocumentSplitModal({ open, onOpenChange, document, onSave }: Doc
                 <Shuffle className="h-4 w-4" />
                 Randomize Publishers
               </Button>
-            </div>
-          )}
+            )}
+          </div>
           
           {parsedPosts.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">
