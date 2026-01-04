@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Plus, Shuffle, Sparkles, Loader2 } from 'lucide-react';
 import { Document } from '@/types/document';
+import { DocumentSection } from '@/hooks/useDocuments';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -24,6 +25,7 @@ interface DocumentSplitModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   document: Document | null;
+  sections: DocumentSection[];
   onSave: (posts: Array<{
     content: string;
     publisherName: string;
@@ -34,73 +36,7 @@ interface DocumentSplitModalProps {
   }>) => void;
 }
 
-function isExcludedSection(line: string): boolean {
-  const excludedPatterns = [
-    /^data\s*sources?/i,
-    /^appendix/i,
-    /^references?/i,
-    /^sources?:/i,
-  ];
-  return excludedPatterns.some(pattern => pattern.test(line.trim()));
-}
-
-function parsePostsFromContent(content: string): ParsedPost[] {
-  const posts: ParsedPost[] = [];
-  const lines = content.split('\n');
-  let currentPost: string[] = [];
-  let foundFirstPost = false;
-  let inExcludedSection = false;
-
-  for (const line of lines) {
-    const isPostMarker = /^Post\s*\d+/i.test(line.trim());
-    
-    // Check if we're entering an excluded section
-    if (isExcludedSection(line)) {
-      inExcludedSection = true;
-      continue;
-    }
-    
-    if (isPostMarker) {
-      // Reset excluded section flag when we find a new post
-      inExcludedSection = false;
-      
-      if (currentPost.length > 0 && foundFirstPost) {
-        posts.push({ content: currentPost.join('\n').trim() });
-      }
-      currentPost = [];
-      foundFirstPost = true;
-    } else if (foundFirstPost && !inExcludedSection) {
-      currentPost.push(line);
-    }
-  }
-
-  if (currentPost.length > 0 && foundFirstPost) {
-    posts.push({ content: currentPost.join('\n').trim() });
-  }
-
-  // If no Post markers found, treat entire content as one post (excluding sections)
-  if (posts.length === 0 && content.trim()) {
-    const filteredLines: string[] = [];
-    let excluded = false;
-    for (const line of lines) {
-      if (isExcludedSection(line)) {
-        excluded = true;
-        continue;
-      }
-      if (!excluded) {
-        filteredLines.push(line);
-      }
-    }
-    const filteredContent = filteredLines.join('\n').trim();
-    if (filteredContent) {
-      posts.push({ content: filteredContent });
-    }
-  }
-
-  return posts;
-}
-
-export function DocumentSplitModal({ open, onOpenChange, document, onSave }: DocumentSplitModalProps) {
+export function DocumentSplitModal({ open, onOpenChange, document, sections, onSave }: DocumentSplitModalProps) {
   const { publishers } = usePublishers();
   const [parsedPosts, setParsedPosts] = useState<ParsedPost[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -111,15 +47,21 @@ export function DocumentSplitModal({ open, onOpenChange, document, onSave }: Doc
     ? format(new Date(document.createdAt), 'yyyy-MM-dd')
     : format(new Date(), 'yyyy-MM-dd');
 
+  // Use sections (parsed posts from document_sections table) as the source
   useEffect(() => {
-    if (document && open) {
-      const posts = parsePostsFromContent(document.content);
-      setParsedPosts(posts.map(p => ({
-        ...p,
+    if (open && sections.length > 0) {
+      // Use approved sections, or all sections if none approved
+      const approvedSections = sections.filter(s => s.status === 'approved');
+      const sectionsToUse = approvedSections.length > 0 ? approvedSections : sections;
+      
+      setParsedPosts(sectionsToUse.map(s => ({
+        content: s.content,
         scheduledDate: documentUploadDate,
       })));
+    } else if (open && sections.length === 0) {
+      setParsedPosts([]);
     }
-  }, [document, open, documentUploadDate]);
+  }, [open, sections, documentUploadDate]);
 
   const updatePost = (index: number, field: keyof ParsedPost, value: string) => {
     setParsedPosts(prev => prev.map((p, i) => 
@@ -150,10 +92,15 @@ export function DocumentSplitModal({ open, onOpenChange, document, onSave }: Doc
   const handleAISplit = async () => {
     if (!document) return;
     
+    // Use sections content for AI splitting if available
+    const contentToSplit = sections.length > 0 
+      ? sections.map(s => s.content).join('\n\n---\n\n')
+      : document.content;
+    
     setIsSplitting(true);
     try {
       const { data, error } = await supabase.functions.invoke('split-document', {
-        body: { content: document.content, title: document.title }
+        body: { content: contentToSplit, title: document.title }
       });
 
       if (error) {

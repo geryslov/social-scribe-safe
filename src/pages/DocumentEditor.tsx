@@ -343,6 +343,7 @@ export default function DocumentEditor() {
         open={splitModalOpen}
         onOpenChange={setSplitModalOpen}
         document={document}
+        sections={sections}
         onSave={handleSavePosts}
       />
     </div>

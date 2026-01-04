@@ -8,7 +8,7 @@ import { DocumentSplitModal } from '@/components/DocumentSplitModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useDocuments } from '@/hooks/useDocuments';
+import { useDocuments, useDocumentSections } from '@/hooks/useDocuments';
 import { usePosts } from '@/hooks/usePosts';
 import { Document, DocumentStatus } from '@/types/document';
 import { toast } from 'sonner';
@@ -31,6 +31,9 @@ export default function DocumentLibrary() {
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [splitModalOpen, setSplitModalOpen] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
+  
+  // Fetch sections for the selected document when split modal is open
+  const { sections: selectedDocSections } = useDocumentSections(selectedDocument?.id || '');
 
   const filteredDocuments = useMemo(() => {
     return documents.filter(doc => {
@@ -197,6 +200,7 @@ export default function DocumentLibrary() {
         open={splitModalOpen}
         onOpenChange={setSplitModalOpen}
         document={selectedDocument}
+        sections={selectedDocSections}
         onSave={handleSavePosts}
       />
     </div>
