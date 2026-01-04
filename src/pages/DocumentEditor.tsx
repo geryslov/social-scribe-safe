@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, Save, Send, CheckCircle, RotateCcw, Split, 
-  FileText, Clock, MessageSquare, ExternalLink 
+  FileText, Clock, MessageSquare, ExternalLink, Layers 
 } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { Button } from '@/components/ui/button';
@@ -12,7 +12,8 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { DocumentSplitModal } from '@/components/DocumentSplitModal';
 import { LinkedPostsList } from '@/components/LinkedPostCard';
-import { useDocument, useDocuments, useDocumentComments, useDocumentPosts } from '@/hooks/useDocuments';
+import { DocumentSectionCard } from '@/components/DocumentSectionCard';
+import { useDocument, useDocuments, useDocumentComments, useDocumentPosts, useDocumentSections } from '@/hooks/useDocuments';
 import { usePosts } from '@/hooks/usePosts';
 import { DocumentStatus } from '@/types/document';
 import { format } from 'date-fns';
@@ -33,6 +34,7 @@ export default function DocumentEditor() {
   const { updateDocument, updateStatus, isAdmin } = useDocuments();
   const { comments, addComment } = useDocumentComments(id || '');
   const { posts } = useDocumentPosts(id || '');
+  const { sections, updateSection, deleteSection } = useDocumentSections(id || '');
   const { createPost } = usePosts();
 
   const [title, setTitle] = useState('');
@@ -217,10 +219,29 @@ export default function DocumentEditor() {
               <Textarea
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
-                className="min-h-[500px] resize-none font-mono text-sm"
+                className="min-h-[300px] resize-none font-mono text-sm"
                 placeholder="Document content..."
               />
             </div>
+
+            {/* Document Sections for Review */}
+            {sections.length > 0 && (
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <Layers className="h-4 w-4 text-primary" />
+                  <h3 className="font-medium">Posts for Review ({sections.length})</h3>
+                </div>
+                {sections.map((section) => (
+                  <DocumentSectionCard
+                    key={section.id}
+                    section={section}
+                    onUpdate={(id, content) => updateSection.mutate({ id, content })}
+                    onDelete={(id) => deleteSection.mutate(id)}
+                    onApprove={(id) => updateSection.mutate({ id, status: 'approved' })}
+                  />
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Sidebar */}

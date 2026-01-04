@@ -95,7 +95,29 @@ export function useDocuments() {
         .single();
       
       if (error) throw error;
-      return mapDbToDocument(result as DbDocument);
+      
+      const document = mapDbToDocument(result as DbDocument);
+      
+      // Parse and create sections for each "Post" in the content
+      const sections = parsePostSections(data.content);
+      if (sections.length > 0) {
+        const sectionsToInsert = sections.map((content, index) => ({
+          document_id: document.id,
+          section_number: index + 1,
+          content,
+          status: 'pending',
+        }));
+        
+        const { error: sectionsError } = await supabase
+          .from('document_sections')
+          .insert(sectionsToInsert);
+        
+        if (sectionsError) {
+          console.error('Error creating sections:', sectionsError);
+        }
+      }
+      
+      return document;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['documents'] });
@@ -105,6 +127,50 @@ export function useDocuments() {
       toast.error('Failed to create document: ' + error.message);
     },
   });
+
+// Helper function to parse "Post" sections from content
+function parsePostSections(content: string): string[] {
+  const sections: string[] = [];
+  const lines = content.split('\n');
+  let currentSection: string[] = [];
+  let foundFirstPost = false;
+  
+  const excludedPatterns = [
+    /^data\s*sources?/i,
+    /^appendix/i,
+    /^references?/i,
+    /^sources?:/i,
+  ];
+  
+  const isExcluded = (line: string) => excludedPatterns.some(p => p.test(line.trim()));
+  let inExcludedSection = false;
+
+  for (const line of lines) {
+    const isPostMarker = /^Post\s*\d+/i.test(line.trim());
+    
+    if (isExcluded(line)) {
+      inExcludedSection = true;
+      continue;
+    }
+    
+    if (isPostMarker) {
+      inExcludedSection = false;
+      if (currentSection.length > 0 && foundFirstPost) {
+        sections.push(currentSection.join('\n').trim());
+      }
+      currentSection = [];
+      foundFirstPost = true;
+    } else if (foundFirstPost && !inExcludedSection) {
+      currentSection.push(line);
+    }
+  }
+
+  if (currentSection.length > 0 && foundFirstPost) {
+    sections.push(currentSection.join('\n').trim());
+  }
+
+  return sections.filter(s => s.length > 0);
+}
 
   const updateDocument = useMutation({
     mutationFn: async (data: { 
@@ -297,4 +363,95 @@ export function useDocumentPosts(documentId: string) {
   });
 
   return { posts, isLoading };
+}
+
+export interface DocumentSection {
+  id: string;
+  documentId: string;
+  sectionNumber: number;
+  content: string;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface DbSection {
+  id: string;
+  document_id: string;
+  section_number: number;
+  content: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
+}
+
+const mapDbToSection = (db: DbSection): DocumentSection => ({
+  id: db.id,
+  documentId: db.document_id,
+  sectionNumber: db.section_number,
+  content: db.content,
+  status: db.status,
+  createdAt: db.created_at,
+  updatedAt: db.updated_at,
+});
+
+export function useDocumentSections(documentId: string) {
+  const queryClient = useQueryClient();
+
+  const { data: sections = [], isLoading } = useQuery({
+    queryKey: ['document-sections', documentId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('document_sections')
+        .select('*')
+        .eq('document_id', documentId)
+        .order('section_number', { ascending: true });
+      
+      if (error) throw error;
+      return (data as DbSection[]).map(mapDbToSection);
+    },
+    enabled: !!documentId,
+  });
+
+  const updateSection = useMutation({
+    mutationFn: async (data: { id: string; content?: string; status?: string }) => {
+      const updates: Record<string, unknown> = {};
+      if (data.content !== undefined) updates.content = data.content;
+      if (data.status !== undefined) updates.status = data.status;
+      
+      const { error } = await supabase
+        .from('document_sections')
+        .update(updates)
+        .eq('id', data.id);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['document-sections', documentId] });
+      toast.success('Section updated');
+    },
+    onError: (error) => {
+      toast.error('Failed to update section: ' + error.message);
+    },
+  });
+
+  const deleteSection = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('document_sections')
+        .delete()
+        .eq('id', id);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['document-sections', documentId] });
+      toast.success('Section deleted');
+    },
+    onError: (error) => {
+      toast.error('Failed to delete section: ' + error.message);
+    },
+  });
+
+  return { sections, isLoading, updateSection, deleteSection };
 }
