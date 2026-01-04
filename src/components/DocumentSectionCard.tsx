@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Check, X, Edit2, Trash2, Save } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { Check, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
@@ -20,15 +20,30 @@ export function DocumentSectionCard({
 }: DocumentSectionCardProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(section.content);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const handleSave = () => {
-    onUpdate(section.id, editContent);
+  useEffect(() => {
+    setEditContent(section.content);
+  }, [section.content]);
+
+  useEffect(() => {
+    if (isEditing && textareaRef.current) {
+      textareaRef.current.focus();
+      textareaRef.current.selectionStart = textareaRef.current.value.length;
+    }
+  }, [isEditing]);
+
+  const handleBlur = () => {
+    if (editContent.trim() !== section.content) {
+      onUpdate(section.id, editContent);
+    }
     setIsEditing(false);
   };
 
-  const handleCancel = () => {
-    setEditContent(section.content);
-    setIsEditing(false);
+  const handleContentClick = () => {
+    if (!isEditing) {
+      setIsEditing(true);
+    }
   };
 
   const statusColors: Record<string, string> = {
@@ -50,66 +65,42 @@ export function DocumentSectionCard({
         </div>
         
         <div className="flex items-center gap-1">
-          {!isEditing ? (
-            <>
-              {section.status === 'pending' && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7 text-green-600"
-                  onClick={() => onApprove(section.id)}
-                >
-                  <Check className="h-4 w-4" />
-                </Button>
-              )}
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7"
-                onClick={() => setIsEditing(true)}
-              >
-                <Edit2 className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7 text-destructive"
-                onClick={() => onDelete(section.id)}
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </>
-          ) : (
-            <>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7 text-green-600"
-                onClick={handleSave}
-              >
-                <Save className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7"
-                onClick={handleCancel}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </>
+          {section.status === 'pending' && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 text-green-600"
+              onClick={() => onApprove(section.id)}
+            >
+              <Check className="h-4 w-4" />
+            </Button>
           )}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 text-destructive"
+            onClick={() => onDelete(section.id)}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
         </div>
       </div>
 
       {isEditing ? (
         <Textarea
+          ref={textareaRef}
           value={editContent}
           onChange={(e) => setEditContent(e.target.value)}
+          onBlur={handleBlur}
           className="min-h-32 resize-none"
         />
       ) : (
-        <p className="text-sm whitespace-pre-wrap">{section.content}</p>
+        <p 
+          className="text-sm whitespace-pre-wrap cursor-text hover:bg-muted/50 rounded p-2 -m-2 transition-colors"
+          onClick={handleContentClick}
+        >
+          {section.content}
+        </p>
       )}
     </div>
   );
