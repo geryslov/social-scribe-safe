@@ -21,7 +21,7 @@ export function Header() {
   ];
 
   return (
-    <header className="bg-[hsl(234_40%_10%)] border-b border-white/10 sticky top-0 z-50">
+    <header className="border-b border-border bg-card/50 backdrop-blur-xl sticky top-0 z-50">
       <div className="px-8 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-8">
@@ -29,7 +29,7 @@ export function Header() {
               <img 
                 src={membraneLogo} 
                 alt="Membrane" 
-                className="h-12 w-auto rounded"
+                className="h-12 w-auto"
               />
             </div>
 
@@ -46,8 +46,8 @@ export function Header() {
                     size="sm"
                     onClick={() => navigate(item.path)}
                     className={cn(
-                      "gap-2 transition-all text-white/70 hover:text-white hover:bg-white/10",
-                      isActive && "bg-primary text-white hover:bg-primary/90"
+                      "gap-2 transition-all",
+                      isActive && "bg-primary/10 text-primary"
                     )}
                   >
                     <Icon className="h-4 w-4" />
@@ -60,7 +60,7 @@ export function Header() {
           
           <div className="flex items-center gap-3">
             {isAdmin && (
-              <div className="flex items-center gap-2 text-xs text-white/80 bg-white/10 px-3 py-1.5 rounded-full">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground bg-secondary/50 px-3 py-1.5 rounded-full">
                 <Flame className="h-3.5 w-3.5 text-primary" />
                 <span className="font-medium">Admin</span>
               </div>
@@ -68,7 +68,7 @@ export function Header() {
             
             {user ? (
               <div className="flex items-center gap-2">
-                <div className="flex items-center gap-2 text-xs text-white/60">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   <User className="h-3.5 w-3.5" />
                   <span className="max-w-32 truncate">{user.email}</span>
                 </div>
@@ -76,7 +76,7 @@ export function Header() {
                   variant="ghost"
                   size="icon"
                   onClick={handleSignOut}
-                  className="h-8 w-8 text-white/70 hover:text-white hover:bg-white/10"
+                  className="h-8 w-8"
                 >
                   <LogOut className="h-4 w-4" />
                 </Button>
@@ -86,7 +86,7 @@ export function Header() {
                 variant="ghost"
                 size="sm"
                 onClick={() => navigate('/auth')}
-                className="gap-2 text-white/70 hover:text-white hover:bg-white/10"
+                className="gap-2"
               >
                 <LogIn className="h-4 w-4" />
                 Admin Login
