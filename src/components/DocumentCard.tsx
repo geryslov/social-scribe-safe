@@ -32,8 +32,15 @@ export function DocumentCard({ document, postCount = 0, onEdit, onDelete, onSpli
   const status = statusConfig[document.status];
   const StatusIcon = status.icon;
 
+  const isInReview = document.status === 'in_review';
+
   return (
-    <div className="group relative bg-card border border-border rounded-xl p-5 hover:border-primary/30 hover:shadow-lg transition-all duration-200">
+    <div className={cn(
+      "group relative bg-card border rounded-xl p-5 hover:shadow-lg transition-all duration-200",
+      isInReview 
+        ? "border-yellow-500/50 ring-2 ring-yellow-500/20 bg-yellow-500/5" 
+        : "border-border hover:border-primary/30"
+    )}>
       {/* Status Badge */}
       <div className="absolute top-4 right-4">
         <Badge variant="secondary" className={cn('gap-1.5', status.color)}>
