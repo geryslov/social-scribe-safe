@@ -214,15 +214,18 @@ export default function DocumentEditor() {
               />
             </div>
 
-            <div>
-              <label className="text-sm font-medium mb-1.5 block">Content</label>
-              <Textarea
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                className="min-h-[300px] resize-none font-mono text-sm"
-                placeholder="Document content..."
-              />
-            </div>
+            {/* Show content textarea only if no sections exist */}
+            {sections.length === 0 && (
+              <div>
+                <label className="text-sm font-medium mb-1.5 block">Content</label>
+                <Textarea
+                  value={content}
+                  onChange={(e) => setContent(e.target.value)}
+                  className="min-h-[300px] resize-none font-mono text-sm"
+                  placeholder="Document content..."
+                />
+              </div>
+            )}
 
             {/* Document Sections for Review */}
             {sections.length > 0 && (
