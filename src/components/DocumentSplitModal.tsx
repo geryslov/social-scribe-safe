@@ -1,27 +1,18 @@
 import { useState, useEffect } from 'react';
-import { Calendar, User, Plus, Trash2, Shuffle, Sparkles, Loader2 } from 'lucide-react';
+import { Plus, Shuffle, Sparkles, Loader2 } from 'lucide-react';
 import { Document } from '@/types/document';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { usePublishers } from '@/hooks/usePublishers';
 import { format } from 'date-fns';
-import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { SplitPostCard } from './SplitPostCard';
 
 interface ParsedPost {
   content: string;
@@ -276,67 +267,18 @@ export function DocumentSplitModal({ open, onOpenChange, document, onSave }: Doc
           ) : (
             <>
               {parsedPosts.map((post, index) => (
-                <div 
-                  key={index} 
-                  className="border border-border rounded-lg p-4 space-y-3 bg-card"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-muted-foreground">
-                      Post {index + 1}
-                    </span>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 text-destructive"
-                      onClick={() => removePost(index)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-
-                  <Textarea
-                    value={post.content}
-                    onChange={(e) => updatePost(index, 'content', e.target.value)}
-                    placeholder="Post content..."
-                    className="min-h-24 resize-none"
-                  />
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-xs text-muted-foreground mb-1.5 flex items-center gap-1">
-                        <User className="h-3 w-3" />
-                        Publisher
-                      </label>
-                      <Select
-                        value={post.publisherId || ''}
-                        onValueChange={(value) => updatePost(index, 'publisherId', value)}
-                      >
-                        <SelectTrigger className={cn(!post.publisherId && 'text-muted-foreground')}>
-                          <SelectValue placeholder="Select publisher..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {publishers.map(publisher => (
-                            <SelectItem key={publisher.id} value={publisher.id}>
-                              {publisher.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div>
-                      <label className="text-xs text-muted-foreground mb-1.5 flex items-center gap-1">
-                        <Calendar className="h-3 w-3" />
-                        Scheduled Date
-                      </label>
-                      <Input
-                        type="date"
-                        value={post.scheduledDate || ''}
-                        onChange={(e) => updatePost(index, 'scheduledDate', e.target.value)}
-                      />
-                    </div>
-                  </div>
-                </div>
+                <SplitPostCard
+                  key={index}
+                  index={index}
+                  content={post.content}
+                  publisherId={post.publisherId}
+                  scheduledDate={post.scheduledDate}
+                  publishers={publishers}
+                  onUpdateContent={(value) => updatePost(index, 'content', value)}
+                  onUpdatePublisher={(value) => updatePost(index, 'publisherId', value)}
+                  onUpdateDate={(value) => updatePost(index, 'scheduledDate', value)}
+                  onRemove={() => removePost(index)}
+                />
               ))}
 
               <Button variant="outline" className="w-full" onClick={addEmptyPost}>
