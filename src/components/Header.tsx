@@ -4,11 +4,15 @@ import { Button } from '@/components/ui/button';
 import { useNavigate, useLocation } from 'react-router-dom';
 import membraneLogo from '@/assets/membrane-logo.jpg';
 import { cn } from '@/lib/utils';
+import { useDocuments } from '@/hooks/useDocuments';
 
 export function Header() {
   const { user, isAdmin, signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const { documents } = useDocuments();
+
+  const documentsInReview = documents?.filter(doc => doc.status === 'in_review').length || 0;
 
   const handleSignOut = async () => {
     await signOut();
@@ -16,8 +20,8 @@ export function Header() {
   };
 
   const navItems = [
-    { path: '/', label: 'Posts', icon: LayoutDashboard },
-    { path: '/documents', label: 'Documents', icon: FileText },
+    { path: '/', label: 'Posts', icon: LayoutDashboard, badge: 0 },
+    { path: '/documents', label: 'Documents', icon: FileText, badge: documentsInReview },
   ];
 
   return (
@@ -39,6 +43,7 @@ export function Header() {
                 const Icon = item.icon;
                 const isActive = location.pathname === item.path || 
                                  (item.path !== '/' && location.pathname.startsWith(item.path));
+                const hasNotification = item.badge > 0;
                 return (
                   <Button
                     key={item.path}
@@ -46,12 +51,18 @@ export function Header() {
                     size="sm"
                     onClick={() => navigate(item.path)}
                     className={cn(
-                      "gap-2 transition-all",
-                      isActive && "bg-primary/10 text-primary"
+                      "gap-2 transition-all relative",
+                      isActive && "bg-primary/10 text-primary",
+                      hasNotification && !isActive && "text-yellow-600"
                     )}
                   >
                     <Icon className="h-4 w-4" />
                     {item.label}
+                    {hasNotification && (
+                      <span className="absolute -top-1 -right-1 h-5 w-5 bg-yellow-500 text-yellow-950 text-xs font-bold rounded-full flex items-center justify-center animate-pulse">
+                        {item.badge}
+                      </span>
+                    )}
                   </Button>
                 );
               })}
