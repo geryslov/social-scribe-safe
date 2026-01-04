@@ -11,6 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { DocumentSplitModal } from '@/components/DocumentSplitModal';
+import { LinkedPostsList } from '@/components/LinkedPostCard';
 import { useDocument, useDocuments, useDocumentComments, useDocumentPosts } from '@/hooks/useDocuments';
 import { usePosts } from '@/hooks/usePosts';
 import { DocumentStatus } from '@/types/document';
@@ -268,27 +269,7 @@ export default function DocumentEditor() {
             </div>
 
             {/* Linked Posts */}
-            {posts.length > 0 && (
-              <div className="bg-card border border-border rounded-xl p-4">
-                <h3 className="font-medium flex items-center gap-2 mb-3">
-                  <Split className="h-4 w-4 text-primary" />
-                  Linked Posts ({posts.length})
-                </h3>
-                <div className="space-y-2 max-h-48 overflow-y-auto">
-                  {posts.map((post: any) => (
-                    <div 
-                      key={post.id}
-                      className="text-sm p-2 bg-secondary/50 rounded-lg"
-                    >
-                      <p className="truncate">{post.content.substring(0, 50)}...</p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {post.publisher_name} · {format(new Date(post.scheduled_date), 'MMM d')}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+            <LinkedPostsList posts={posts} />
 
             {/* Comments */}
             <div className="bg-card border border-border rounded-xl p-4">
