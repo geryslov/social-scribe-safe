@@ -179,6 +179,15 @@ function parsePostSections(content: string): string[] {
       content?: string; 
       notes?: string;
     }) => {
+      // Fetch current document to track changes
+      const { data: currentDoc, error: fetchError } = await supabase
+        .from('documents')
+        .select('title, content, status')
+        .eq('id', data.id)
+        .single();
+      
+      if (fetchError) throw fetchError;
+
       const updates: Record<string, unknown> = {};
       if (data.title !== undefined) updates.title = data.title;
       if (data.content !== undefined) updates.content = data.content;
@@ -190,9 +199,26 @@ function parsePostSections(content: string): string[] {
         .eq('id', data.id);
       
       if (error) throw error;
+
+      // Record edit history if content or title changed
+      const titleChanged = data.title !== undefined && data.title !== currentDoc.title;
+      const contentChanged = data.content !== undefined && data.content !== currentDoc.content;
+      
+      if (titleChanged || contentChanged) {
+        await supabase.from('document_edit_history').insert({
+          document_id: data.id,
+          edited_by: user?.id || null,
+          edited_by_email: user?.email || 'Unknown',
+          previous_content: currentDoc.content,
+          new_content: data.content ?? currentDoc.content,
+          previous_title: currentDoc.title,
+          new_title: data.title ?? currentDoc.title,
+        });
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['documents'] });
+      queryClient.invalidateQueries({ queryKey: ['document-edit-history'] });
       toast.success('Document saved');
     },
     onError: (error) => {
@@ -202,6 +228,15 @@ function parsePostSections(content: string): string[] {
 
   const updateStatus = useMutation({
     mutationFn: async (data: { id: string; status: DocumentStatus }) => {
+      // Fetch current document to track changes
+      const { data: currentDoc, error: fetchError } = await supabase
+        .from('documents')
+        .select('title, content, status')
+        .eq('id', data.id)
+        .single();
+      
+      if (fetchError) throw fetchError;
+
       const updates: Record<string, unknown> = { status: data.status };
       
       if (data.status === 'approved' && user) {
@@ -215,9 +250,25 @@ function parsePostSections(content: string): string[] {
         .eq('id', data.id);
       
       if (error) throw error;
+
+      // Record status change in edit history
+      if (currentDoc.status !== data.status) {
+        await supabase.from('document_edit_history').insert({
+          document_id: data.id,
+          edited_by: user?.id || null,
+          edited_by_email: user?.email || 'Unknown',
+          previous_content: currentDoc.content,
+          new_content: currentDoc.content,
+          previous_status: currentDoc.status,
+          new_status: data.status,
+          previous_title: currentDoc.title,
+          new_title: currentDoc.title,
+        });
+      }
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['documents'] });
+      queryClient.invalidateQueries({ queryKey: ['document-edit-history'] });
       const statusMessages: Record<DocumentStatus, string> = {
         draft: 'Document moved to draft',
         in_review: 'Document submitted for review',
