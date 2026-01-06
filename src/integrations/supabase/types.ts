@@ -49,6 +49,48 @@ export type Database = {
           },
         ]
       }
+      document_edit_history: {
+        Row: {
+          document_id: string
+          edited_at: string
+          edited_by: string | null
+          edited_by_email: string
+          id: string
+          new_content: string
+          new_status: string | null
+          new_title: string | null
+          previous_content: string
+          previous_status: string | null
+          previous_title: string | null
+        }
+        Insert: {
+          document_id: string
+          edited_at?: string
+          edited_by?: string | null
+          edited_by_email: string
+          id?: string
+          new_content: string
+          new_status?: string | null
+          new_title?: string | null
+          previous_content: string
+          previous_status?: string | null
+          previous_title?: string | null
+        }
+        Update: {
+          document_id?: string
+          edited_at?: string
+          edited_by?: string | null
+          edited_by_email?: string
+          id?: string
+          new_content?: string
+          new_status?: string | null
+          new_title?: string | null
+          previous_content?: string
+          previous_status?: string | null
+          previous_title?: string | null
+        }
+        Relationships: []
+      }
       document_sections: {
         Row: {
           content: string

@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { DocumentSplitModal } from '@/components/DocumentSplitModal';
 import { LinkedPostsList } from '@/components/LinkedPostCard';
+import { DocumentEditHistory } from '@/components/DocumentEditHistory';
 import { DocumentSectionCard } from '@/components/DocumentSectionCard';
 import { useDocument, useDocuments, useDocumentComments, useDocumentPosts, useDocumentSections } from '@/hooks/useDocuments';
 import { usePosts } from '@/hooks/usePosts';
@@ -291,6 +292,9 @@ export default function DocumentEditor() {
                 )}
               </div>
             </div>
+
+            {/* Edit History */}
+            <DocumentEditHistory documentId={id || ''} />
 
             {/* Linked Posts */}
             <LinkedPostsList posts={posts} />
