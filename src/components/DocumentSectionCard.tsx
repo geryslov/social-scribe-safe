@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { DocumentSection } from '@/hooks/useDocuments';
+import { SectionEditHistory } from '@/components/SectionEditHistory';
 
 interface DocumentSectionCardProps {
   section: DocumentSection;
@@ -102,6 +103,8 @@ export function DocumentSectionCard({
           {section.content}
         </p>
       )}
+
+      <SectionEditHistory sectionId={section.id} />
     </div>
   );
 }

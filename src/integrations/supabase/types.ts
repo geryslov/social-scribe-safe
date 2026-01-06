@@ -304,6 +304,45 @@ export type Database = {
         }
         Relationships: []
       }
+      section_edit_history: {
+        Row: {
+          document_id: string
+          edited_at: string
+          edited_by: string | null
+          edited_by_email: string
+          id: string
+          new_content: string
+          new_status: string | null
+          previous_content: string
+          previous_status: string | null
+          section_id: string
+        }
+        Insert: {
+          document_id: string
+          edited_at?: string
+          edited_by?: string | null
+          edited_by_email: string
+          id?: string
+          new_content: string
+          new_status?: string | null
+          previous_content: string
+          previous_status?: string | null
+          section_id: string
+        }
+        Update: {
+          document_id?: string
+          edited_at?: string
+          edited_by?: string | null
+          edited_by_email?: string
+          id?: string
+          new_content?: string
+          new_status?: string | null
+          previous_content?: string
+          previous_status?: string | null
+          section_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
