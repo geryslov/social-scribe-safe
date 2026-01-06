@@ -466,6 +466,15 @@ export function useDocumentSections(documentId: string) {
 
   const updateSection = useMutation({
     mutationFn: async (data: { id: string; content?: string; status?: string }) => {
+      // Fetch current section to track changes
+      const { data: currentSection, error: fetchError } = await supabase
+        .from('document_sections')
+        .select('content, status, document_id')
+        .eq('id', data.id)
+        .single();
+      
+      if (fetchError) throw fetchError;
+
       const updates: Record<string, unknown> = {};
       if (data.content !== undefined) updates.content = data.content;
       if (data.status !== undefined) updates.status = data.status;
@@ -476,9 +485,28 @@ export function useDocumentSections(documentId: string) {
         .eq('id', data.id);
       
       if (error) throw error;
+
+      // Record edit history if content or status changed
+      const contentChanged = data.content !== undefined && data.content !== currentSection.content;
+      const statusChanged = data.status !== undefined && data.status !== currentSection.status;
+      
+      if (contentChanged || statusChanged) {
+        const { data: { user } } = await supabase.auth.getUser();
+        await supabase.from('section_edit_history').insert({
+          section_id: data.id,
+          document_id: currentSection.document_id,
+          edited_by: user?.id || null,
+          edited_by_email: user?.email || 'Unknown',
+          previous_content: currentSection.content,
+          new_content: data.content ?? currentSection.content,
+          previous_status: currentSection.status,
+          new_status: data.status ?? currentSection.status,
+        });
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['document-sections', documentId] });
+      queryClient.invalidateQueries({ queryKey: ['section-edit-history'] });
       toast.success('Section updated');
     },
     onError: (error) => {
