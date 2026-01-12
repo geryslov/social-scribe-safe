@@ -91,6 +91,40 @@ CREATE TABLE public.document_comments (
 
 
 --
+-- Name: document_edit_history; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.document_edit_history (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    document_id uuid NOT NULL,
+    edited_by uuid,
+    edited_by_email text NOT NULL,
+    previous_content text NOT NULL,
+    new_content text NOT NULL,
+    previous_status text,
+    new_status text,
+    previous_title text,
+    new_title text,
+    edited_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: document_sections; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.document_sections (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    document_id uuid NOT NULL,
+    section_number integer NOT NULL,
+    content text NOT NULL,
+    status text DEFAULT 'pending'::text NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
 -- Name: documents; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -164,6 +198,24 @@ CREATE TABLE public.publishers (
 
 
 --
+-- Name: section_edit_history; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.section_edit_history (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    section_id uuid NOT NULL,
+    document_id uuid NOT NULL,
+    edited_by uuid,
+    edited_by_email text NOT NULL,
+    previous_content text NOT NULL,
+    new_content text NOT NULL,
+    previous_status text,
+    new_status text,
+    edited_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
 -- Name: user_roles; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -181,6 +233,22 @@ CREATE TABLE public.user_roles (
 
 ALTER TABLE ONLY public.document_comments
     ADD CONSTRAINT document_comments_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: document_edit_history document_edit_history_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.document_edit_history
+    ADD CONSTRAINT document_edit_history_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: document_sections document_sections_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.document_sections
+    ADD CONSTRAINT document_sections_pkey PRIMARY KEY (id);
 
 
 --
@@ -224,6 +292,14 @@ ALTER TABLE ONLY public.publishers
 
 
 --
+-- Name: section_edit_history section_edit_history_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.section_edit_history
+    ADD CONSTRAINT section_edit_history_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: user_roles user_roles_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -244,6 +320,13 @@ ALTER TABLE ONLY public.user_roles
 --
 
 CREATE INDEX idx_document_comments_document_id ON public.document_comments USING btree (document_id);
+
+
+--
+-- Name: idx_document_sections_document_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_document_sections_document_id ON public.document_sections USING btree (document_id);
 
 
 --
@@ -275,6 +358,13 @@ CREATE INDEX idx_posts_labels ON public.posts USING gin (labels);
 
 
 --
+-- Name: document_sections update_document_sections_updated_at; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER update_document_sections_updated_at BEFORE UPDATE ON public.document_sections FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
 -- Name: documents update_documents_updated_at; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -301,6 +391,14 @@ CREATE TRIGGER update_publishers_updated_at BEFORE UPDATE ON public.publishers F
 
 ALTER TABLE ONLY public.document_comments
     ADD CONSTRAINT document_comments_document_id_fkey FOREIGN KEY (document_id) REFERENCES public.documents(id) ON DELETE CASCADE;
+
+
+--
+-- Name: document_sections document_sections_document_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.document_sections
+    ADD CONSTRAINT document_sections_document_id_fkey FOREIGN KEY (document_id) REFERENCES public.documents(id) ON DELETE CASCADE;
 
 
 --
@@ -336,6 +434,13 @@ ALTER TABLE ONLY public.user_roles
 
 
 --
+-- Name: document_sections Admins can create document sections; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Admins can create document sections" ON public.document_sections FOR INSERT WITH CHECK (public.has_role(auth.uid(), 'admin'::public.app_role));
+
+
+--
 -- Name: documents Admins can create documents; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -347,6 +452,13 @@ CREATE POLICY "Admins can create documents" ON public.documents FOR INSERT WITH 
 --
 
 CREATE POLICY "Admins can create posts" ON public.posts FOR INSERT WITH CHECK (public.has_role(auth.uid(), 'admin'::public.app_role));
+
+
+--
+-- Name: document_sections Admins can delete document sections; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Admins can delete document sections" ON public.document_sections FOR DELETE USING (public.has_role(auth.uid(), 'admin'::public.app_role));
 
 
 --
@@ -378,10 +490,24 @@ CREATE POLICY "Admins can insert publishers" ON public.publishers FOR INSERT WIT
 
 
 --
+-- Name: document_sections Admins can update document sections; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Admins can update document sections" ON public.document_sections FOR UPDATE USING (public.has_role(auth.uid(), 'admin'::public.app_role));
+
+
+--
 -- Name: documents Admins can update documents; Type: POLICY; Schema: public; Owner: -
 --
 
 CREATE POLICY "Admins can update documents" ON public.documents FOR UPDATE USING (public.has_role(auth.uid(), 'admin'::public.app_role));
+
+
+--
+-- Name: document_edit_history Admins can view document edit history; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Admins can view document edit history" ON public.document_edit_history FOR SELECT USING (public.has_role(auth.uid(), 'admin'::public.app_role));
 
 
 --
@@ -392,6 +518,13 @@ CREATE POLICY "Admins can view edit history" ON public.post_edit_history FOR SEL
 
 
 --
+-- Name: section_edit_history Admins can view section edit history; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Admins can view section edit history" ON public.section_edit_history FOR SELECT USING (public.has_role(auth.uid(), 'admin'::public.app_role));
+
+
+--
 -- Name: document_comments Anyone can add comments; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -399,10 +532,24 @@ CREATE POLICY "Anyone can add comments" ON public.document_comments FOR INSERT W
 
 
 --
+-- Name: document_edit_history Anyone can insert document edit history; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Anyone can insert document edit history" ON public.document_edit_history FOR INSERT WITH CHECK (true);
+
+
+--
 -- Name: post_edit_history Anyone can insert edit history; Type: POLICY; Schema: public; Owner: -
 --
 
 CREATE POLICY "Anyone can insert edit history" ON public.post_edit_history FOR INSERT WITH CHECK (true);
+
+
+--
+-- Name: section_edit_history Anyone can insert section edit history; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Anyone can insert section edit history" ON public.section_edit_history FOR INSERT WITH CHECK (true);
 
 
 --
@@ -424,6 +571,13 @@ CREATE POLICY "Anyone can update publishers" ON public.publishers FOR UPDATE USI
 --
 
 CREATE POLICY "Anyone can view comments" ON public.document_comments FOR SELECT USING (true);
+
+
+--
+-- Name: document_sections Anyone can view document sections; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Anyone can view document sections" ON public.document_sections FOR SELECT USING (true);
 
 
 --
@@ -468,6 +622,18 @@ CREATE POLICY "Users can view their own roles" ON public.user_roles FOR SELECT U
 ALTER TABLE public.document_comments ENABLE ROW LEVEL SECURITY;
 
 --
+-- Name: document_edit_history; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.document_edit_history ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: document_sections; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.document_sections ENABLE ROW LEVEL SECURITY;
+
+--
 -- Name: documents; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -490,6 +656,12 @@ ALTER TABLE public.posts ENABLE ROW LEVEL SECURITY;
 --
 
 ALTER TABLE public.publishers ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: section_edit_history; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.section_edit_history ENABLE ROW LEVEL SECURITY;
 
 --
 -- Name: user_roles; Type: ROW SECURITY; Schema: public; Owner: -
