@@ -2,7 +2,7 @@ import { Flame, LogOut, LogIn, User, FileText, LayoutDashboard } from 'lucide-re
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { useNavigate, useLocation } from 'react-router-dom';
-import membraneLogo from '@/assets/membrane-logo.jpg';
+import wisorLogo from '@/assets/wisor-logo.svg';
 import { cn } from '@/lib/utils';
 import { useDocuments } from '@/hooks/useDocuments';
 
@@ -31,9 +31,9 @@ export function Header() {
           <div className="flex items-center gap-8">
             <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate('/')}>
               <img 
-                src={membraneLogo} 
-                alt="Membrane" 
-                className="h-12 w-auto"
+                src={wisorLogo} 
+                alt="Wisor" 
+                className="h-8 w-auto"
               />
             </div>
 
