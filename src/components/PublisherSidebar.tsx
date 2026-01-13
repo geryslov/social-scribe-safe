@@ -75,7 +75,7 @@ export function PublisherSidebar({ publishers, selectedPublisher, onSelectPublis
 
   return (
     <>
-      <div className="w-72 flex-shrink-0 bg-card/40 backdrop-blur-xl border-r border-border/40 h-[calc(100vh-73px)] overflow-y-auto">
+      <div className="w-72 flex-shrink-0 bg-gradient-to-b from-[#6D56F6] to-[#6D56F6]/90 backdrop-blur-xl border-r border-white/10 h-[calc(100vh-73px)] overflow-y-auto">
         <div className="p-5">
           <div className="flex items-center justify-between mb-4 px-1">
             <h2 className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.2em] flex items-center gap-2">
