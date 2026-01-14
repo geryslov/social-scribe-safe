@@ -108,8 +108,8 @@ const Index = () => {
     deletePost.mutate(postId);
   };
 
-  const handleStatusChange = (postId: string, status: Post['status']) => {
-    updateStatus.mutate({ postId, status });
+  const handleStatusChange = (postId: string, status: Post['status'], publisherName?: string) => {
+    updateStatus.mutate({ postId, status, publisherName });
   };
 
   const handleLabelsUpdate = (postId: string, labels: string[]) => {

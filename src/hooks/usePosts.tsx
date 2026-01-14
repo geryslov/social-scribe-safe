@@ -168,13 +168,27 @@ export function usePosts() {
   });
 
   const updateStatus = useMutation({
-    mutationFn: async ({ postId, status }: { postId: string; status: Post['status'] }) => {
+    mutationFn: async ({ postId, status, publisherName }: { postId: string; status: Post['status']; publisherName?: string }) => {
       const { error } = await supabase
         .from('posts')
         .update({ status })
         .eq('id', postId);
       
       if (error) throw error;
+
+      // Send Slack notification when post is published
+      if (status === 'done' && publisherName) {
+        supabase.functions.invoke('notify-slack', {
+          body: {
+            workspaceName: 'Wisor',
+            publisherName,
+            publishedAt: new Date().toISOString(),
+            workspaceUrl: window.location.origin,
+          },
+        }).catch((err) => {
+          console.error('Failed to send Slack notification:', err);
+        });
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['posts'] });
