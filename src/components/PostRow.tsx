@@ -42,7 +42,7 @@ interface PostRowProps {
   post: Post;
   onEdit: (post: Post) => void;
   onDelete: (postId: string) => void;
-  onStatusChange?: (postId: string, status: Post['status']) => void;
+  onStatusChange?: (postId: string, status: Post['status'], publisherName?: string) => void;
   onLabelsUpdate?: (postId: string, labels: string[]) => void;
   showPublisher?: boolean;
   index: number;
@@ -95,9 +95,9 @@ export function PostRow({ post, onEdit, onDelete, onStatusChange, onLabelsUpdate
     const linkedInUrl = `https://www.linkedin.com/feed/?shareActive=true&text=${encodedText}`;
     window.open(linkedInUrl, '_blank');
     
-    // Automatically mark as published
+    // Automatically mark as published and send Slack notification
     if (onStatusChange && post.status !== 'done') {
-      onStatusChange(post.id, 'done');
+      onStatusChange(post.id, 'done', post.publisherName);
       toast.success('LinkedIn opened & marked as published!');
     } else {
       toast.success('LinkedIn opened with your post!');
@@ -106,7 +106,7 @@ export function PostRow({ post, onEdit, onDelete, onStatusChange, onLabelsUpdate
 
   const handlePublishConfirm = (markAsPublished: boolean) => {
     if (markAsPublished && onStatusChange) {
-      onStatusChange(post.id, 'done');
+      onStatusChange(post.id, 'done', post.publisherName);
       toast.success('Copied & marked as published');
     } else {
       toast.success('Copied to clipboard');
