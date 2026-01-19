@@ -1,16 +1,1 @@
-project_id = "ldlvizfyjkqjxikrhqvr"
-
-[functions.parse-document]
-verify_jwt = false
-
-[functions.split-document]
-verify_jwt = false
-
-[functions.analyze-post]
-verify_jwt = false
-
-[functions.scrape-linkedin]
-verify_jwt = false
-
-[functions.notify-slack]
-verify_jwt = false
+project_id = "vstuoqlvakfvrowpxsae"
