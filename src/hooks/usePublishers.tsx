@@ -11,6 +11,7 @@ export interface Publisher {
   avatar_url: string | null;
   created_at: string;
   updated_at: string;
+  user_id: string | null;
   // LinkedIn OAuth fields
   linkedin_connected: boolean | null;
   linkedin_member_id: string | null;

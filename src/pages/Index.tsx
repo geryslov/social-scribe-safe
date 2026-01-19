@@ -9,7 +9,6 @@ import { PublisherSidebar } from '@/components/PublisherSidebar';
 import { PostRow } from '@/components/PostRow';
 import { PostModal } from '@/components/PostModal';
 import { BulkUploadModal } from '@/components/BulkUploadModal';
-import { LinkedInOnboarding } from '@/components/LinkedInOnboarding';
 import { Button } from '@/components/ui/button';
 import { Plus, Inbox, ExternalLink, Loader2, Upload, Users, FileText, CheckCircle, Clock } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -27,8 +26,6 @@ const Index = () => {
   const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false);
   const [editingPost, setEditingPost] = useState<Post | null>(null);
   const [preselectedPublisher, setPreselectedPublisher] = useState<string | null>(null);
-  const [showOnboarding, setShowOnboarding] = useState(false);
-  const [hasCheckedOnboarding, setHasCheckedOnboarding] = useState(false);
 
   // Redirect to auth if not logged in
   useEffect(() => {
@@ -36,35 +33,6 @@ const Index = () => {
       navigate('/auth');
     }
   }, [user, authLoading, navigate]);
-
-  // Check if user needs onboarding (no publisher profile yet)
-  useEffect(() => {
-    if (user && !authLoading && dbPublishers.length >= 0 && !hasCheckedOnboarding) {
-      const userName = user.user_metadata?.full_name || user.user_metadata?.name;
-      const userEmail = user.email;
-      
-      // Check if user already has a publisher profile
-      const hasProfile = dbPublishers.some(
-        p => p.name === userName || p.linkedin_url?.includes(userEmail || '')
-      );
-      
-      if (!hasProfile && userName) {
-        // Check localStorage to see if they've already skipped onboarding
-        const skippedOnboarding = localStorage.getItem(`onboarding_skipped_${user.id}`);
-        if (!skippedOnboarding) {
-          setShowOnboarding(true);
-        }
-      }
-      setHasCheckedOnboarding(true);
-    }
-  }, [user, authLoading, dbPublishers, hasCheckedOnboarding]);
-
-  const handleOnboardingComplete = () => {
-    setShowOnboarding(false);
-    if (user) {
-      localStorage.setItem(`onboarding_skipped_${user.id}`, 'true');
-    }
-  };
 
   // Merge publishers from posts with publishers from database
   const publishers = useMemo(() => {
@@ -121,8 +89,6 @@ const Index = () => {
   }, [posts, selectedPublisher, publishers]);
 
   const totalPosts = activePosts.length + publishedPosts.length;
-  const totalPublished = publishedPosts.length;
-  const totalUnpublished = activePosts.length;
 
   const currentPublisher = selectedPublisher ? publishers.find(p => p.name === selectedPublisher) : null;
 
@@ -413,11 +379,6 @@ const Index = () => {
         onClose={() => setIsBulkUploadOpen(false)}
         onSave={handleBulkUpload}
         existingPublishers={existingPublishers}
-      />
-
-      <LinkedInOnboarding
-        isOpen={showOnboarding}
-        onComplete={handleOnboardingComplete}
       />
     </div>
   );
