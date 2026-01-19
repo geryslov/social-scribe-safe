@@ -1,1 +1,22 @@
 project_id = "vstuoqlvakfvrowpxsae"
+
+[functions.analyze-post]
+verify_jwt = false
+
+[functions.notify-slack]
+verify_jwt = false
+
+[functions.parse-document]
+verify_jwt = false
+
+[functions.scrape-linkedin]
+verify_jwt = false
+
+[functions.split-document]
+verify_jwt = false
+
+[functions.linkedin-auth]
+verify_jwt = false
+
+[functions.linkedin-post]
+verify_jwt = false

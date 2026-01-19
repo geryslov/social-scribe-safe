@@ -11,6 +11,8 @@ import { Label } from '@/components/ui/label';
 import { Loader2 } from 'lucide-react';
 import { usePublishers, Publisher } from '@/hooks/usePublishers';
 import { toast } from 'sonner';
+import { LinkedInConnectButton } from './LinkedInConnectButton';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface PublisherModalProps {
   isOpen: boolean;
@@ -20,6 +22,7 @@ interface PublisherModalProps {
 
 export function PublisherModal({ isOpen, onClose, publisher }: PublisherModalProps) {
   const { upsertPublisher } = usePublishers();
+  const queryClient = useQueryClient();
   const [formData, setFormData] = useState({
     name: '',
     role: '',
@@ -60,6 +63,10 @@ export function PublisherModal({ isOpen, onClose, publisher }: PublisherModalPro
       console.error('Failed to save publisher:', error);
       toast.error('Failed to save publisher');
     }
+  };
+
+  const handleConnectionChange = () => {
+    queryClient.invalidateQueries({ queryKey: ['publishers'] });
   };
 
   return (
@@ -106,6 +113,21 @@ export function PublisherModal({ isOpen, onClose, publisher }: PublisherModalPro
               placeholder="https://linkedin.com/in/username"
             />
           </div>
+
+          {/* LinkedIn OAuth Connection */}
+          {publisher && (
+            <div className="space-y-2 pt-2 border-t border-border">
+              <Label>LinkedIn Publishing</Label>
+              <p className="text-xs text-muted-foreground mb-2">
+                Connect LinkedIn to publish posts directly via the API
+              </p>
+              <LinkedInConnectButton
+                publisherId={publisher.id}
+                isConnected={publisher.linkedin_connected ?? false}
+                onConnectionChange={handleConnectionChange}
+              />
+            </div>
+          )}
 
           <div className="flex justify-end gap-3 pt-4">
             <Button type="button" variant="outline" onClick={onClose}>

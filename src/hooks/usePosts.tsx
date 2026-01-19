@@ -17,6 +17,10 @@ type DbPost = {
   created_at: string;
   updated_at: string;
   document_id: string | null;
+  // LinkedIn publishing tracking
+  published_at: string | null;
+  linkedin_post_url: string | null;
+  publish_method: string | null;
 };
 
 function mapDbToPost(dbPost: DbPost): Post {
@@ -30,6 +34,9 @@ function mapDbToPost(dbPost: DbPost): Post {
     linkedinUrl: dbPost.linkedin_url || '',
     labels: dbPost.labels || [],
     documentId: dbPost.document_id,
+    publishedAt: dbPost.published_at,
+    linkedinPostUrl: dbPost.linkedin_post_url,
+    publishMethod: dbPost.publish_method as Post['publishMethod'],
   };
 }
 
