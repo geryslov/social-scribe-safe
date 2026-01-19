@@ -26,7 +26,6 @@ Deno.serve(async (req) => {
     // GET /start - Begin OAuth flow
     if (req.method === 'GET' && path === 'start') {
       const publisherId = url.searchParams.get('publisher_id');
-      const returnUrl = url.searchParams.get('return_url');
       
       if (!publisherId) {
         return new Response(
@@ -35,8 +34,8 @@ Deno.serve(async (req) => {
         );
       }
 
-      // State includes publisher ID and return URL for after callback
-      const state = btoa(JSON.stringify({ publisherId, returnUrl }));
+      // State only includes publisher ID - keep it minimal to avoid header size limits
+      const state = btoa(JSON.stringify({ publisherId }));
       
       // Use w_member_social for posting - openid/profile require "Sign In with LinkedIn" product
       const scopes = ['w_member_social'];
@@ -78,7 +77,7 @@ Deno.serve(async (req) => {
         );
       }
 
-      let stateData: { publisherId: string; returnUrl?: string };
+      let stateData: { publisherId: string };
       try {
         stateData = JSON.parse(atob(state));
       } catch {

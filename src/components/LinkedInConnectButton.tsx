@@ -49,9 +49,9 @@ export function LinkedInConnectButton({
   const handleConnect = () => {
     setIsConnecting(true);
     
-    // Get the edge function URL
+    // Get the edge function URL - don't include return_url to keep state small
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-    const authUrl = `${supabaseUrl}/functions/v1/linkedin-auth/start?publisher_id=${publisherId}&return_url=${encodeURIComponent(window.location.href)}`;
+    const authUrl = `${supabaseUrl}/functions/v1/linkedin-auth/start?publisher_id=${publisherId}`;
     
     // Open popup for OAuth
     const width = 600;
