@@ -6,6 +6,9 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { EditHistory } from './EditHistory';
 import { PublisherAvatar } from './PublisherAvatar';
+import { LinkedInPublishModal } from './LinkedInPublishModal';
+import { usePublishers } from '@/hooks/usePublishers';
+import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import {
   AlertDialog,
@@ -52,8 +55,16 @@ interface PostRowProps {
 export function PostRow({ post, onEdit, onDelete, onStatusChange, onLabelsUpdate, showPublisher = false, index, isAdmin = false }: PostRowProps) {
   const [copied, setCopied] = useState(false);
   const [showPublishDialog, setShowPublishDialog] = useState(false);
+  const [showLinkedInModal, setShowLinkedInModal] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  
+  const { publishers } = usePublishers();
+  const queryClient = useQueryClient();
+  
+  // Find the publisher for this post
+  const publisher = publishers.find(p => p.name === post.publisherName);
+  const isPublisherConnected = publisher?.linkedin_connected ?? false;
 
   const handleAnalyzePost = async () => {
     if (!onLabelsUpdate) return;
@@ -90,18 +101,28 @@ export function PostRow({ post, onEdit, onDelete, onStatusChange, onLabelsUpdate
     }
   };
 
-  const handleShareLinkedIn = () => {
-    const encodedText = encodeURIComponent(post.content);
-    const linkedInUrl = `https://www.linkedin.com/feed/?shareActive=true&text=${encodedText}`;
-    window.open(linkedInUrl, '_blank');
-    
-    // Automatically mark as published and send Slack notification
+  const handlePublishClick = () => {
+    setShowLinkedInModal(true);
+  };
+
+  const handlePublishSuccess = (linkedinPostUrl?: string) => {
     if (onStatusChange && post.status !== 'done') {
       onStatusChange(post.id, 'done', post.publisherName);
-      toast.success('LinkedIn opened & marked as published!');
-    } else {
-      toast.success('LinkedIn opened with your post!');
     }
+    queryClient.invalidateQueries({ queryKey: ['posts'] });
+    if (linkedinPostUrl) {
+      toast.success('Published to LinkedIn!', {
+        action: {
+          label: 'View Post',
+          onClick: () => window.open(linkedinPostUrl, '_blank'),
+        },
+      });
+    }
+  };
+
+  const handleConnectLinkedIn = () => {
+    // Close the publish modal and prompt user to edit the publisher
+    toast.info('Edit the publisher to connect LinkedIn');
   };
 
   const handlePublishConfirm = (markAsPublished: boolean) => {
@@ -148,7 +169,6 @@ export function PostRow({ post, onEdit, onDelete, onStatusChange, onLabelsUpdate
   };
 
   const statusConfig = getStatusConfig(post.status);
-
   const publisherColor = getPublisherColor(post.publisherName);
 
   return (
@@ -188,6 +208,11 @@ export function PostRow({ post, onEdit, onDelete, onStatusChange, onLabelsUpdate
                 {post.publisherRole && (
                   <span className="text-xs text-muted-foreground bg-secondary px-2 py-0.5 rounded-md">
                     {post.publisherRole}
+                  </span>
+                )}
+                {isPublisherConnected && (
+                  <span className="text-xs text-[#0077b5] flex items-center gap-1">
+                    <Linkedin className="h-3 w-3" />
                   </span>
                 )}
               </div>
@@ -231,6 +256,26 @@ export function PostRow({ post, onEdit, onDelete, onStatusChange, onLabelsUpdate
                 <Calendar className="h-3.5 w-3.5" />
                 {formatDate(post.scheduledDate)}
               </span>
+              
+              {/* LinkedIn Post URL for published posts */}
+              {post.status === 'done' && post.linkedinPostUrl && (
+                <a
+                  href={post.linkedinPostUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-[#0077b5] hover:underline flex items-center gap-1"
+                >
+                  <Linkedin className="h-3 w-3" />
+                  View on LinkedIn
+                </a>
+              )}
+              
+              {/* Publish method badge */}
+              {post.status === 'done' && post.publishMethod && (
+                <span className="text-xs text-muted-foreground">
+                  via {post.publishMethod === 'linkedin_api' ? 'API' : post.publishMethod}
+                </span>
+              )}
               
               {/* Labels */}
               {post.labels && post.labels.length > 0 && (
@@ -290,10 +335,10 @@ export function PostRow({ post, onEdit, onDelete, onStatusChange, onLabelsUpdate
               variant="ghost"
               size="sm"
               className="h-8 px-3 hover:bg-[#0077b5]/10 hover:text-[#0077b5] text-xs gap-1.5"
-              onClick={handleShareLinkedIn}
+              onClick={handlePublishClick}
             >
               <Linkedin className="h-4 w-4" />
-              Publish on LinkedIn
+              Publish
             </Button>
             <Button
               variant="ghost"
@@ -322,6 +367,17 @@ export function PostRow({ post, onEdit, onDelete, onStatusChange, onLabelsUpdate
           </div>
         </div>
       </div>
+
+      {/* LinkedIn Publish Modal */}
+      <LinkedInPublishModal
+        isOpen={showLinkedInModal}
+        onClose={() => setShowLinkedInModal(false)}
+        post={post}
+        publisherId={publisher?.id ?? null}
+        isPublisherConnected={isPublisherConnected}
+        onPublishSuccess={handlePublishSuccess}
+        onConnectLinkedIn={handleConnectLinkedIn}
+      />
 
       <AlertDialog open={showPublishDialog} onOpenChange={setShowPublishDialog}>
         <AlertDialogContent className="bg-card border border-border">

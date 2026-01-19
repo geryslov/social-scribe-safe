@@ -229,7 +229,10 @@ export type Database = {
           document_id: string | null
           id: string
           labels: string[] | null
+          linkedin_post_url: string | null
           linkedin_url: string | null
+          publish_method: string | null
+          published_at: string | null
           publisher_name: string
           publisher_role: string | null
           scheduled_date: string
@@ -243,7 +246,10 @@ export type Database = {
           document_id?: string | null
           id?: string
           labels?: string[] | null
+          linkedin_post_url?: string | null
           linkedin_url?: string | null
+          publish_method?: string | null
+          published_at?: string | null
           publisher_name: string
           publisher_role?: string | null
           scheduled_date?: string
@@ -257,7 +263,10 @@ export type Database = {
           document_id?: string | null
           id?: string
           labels?: string[] | null
+          linkedin_post_url?: string | null
           linkedin_url?: string | null
+          publish_method?: string | null
+          published_at?: string | null
           publisher_name?: string
           publisher_role?: string | null
           scheduled_date?: string
@@ -279,6 +288,11 @@ export type Database = {
           avatar_url: string | null
           created_at: string
           id: string
+          linkedin_access_token: string | null
+          linkedin_connected: boolean | null
+          linkedin_member_id: string | null
+          linkedin_refresh_token: string | null
+          linkedin_token_expires_at: string | null
           linkedin_url: string | null
           name: string
           role: string | null
@@ -288,6 +302,11 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string
           id?: string
+          linkedin_access_token?: string | null
+          linkedin_connected?: boolean | null
+          linkedin_member_id?: string | null
+          linkedin_refresh_token?: string | null
+          linkedin_token_expires_at?: string | null
           linkedin_url?: string | null
           name: string
           role?: string | null
@@ -297,6 +316,11 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string
           id?: string
+          linkedin_access_token?: string | null
+          linkedin_connected?: boolean | null
+          linkedin_member_id?: string | null
+          linkedin_refresh_token?: string | null
+          linkedin_token_expires_at?: string | null
           linkedin_url?: string | null
           name?: string
           role?: string | null
