@@ -38,7 +38,8 @@ Deno.serve(async (req) => {
       // State includes publisher ID and return URL for after callback
       const state = btoa(JSON.stringify({ publisherId, returnUrl }));
       
-      const scopes = ['openid', 'profile', 'w_member_social'];
+      // Use w_member_social for posting - openid/profile require "Sign In with LinkedIn" product
+      const scopes = ['w_member_social'];
       const authUrl = new URL('https://www.linkedin.com/oauth/v2/authorization');
       authUrl.searchParams.set('response_type', 'code');
       authUrl.searchParams.set('client_id', LINKEDIN_CLIENT_ID);
@@ -116,10 +117,11 @@ Deno.serve(async (req) => {
       const expiresIn = tokenData.expires_in; // seconds
       const refreshToken = tokenData.refresh_token; // May not be provided
 
-      // Get user info from LinkedIn
-      const userInfoResponse = await fetch('https://api.linkedin.com/v2/userinfo', {
+      // Get user info from LinkedIn using /v2/me endpoint (doesn't require openid scope)
+      const userInfoResponse = await fetch('https://api.linkedin.com/v2/me', {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
+          'X-Restli-Protocol-Version': '2.0.0',
         },
       });
 
@@ -133,7 +135,7 @@ Deno.serve(async (req) => {
       }
 
       const userInfo = await userInfoResponse.json();
-      const linkedinMemberId = userInfo.sub; // This is the person URN ID
+      const linkedinMemberId = userInfo.id; // This is the member ID from /v2/me
 
       // Calculate expiration timestamp
       const expiresAt = new Date(Date.now() + expiresIn * 1000).toISOString();
