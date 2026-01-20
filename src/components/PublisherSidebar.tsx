@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Post } from '@/types/post';
 import { Users, ChevronRight, Plus, Pencil, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 import { PublisherAvatar } from '@/components/PublisherAvatar';
 import { PublisherModal } from '@/components/PublisherModal';
 import { usePublishers, Publisher } from '@/hooks/usePublishers';
@@ -60,6 +61,11 @@ export function PublisherSidebar({ publishers, selectedPublisher, onSelectPublis
 
   const handleDeleteClick = (name: string, e: React.MouseEvent) => {
     e.stopPropagation();
+    const publisherWithPosts = publishers.find(p => p.name === name);
+    if (publisherWithPosts && publisherWithPosts.posts.length > 0) {
+      toast.error(`Cannot delete "${name}" - they have ${publisherWithPosts.posts.length} post${publisherWithPosts.posts.length > 1 ? 's' : ''}. Delete or reassign their posts first.`);
+      return;
+    }
     setDeleteConfirmPublisher(name);
   };
 
