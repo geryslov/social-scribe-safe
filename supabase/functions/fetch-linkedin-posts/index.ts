@@ -97,36 +97,70 @@ async function refreshTokenIfNeeded(
   return newAccessToken;
 }
 
-// Fetch posts from LinkedIn
+// Fetch posts from LinkedIn using UGC Posts API (standard access)
 async function fetchLinkedInPosts(
   accessToken: string,
   memberId: string
 ): Promise<LinkedInPost[]> {
-  const postsUrl = new URL('https://api.linkedin.com/rest/posts');
-  postsUrl.searchParams.set('author', `urn:li:person:${memberId}`);
-  postsUrl.searchParams.set('q', 'author');
-  postsUrl.searchParams.set('count', '20');
-  postsUrl.searchParams.set('sortBy', 'LAST_MODIFIED');
+  // Use v2/ugcPosts endpoint which works with standard w_member_social scope
+  // Unlike /rest/posts which requires partner-level access
+  const authorUrn = encodeURIComponent(`urn:li:person:${memberId}`);
+  const postsUrl = `https://api.linkedin.com/v2/ugcPosts?q=authors&authors=List(${authorUrn})&count=20`;
 
-  console.log('Fetching posts from LinkedIn...');
+  console.log('Fetching posts from LinkedIn using UGC Posts API...');
   
-  const response = await fetch(postsUrl.toString(), {
+  const response = await fetch(postsUrl, {
     headers: {
       'Authorization': `Bearer ${accessToken}`,
-      'LinkedIn-Version': '202601',
       'X-Restli-Protocol-Version': '2.0.0',
     },
   });
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error('Failed to fetch posts:', response.status, errorText);
-    throw new Error(`Failed to fetch LinkedIn posts: ${response.status}`);
+    console.error('Failed to fetch UGC posts:', response.status, errorText);
+    
+    // Fallback to shares API if UGC fails
+    console.log('Trying Shares API as fallback...');
+    const sharesUrl = `https://api.linkedin.com/v2/shares?q=owners&owners=${authorUrn}&count=20`;
+    
+    const sharesResponse = await fetch(sharesUrl, {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'X-Restli-Protocol-Version': '2.0.0',
+      },
+    });
+
+    if (!sharesResponse.ok) {
+      const sharesError = await sharesResponse.text();
+      console.error('Failed to fetch shares:', sharesResponse.status, sharesError);
+      throw new Error(`Failed to fetch LinkedIn posts: ${response.status}`);
+    }
+
+    const sharesData = await sharesResponse.json();
+    console.log(`Fetched ${sharesData.elements?.length || 0} shares`);
+    
+    // Map shares to our expected format
+    return (sharesData.elements || []).map((share: any) => ({
+      id: share.activity || share.id,
+      commentary: share.text?.text || share.commentary,
+      createdAt: share.created?.time || share.lastModified?.time,
+      visibility: share.distribution?.linkedInDistributionTarget?.visibleToGuest ? 'PUBLIC' : 'CONNECTIONS',
+      lifecycleState: 'PUBLISHED',
+    }));
   }
 
   const data = await response.json();
-  console.log(`Fetched ${data.elements?.length || 0} posts`);
-  return data.elements || [];
+  console.log(`Fetched ${data.elements?.length || 0} UGC posts`);
+  
+  // Map UGC posts to our expected format
+  return (data.elements || []).map((post: any) => ({
+    id: post.id,
+    commentary: post.specificContent?.['com.linkedin.ugc.ShareContent']?.shareCommentary?.text || '',
+    createdAt: post.created?.time || post.lastModified?.time,
+    visibility: post.visibility?.['com.linkedin.ugc.MemberNetworkVisibility'] || 'PUBLIC',
+    lifecycleState: post.lifecycleState || 'PUBLISHED',
+  }));
 }
 
 // Fetch analytics for a single post
