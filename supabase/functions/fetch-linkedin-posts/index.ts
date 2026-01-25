@@ -10,6 +10,9 @@ const LINKEDIN_CLIENT_SECRET = Deno.env.get('LINKEDIN_CLIENT_SECRET')!;
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
+// LinkedIn API version - must be current active version
+const LINKEDIN_VERSION = '202601';
+
 interface PublisherData {
   id: string;
   linkedin_member_id: string;
@@ -27,25 +30,22 @@ interface LinkedInPost {
 }
 
 interface PostAnalytics {
-  impressionCount?: number;
-  likeCount?: number;
-  commentCount?: number;
-  shareCount?: number;
-  uniqueImpressionsCount?: number;
-  engagementRate?: number;
+  impressions: number;
+  membersReached: number;
+  reactions: number;
+  comments: number;
+  reshares: number;
 }
 
 // Refresh token if expired
 async function refreshTokenIfNeeded(
   publisher: PublisherData,
-  // deno-lint-ignore no-explicit-any
   supabase: any
 ): Promise<string> {
   const expiresAt = publisher.linkedin_token_expires_at 
     ? new Date(publisher.linkedin_token_expires_at) 
     : null;
   
-  // Check if token is expired or will expire in the next 5 minutes
   const isExpired = expiresAt && expiresAt.getTime() < Date.now() + 5 * 60 * 1000;
   
   if (!isExpired) {
@@ -60,9 +60,7 @@ async function refreshTokenIfNeeded(
   
   const refreshResponse = await fetch('https://www.linkedin.com/oauth/v2/accessToken', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
       grant_type: 'refresh_token',
       refresh_token: publisher.linkedin_refresh_token,
@@ -83,7 +81,6 @@ async function refreshTokenIfNeeded(
   const newRefreshToken = tokenData.refresh_token || publisher.linkedin_refresh_token;
   const newExpiresAt = new Date(Date.now() + expiresIn * 1000).toISOString();
 
-  // Update tokens in database
   await supabase
     .from('publishers')
     .update({
@@ -97,122 +94,132 @@ async function refreshTokenIfNeeded(
   return newAccessToken;
 }
 
-// Fetch posts from LinkedIn using UGC Posts API (standard access)
+// Fetch posts using the REST API with proper Community Management API access
 async function fetchLinkedInPosts(
   accessToken: string,
   memberId: string
 ): Promise<LinkedInPost[]> {
-  // Use v2/ugcPosts endpoint which works with standard w_member_social scope
-  // Unlike /rest/posts which requires partner-level access
-  const authorUrn = encodeURIComponent(`urn:li:person:${memberId}`);
-  const postsUrl = `https://api.linkedin.com/v2/ugcPosts?q=authors&authors=List(${authorUrn})&count=20`;
+  // Use REST API /rest/posts endpoint with the author finder
+  // Requires w_member_social scope from Community Management API
+  const authorUrn = `urn:li:person:${memberId}`;
+  const postsUrl = new URL('https://api.linkedin.com/rest/posts');
+  postsUrl.searchParams.set('author', authorUrn);
+  postsUrl.searchParams.set('q', 'author');
+  postsUrl.searchParams.set('count', '20');
 
-  console.log('Fetching posts from LinkedIn using UGC Posts API...');
+  console.log('Fetching posts from LinkedIn REST API...');
+  console.log('Author URN:', authorUrn);
   
-  const response = await fetch(postsUrl, {
+  const response = await fetch(postsUrl.toString(), {
     headers: {
       'Authorization': `Bearer ${accessToken}`,
+      'LinkedIn-Version': LINKEDIN_VERSION,
       'X-Restli-Protocol-Version': '2.0.0',
     },
   });
 
+  const responseText = await response.text();
+  
   if (!response.ok) {
-    const errorText = await response.text();
-    console.error('Failed to fetch UGC posts:', response.status, errorText);
-    
-    // Fallback to shares API if UGC fails
-    console.log('Trying Shares API as fallback...');
-    const sharesUrl = `https://api.linkedin.com/v2/shares?q=owners&owners=${authorUrn}&count=20`;
-    
-    const sharesResponse = await fetch(sharesUrl, {
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'X-Restli-Protocol-Version': '2.0.0',
-      },
-    });
-
-    if (!sharesResponse.ok) {
-      const sharesError = await sharesResponse.text();
-      console.error('Failed to fetch shares:', sharesResponse.status, sharesError);
-      throw new Error(`Failed to fetch LinkedIn posts: ${response.status}`);
-    }
-
-    const sharesData = await sharesResponse.json();
-    console.log(`Fetched ${sharesData.elements?.length || 0} shares`);
-    
-    // Map shares to our expected format
-    return (sharesData.elements || []).map((share: any) => ({
-      id: share.activity || share.id,
-      commentary: share.text?.text || share.commentary,
-      createdAt: share.created?.time || share.lastModified?.time,
-      visibility: share.distribution?.linkedInDistributionTarget?.visibleToGuest ? 'PUBLIC' : 'CONNECTIONS',
-      lifecycleState: 'PUBLISHED',
-    }));
+    console.error('Failed to fetch posts:', response.status, responseText);
+    throw new Error(`Failed to fetch LinkedIn posts: ${response.status} - ${responseText}`);
   }
 
-  const data = await response.json();
-  console.log(`Fetched ${data.elements?.length || 0} UGC posts`);
+  const data = JSON.parse(responseText);
+  console.log(`Fetched ${data.elements?.length || 0} posts from REST API`);
   
-  // Map UGC posts to our expected format
   return (data.elements || []).map((post: any) => ({
     id: post.id,
-    commentary: post.specificContent?.['com.linkedin.ugc.ShareContent']?.shareCommentary?.text || '',
-    createdAt: post.created?.time || post.lastModified?.time,
-    visibility: post.visibility?.['com.linkedin.ugc.MemberNetworkVisibility'] || 'PUBLIC',
-    lifecycleState: post.lifecycleState || 'PUBLISHED',
+    commentary: post.commentary || '',
+    createdAt: post.createdAt,
+    visibility: post.visibility,
+    lifecycleState: post.lifecycleState,
   }));
 }
 
-// Fetch analytics for a single post
+// Fetch analytics using memberCreatorPostAnalytics API
+// Requires r_member_postAnalytics scope
 async function fetchPostAnalytics(
   accessToken: string,
-  memberId: string,
   postUrns: string[]
 ): Promise<Map<string, PostAnalytics>> {
   const analyticsMap = new Map<string, PostAnalytics>();
   
   if (postUrns.length === 0) return analyticsMap;
 
-  // Use the analytics endpoint for share statistics
-  // The correct endpoint is /rest/organizationalEntityShareStatistics for personal posts
-  // But for member posts we use /rest/shares with projection
-  
-  // For member creator posts, we need to use a different approach
-  // Let's try fetching individual post stats
-  console.log(`Fetching analytics for ${postUrns.length} posts...`);
+  console.log(`Fetching analytics for ${postUrns.length} posts using memberCreatorPostAnalytics...`);
 
-  // Batch fetch using shares endpoint with projection
   for (const postUrn of postUrns) {
     try {
-      // Convert post URN to share URN format
-      // Post URN: urn:li:share:123456 or urn:li:ugcPost:123456
-      const shareId = postUrn.split(':').pop();
-      
-      // Try the socialActions endpoint for engagement metrics
-      const actionsUrl = `https://api.linkedin.com/rest/socialActions/${encodeURIComponent(postUrn)}`;
-      
-      const response = await fetch(actionsUrl, {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'LinkedIn-Version': '202601',
-          'X-Restli-Protocol-Version': '2.0.0',
-        },
-      });
+      // Determine URN type and format for the API
+      // URN format: urn:li:ugcPost:123 or urn:li:share:123
+      const isUgcPost = postUrn.includes('ugcPost');
+      const entityParam = isUgcPost 
+        ? `(ugcPost:${encodeURIComponent(postUrn)})`
+        : `(share:${encodeURIComponent(postUrn)})`;
 
-      if (response.ok) {
-        const data = await response.json();
-        analyticsMap.set(postUrn, {
-          likeCount: data.likesSummary?.totalLikes || 0,
-          commentCount: data.commentsSummary?.totalFirstLevelComments || 0,
-          shareCount: 0, // Not available in this endpoint
-        });
-      } else {
-        console.log(`Could not fetch analytics for ${postUrn}: ${response.status}`);
-        analyticsMap.set(postUrn, { likeCount: 0, commentCount: 0, shareCount: 0 });
+      const metrics = ['IMPRESSION', 'MEMBERS_REACHED', 'REACTION', 'COMMENT', 'RESHARE'];
+      const analytics: PostAnalytics = {
+        impressions: 0,
+        membersReached: 0,
+        reactions: 0,
+        comments: 0,
+        reshares: 0,
+      };
+
+      // Fetch each metric type
+      for (const metric of metrics) {
+        try {
+          const analyticsUrl = `https://api.linkedin.com/rest/memberCreatorPostAnalytics?q=entity&entity=${entityParam}&queryType=${metric}&aggregation=TOTAL`;
+          
+          const response = await fetch(analyticsUrl, {
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+              'LinkedIn-Version': LINKEDIN_VERSION,
+              'X-Restli-Protocol-Version': '2.0.0',
+            },
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            const count = data.elements?.[0]?.count || 0;
+            
+            switch (metric) {
+              case 'IMPRESSION':
+                analytics.impressions = count;
+                break;
+              case 'MEMBERS_REACHED':
+                analytics.membersReached = count;
+                break;
+              case 'REACTION':
+                analytics.reactions = count;
+                break;
+              case 'COMMENT':
+                analytics.comments = count;
+                break;
+              case 'RESHARE':
+                analytics.reshares = count;
+                break;
+            }
+          } else {
+            const errorText = await response.text();
+            console.log(`Could not fetch ${metric} for ${postUrn}: ${response.status}`);
+          }
+        } catch (metricError) {
+          console.error(`Error fetching ${metric} for ${postUrn}:`, metricError);
+        }
       }
+
+      analyticsMap.set(postUrn, analytics);
     } catch (error) {
       console.error(`Error fetching analytics for ${postUrn}:`, error);
-      analyticsMap.set(postUrn, { likeCount: 0, commentCount: 0, shareCount: 0 });
+      analyticsMap.set(postUrn, {
+        impressions: 0,
+        membersReached: 0,
+        reactions: 0,
+        comments: 0,
+        reshares: 0,
+      });
     }
   }
 
@@ -220,7 +227,6 @@ async function fetchPostAnalytics(
 }
 
 Deno.serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -239,7 +245,6 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // Fetch publisher data
     const { data: publisher, error: publisherError } = await supabase
       .from('publishers')
       .select('id, linkedin_member_id, linkedin_access_token, linkedin_refresh_token, linkedin_token_expires_at')
@@ -261,7 +266,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Refresh token if needed
     const accessToken = await refreshTokenIfNeeded(publisher as PublisherData, supabase);
 
     // Fetch posts from LinkedIn
@@ -269,7 +273,7 @@ Deno.serve(async (req) => {
 
     if (posts.length === 0) {
       return new Response(
-        JSON.stringify({ success: true, posts: [], message: 'No posts found' }),
+        JSON.stringify({ success: true, posts: [], syncedCount: 0, message: 'No posts found' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -278,20 +282,21 @@ Deno.serve(async (req) => {
     const postUrns = posts.map(p => p.id);
 
     // Fetch analytics for all posts
-    const analyticsMap = await fetchPostAnalytics(accessToken, publisher.linkedin_member_id, postUrns);
+    const analyticsMap = await fetchPostAnalytics(accessToken, postUrns);
 
     // Prepare posts for upsert
     const postsToUpsert = posts.map(post => {
-      const analytics = analyticsMap.get(post.id) || {};
-      const reactions = analytics.likeCount || 0;
-      const comments = analytics.commentCount || 0;
-      const reshares = analytics.shareCount || 0;
-      const impressions = analytics.impressionCount || 0;
+      const analytics = analyticsMap.get(post.id) || {
+        impressions: 0,
+        membersReached: 0,
+        reactions: 0,
+        comments: 0,
+        reshares: 0,
+      };
       
-      // Calculate engagement rate if we have impressions
-      const totalEngagements = reactions + comments + reshares;
-      const engagementRate = impressions > 0 
-        ? parseFloat(((totalEngagements / impressions) * 100).toFixed(2))
+      const totalEngagements = analytics.reactions + analytics.comments + analytics.reshares;
+      const engagementRate = analytics.impressions > 0 
+        ? parseFloat(((totalEngagements / analytics.impressions) * 100).toFixed(2))
         : null;
 
       return {
@@ -299,21 +304,18 @@ Deno.serve(async (req) => {
         linkedin_post_urn: post.id,
         content: post.commentary || null,
         published_at: post.createdAt ? new Date(post.createdAt).toISOString() : null,
-        impressions,
-        reactions,
-        comments,
-        reshares,
+        impressions: analytics.impressions,
+        reactions: analytics.reactions,
+        comments: analytics.comments,
+        reshares: analytics.reshares,
         engagement_rate: engagementRate,
         fetched_at: new Date().toISOString(),
       };
     });
 
-    // Upsert posts to database
     const { error: upsertError } = await supabase
       .from('linkedin_posts')
-      .upsert(postsToUpsert, {
-        onConflict: 'publisher_id,linkedin_post_urn',
-      });
+      .upsert(postsToUpsert, { onConflict: 'publisher_id,linkedin_post_urn' });
 
     if (upsertError) {
       console.error('Failed to upsert posts:', upsertError);
@@ -325,7 +327,6 @@ Deno.serve(async (req) => {
 
     console.log(`Successfully synced ${postsToUpsert.length} posts`);
 
-    // Fetch the updated posts from database
     const { data: savedPosts } = await supabase
       .from('linkedin_posts')
       .select('*')
