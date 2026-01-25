@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Linkedin, Check, Loader2, Unlink } from 'lucide-react';
+import { Linkedin, Check, Loader2, Unlink, RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import {
@@ -110,6 +110,20 @@ export function LinkedInConnectButton({
             <Check className="h-4 w-4" />
             <span>LinkedIn Connected</span>
           </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 px-2 text-xs text-muted-foreground hover:text-primary"
+            onClick={handleConnect}
+            disabled={isConnecting}
+            title="Re-authenticate to update permissions"
+          >
+            {isConnecting ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : (
+              <RefreshCw className="h-3 w-3" />
+            )}
+          </Button>
           <Button
             variant="ghost"
             size="sm"
