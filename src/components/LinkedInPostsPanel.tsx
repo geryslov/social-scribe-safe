@@ -1,11 +1,15 @@
-import { RefreshCw, ExternalLink, Eye, Heart, MessageCircle, Share2, TrendingUp } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { RefreshCw, ExternalLink, Eye, Heart, MessageCircle, Share2, TrendingUp, KeyRound, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useLinkedInPosts, LinkedInPost } from '@/hooks/useLinkedInPosts';
 import { formatDistanceToNow } from 'date-fns';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface LinkedInPostsPanelProps {
   publisherId?: string;
@@ -100,7 +104,68 @@ function StatsOverview({ stats }: { stats: ReturnType<typeof useLinkedInPosts>['
 }
 
 export function LinkedInPostsPanel({ publisherId, isLinkedInConnected }: LinkedInPostsPanelProps) {
-  const { posts, isLoading, syncPosts, isSyncing, lastSyncedAt, stats } = useLinkedInPosts(publisherId);
+  const { posts, isLoading, syncPosts, isSyncing, lastSyncedAt, stats, error } = useLinkedInPosts(publisherId);
+  const [isReauthenticating, setIsReauthenticating] = useState(false);
+  const [showReauthPrompt, setShowReauthPrompt] = useState(false);
+
+  // Listen for OAuth callback messages
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'linkedin-auth-success') {
+        setIsReauthenticating(false);
+        setShowReauthPrompt(false);
+        toast.success('LinkedIn permissions updated! Syncing posts...');
+        // Trigger sync after re-auth
+        setTimeout(() => syncPosts.mutate(), 1000);
+      } else if (event.data?.type === 'linkedin-auth-error') {
+        setIsReauthenticating(false);
+        toast.error(event.data.error || 'Failed to update LinkedIn permissions');
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [syncPosts]);
+
+  // Show re-auth prompt if sync fails or no posts after first sync attempt
+  useEffect(() => {
+    if (error && error.message?.includes('Failed to fetch LinkedIn posts')) {
+      setShowReauthPrompt(true);
+    }
+  }, [error]);
+
+  const handleReauthenticate = () => {
+    if (!publisherId) return;
+    
+    setIsReauthenticating(true);
+    
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const authUrl = `${supabaseUrl}/functions/v1/linkedin-auth/start?publisher_id=${publisherId}`;
+    
+    const width = 600;
+    const height = 700;
+    const left = window.screenX + (window.outerWidth - width) / 2;
+    const top = window.screenY + (window.outerHeight - height) / 2;
+    
+    const popup = window.open(
+      authUrl,
+      'linkedin-auth',
+      `width=${width},height=${height},left=${left},top=${top},toolbar=no,menubar=no`
+    );
+
+    if (!popup) {
+      setIsReauthenticating(false);
+      toast.error('Popup blocked. Please allow popups for this site.');
+      return;
+    }
+
+    const pollTimer = setInterval(() => {
+      if (popup.closed) {
+        clearInterval(pollTimer);
+        setIsReauthenticating(false);
+      }
+    }, 500);
+  };
 
   if (!isLinkedInConnected) {
     return (
@@ -139,12 +204,38 @@ export function LinkedInPostsPanel({ publisherId, isLinkedInConnected }: LinkedI
         )}
       </CardHeader>
       <CardContent>
+        {/* Re-authentication prompt for new permissions */}
+        {(showReauthPrompt || (posts.length === 0 && !isLoading && !isSyncing)) && (
+          <Alert className="mb-4 border-primary/30 bg-primary/5">
+            <KeyRound className="h-4 w-4 text-primary" />
+            <AlertDescription className="ml-2">
+              <p className="text-sm font-medium mb-2">New permissions required</p>
+              <p className="text-xs text-muted-foreground mb-3">
+                To fetch your LinkedIn posts and analytics, please re-authenticate to grant the required permissions.
+              </p>
+              <Button
+                size="sm"
+                onClick={handleReauthenticate}
+                disabled={isReauthenticating}
+                className="gap-2"
+              >
+                {isReauthenticating ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <KeyRound className="h-3 w-3" />
+                )}
+                {isReauthenticating ? 'Authenticating...' : 'Update Permissions'}
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
+
         {isLoading ? (
           <div className="space-y-3">
             <Skeleton className="h-24 w-full" />
             <Skeleton className="h-24 w-full" />
           </div>
-        ) : posts.length === 0 ? (
+        ) : posts.length === 0 && !showReauthPrompt ? (
           <div className="text-center py-6">
             <p className="text-sm text-muted-foreground mb-3">
               No posts synced yet
@@ -159,7 +250,7 @@ export function LinkedInPostsPanel({ publisherId, isLinkedInConnected }: LinkedI
               Sync Now
             </Button>
           </div>
-        ) : (
+        ) : posts.length > 0 ? (
           <>
             <StatsOverview stats={stats} />
             <ScrollArea className="h-[300px] pr-4">
@@ -168,7 +259,7 @@ export function LinkedInPostsPanel({ publisherId, isLinkedInConnected }: LinkedI
               ))}
             </ScrollArea>
           </>
-        )}
+        ) : null}
       </CardContent>
     </Card>
   );
