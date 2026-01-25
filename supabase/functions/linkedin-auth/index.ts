@@ -24,6 +24,16 @@ Deno.serve(async (req) => {
   const path = url.pathname.split('/').pop();
 
   try {
+    // DEBUG: Check config (temporary)
+    if (req.method === 'GET' && path === 'debug') {
+      return new Response(JSON.stringify({
+        supabase_url: SUPABASE_URL,
+        sso_redirect_uri: SSO_REDIRECT_URI,
+        redirect_uri: REDIRECT_URI,
+        client_id: LINKEDIN_CLIENT_ID ? LINKEDIN_CLIENT_ID.substring(0, 8) + '...' : 'not set',
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
     // ============================================
     // SSO ENDPOINTS (for user authentication)
     // ============================================
