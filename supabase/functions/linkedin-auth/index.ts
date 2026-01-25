@@ -1,5 +1,12 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
+// SCOPES EXPLANATION:
+// - openid, profile, email: Basic OIDC for user info
+// - w_member_social: Write posts, comments, reactions (standard Share product)
+// - r_member_social: Read member's posts (requires Community Management API)
+// - r_member_postAnalytics: Read post analytics (requires Community Management API)
+// - r_basicprofile: Basic profile info
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -46,13 +53,14 @@ Deno.serve(async (req) => {
       const state = btoa(JSON.stringify({ type: 'sso', returnUrl }));
       
       // Community Management API scopes for full access
-      // Includes all scopes needed for posting and analytics
+      // Includes all scopes needed for posting AND reading posts with analytics
       const scopes = [
         'openid',
         'profile', 
         'email',
         'w_member_social',           // Create, modify, delete posts
-        'r_member_postAnalytics',    // Retrieve posts and reporting data
+        'r_member_social',           // READ member's posts (required to fetch posts!)
+        'r_member_postAnalytics',    // Retrieve post analytics/reporting data
         'r_basicprofile',            // Basic profile access
       ];
       const authUrl = new URL('https://www.linkedin.com/oauth/v2/authorization');
