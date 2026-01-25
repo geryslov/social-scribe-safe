@@ -113,7 +113,7 @@ async function fetchLinkedInPosts(
   const response = await fetch(postsUrl.toString(), {
     headers: {
       'Authorization': `Bearer ${accessToken}`,
-      'LinkedIn-Version': '202501',
+      'LinkedIn-Version': '202601',
       'X-Restli-Protocol-Version': '2.0.0',
     },
   });
@@ -160,7 +160,7 @@ async function fetchPostAnalytics(
       const response = await fetch(actionsUrl, {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
-          'LinkedIn-Version': '202501',
+          'LinkedIn-Version': '202601',
           'X-Restli-Protocol-Version': '2.0.0',
         },
       });
