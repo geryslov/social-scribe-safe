@@ -35,8 +35,9 @@ Deno.serve(async (req) => {
       // State includes return URL
       const state = btoa(JSON.stringify({ type: 'sso', returnUrl }));
       
-      // OpenID Connect scopes for authentication + posting + reading posts & analytics
-      const scopes = ['openid', 'profile', 'email', 'w_member_social', 'r_member_social', 'r_member_postAnalytics'];
+      // OpenID Connect scopes for authentication + posting
+      // Note: r_member_postAnalytics requires LinkedIn approval - not included in basic SSO
+      const scopes = ['openid', 'profile', 'email', 'w_member_social'];
       const authUrl = new URL('https://www.linkedin.com/oauth/v2/authorization');
       authUrl.searchParams.set('response_type', 'code');
       authUrl.searchParams.set('client_id', LINKEDIN_CLIENT_ID);
