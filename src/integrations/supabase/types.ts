@@ -177,6 +177,59 @@ export type Database = {
         }
         Relationships: []
       }
+      linkedin_posts: {
+        Row: {
+          comments: number | null
+          content: string | null
+          created_at: string | null
+          engagement_rate: number | null
+          fetched_at: string | null
+          id: string
+          impressions: number | null
+          linkedin_post_urn: string
+          published_at: string | null
+          publisher_id: string
+          reactions: number | null
+          reshares: number | null
+        }
+        Insert: {
+          comments?: number | null
+          content?: string | null
+          created_at?: string | null
+          engagement_rate?: number | null
+          fetched_at?: string | null
+          id?: string
+          impressions?: number | null
+          linkedin_post_urn: string
+          published_at?: string | null
+          publisher_id: string
+          reactions?: number | null
+          reshares?: number | null
+        }
+        Update: {
+          comments?: number | null
+          content?: string | null
+          created_at?: string | null
+          engagement_rate?: number | null
+          fetched_at?: string | null
+          id?: string
+          impressions?: number | null
+          linkedin_post_urn?: string
+          published_at?: string | null
+          publisher_id?: string
+          reactions?: number | null
+          reshares?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "linkedin_posts_publisher_id_fkey"
+            columns: ["publisher_id"]
+            isOneToOne: false
+            referencedRelation: "publishers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       post_edit_history: {
         Row: {
           edited_at: string

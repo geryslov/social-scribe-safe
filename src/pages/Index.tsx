@@ -9,6 +9,7 @@ import { PublisherSidebar } from '@/components/PublisherSidebar';
 import { PostRow } from '@/components/PostRow';
 import { PostModal } from '@/components/PostModal';
 import { BulkUploadModal } from '@/components/BulkUploadModal';
+import { LinkedInPostsPanel } from '@/components/LinkedInPostsPanel';
 import { Button } from '@/components/ui/button';
 import { Plus, Inbox, ExternalLink, Loader2, Upload, Users, FileText, CheckCircle, Clock } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -91,6 +92,7 @@ const Index = () => {
   const totalPosts = activePosts.length + publishedPosts.length;
 
   const currentPublisher = selectedPublisher ? publishers.find(p => p.name === selectedPublisher) : null;
+  const currentDbPublisher = selectedPublisher ? dbPublishers.find(p => p.name === selectedPublisher) : null;
 
   // Global stats (always based on all posts, not filtered)
   const globalStats = useMemo(() => {
@@ -295,6 +297,16 @@ const Index = () => {
                 </div>
               )}
             </div>
+
+            {/* LinkedIn Posts Panel - Only show when a specific publisher is selected */}
+            {currentDbPublisher && (
+              <div className="mb-8">
+                <LinkedInPostsPanel 
+                  publisherId={currentDbPublisher.id}
+                  isLinkedInConnected={currentDbPublisher.linkedin_connected ?? false}
+                />
+              </div>
+            )}
             
             {/* Active Posts Section */}
             <div className="space-y-4">

@@ -35,8 +35,8 @@ Deno.serve(async (req) => {
       // State includes return URL
       const state = btoa(JSON.stringify({ type: 'sso', returnUrl }));
       
-      // OpenID Connect scopes for authentication + posting
-      const scopes = ['openid', 'profile', 'email', 'w_member_social'];
+      // OpenID Connect scopes for authentication + posting + reading posts & analytics
+      const scopes = ['openid', 'profile', 'email', 'w_member_social', 'r_member_social', 'r_member_postAnalytics'];
       const authUrl = new URL('https://www.linkedin.com/oauth/v2/authorization');
       authUrl.searchParams.set('response_type', 'code');
       authUrl.searchParams.set('client_id', LINKEDIN_CLIENT_ID);
