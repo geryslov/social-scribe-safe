@@ -63,7 +63,9 @@ Deno.serve(async (req) => {
       const error = url.searchParams.get('error');
       const errorDescription = url.searchParams.get('error_description');
 
-      console.log('SSO callback received, code:', code ? 'present' : 'missing');
+      // Log full callback URL for debugging
+      console.log('SSO callback received - full URL params:', url.search);
+      console.log('SSO callback - code:', code ? 'present' : 'missing', 'error:', error, 'error_description:', errorDescription);
 
       if (error) {
         console.error('LinkedIn SSO OAuth error:', error, errorDescription);
