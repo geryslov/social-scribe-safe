@@ -10,7 +10,7 @@ const LINKEDIN_CLIENT_SECRET = Deno.env.get('LINKEDIN_CLIENT_SECRET')!;
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
-// LinkedIn API version - must be current active version
+// LinkedIn API version
 const LINKEDIN_VERSION = '202601';
 
 interface PublisherData {
@@ -21,17 +21,16 @@ interface PublisherData {
   linkedin_token_expires_at: string | null;
 }
 
-interface LinkedInPost {
+interface AppPublishedPost {
   id: string;
-  commentary?: string;
-  createdAt?: number;
-  visibility?: string;
-  lifecycleState?: string;
+  linkedin_post_urn: string;
+  publisher_name: string;
+  content: string;
+  published_at: string;
 }
 
 interface PostAnalytics {
   impressions: number;
-  membersReached: number;
   reactions: number;
   comments: number;
   reshares: number;
@@ -94,136 +93,78 @@ async function refreshTokenIfNeeded(
   return newAccessToken;
 }
 
-// Fetch posts using the REST API with proper Community Management API access
-async function fetchLinkedInPosts(
-  accessToken: string,
-  memberId: string
-): Promise<LinkedInPost[]> {
-  // Use REST API /rest/posts endpoint with the author finder
-  // Requires w_member_social scope from Community Management API
-  const authorUrn = `urn:li:person:${memberId}`;
-  const postsUrl = new URL('https://api.linkedin.com/rest/posts');
-  postsUrl.searchParams.set('author', authorUrn);
-  postsUrl.searchParams.set('q', 'author');
-  postsUrl.searchParams.set('count', '20');
-
-  console.log('Fetching posts from LinkedIn REST API...');
-  console.log('Author URN:', authorUrn);
-  
-  const response = await fetch(postsUrl.toString(), {
-    headers: {
-      'Authorization': `Bearer ${accessToken}`,
-      'LinkedIn-Version': LINKEDIN_VERSION,
-      'X-Restli-Protocol-Version': '2.0.0',
-    },
-  });
-
-  const responseText = await response.text();
-  
-  if (!response.ok) {
-    console.error('Failed to fetch posts:', response.status, responseText);
-    throw new Error(`Failed to fetch LinkedIn posts: ${response.status} - ${responseText}`);
-  }
-
-  const data = JSON.parse(responseText);
-  console.log(`Fetched ${data.elements?.length || 0} posts from REST API`);
-  
-  return (data.elements || []).map((post: any) => ({
-    id: post.id,
-    commentary: post.commentary || '',
-    createdAt: post.createdAt,
-    visibility: post.visibility,
-    lifecycleState: post.lifecycleState,
-  }));
-}
-
-// Fetch analytics using memberCreatorPostAnalytics API
-// Requires r_member_postAnalytics scope
+// Fetch analytics for a single post URN using memberCreatorPostAnalytics API
+// This uses the r_member_postAnalytics scope
 async function fetchPostAnalytics(
   accessToken: string,
-  postUrns: string[]
-): Promise<Map<string, PostAnalytics>> {
-  const analyticsMap = new Map<string, PostAnalytics>();
+  postUrn: string
+): Promise<PostAnalytics> {
+  const analytics: PostAnalytics = {
+    impressions: 0,
+    reactions: 0,
+    comments: 0,
+    reshares: 0,
+  };
+
+  // The URN format should be: urn:li:ugcPost:xxx or urn:li:share:xxx
+  // For memberCreatorPostAnalytics, we need to format the entity parameter correctly
+  const isUgcPost = postUrn.includes('ugcPost');
+  const isShare = postUrn.includes('share');
   
-  if (postUrns.length === 0) return analyticsMap;
+  if (!isUgcPost && !isShare) {
+    console.log(`Unknown URN format: ${postUrn}, skipping analytics`);
+    return analytics;
+  }
 
-  console.log(`Fetching analytics for ${postUrns.length} posts using memberCreatorPostAnalytics...`);
+  // Format: (ugcPost:urn:li:ugcPost:xxx) or (share:urn:li:share:xxx)
+  const entityType = isUgcPost ? 'ugcPost' : 'share';
+  const entityParam = `(${entityType}:${encodeURIComponent(postUrn)})`;
 
-  for (const postUrn of postUrns) {
+  const metrics = ['IMPRESSION', 'REACTION', 'COMMENT', 'RESHARE'];
+
+  for (const metric of metrics) {
     try {
-      // Determine URN type and format for the API
-      // URN format: urn:li:ugcPost:123 or urn:li:share:123
-      const isUgcPost = postUrn.includes('ugcPost');
-      const entityParam = isUgcPost 
-        ? `(ugcPost:${encodeURIComponent(postUrn)})`
-        : `(share:${encodeURIComponent(postUrn)})`;
-
-      const metrics = ['IMPRESSION', 'MEMBERS_REACHED', 'REACTION', 'COMMENT', 'RESHARE'];
-      const analytics: PostAnalytics = {
-        impressions: 0,
-        membersReached: 0,
-        reactions: 0,
-        comments: 0,
-        reshares: 0,
-      };
-
-      // Fetch each metric type
-      for (const metric of metrics) {
-        try {
-          const analyticsUrl = `https://api.linkedin.com/rest/memberCreatorPostAnalytics?q=entity&entity=${entityParam}&queryType=${metric}&aggregation=TOTAL`;
-          
-          const response = await fetch(analyticsUrl, {
-            headers: {
-              'Authorization': `Bearer ${accessToken}`,
-              'LinkedIn-Version': LINKEDIN_VERSION,
-              'X-Restli-Protocol-Version': '2.0.0',
-            },
-          });
-
-          if (response.ok) {
-            const data = await response.json();
-            const count = data.elements?.[0]?.count || 0;
-            
-            switch (metric) {
-              case 'IMPRESSION':
-                analytics.impressions = count;
-                break;
-              case 'MEMBERS_REACHED':
-                analytics.membersReached = count;
-                break;
-              case 'REACTION':
-                analytics.reactions = count;
-                break;
-              case 'COMMENT':
-                analytics.comments = count;
-                break;
-              case 'RESHARE':
-                analytics.reshares = count;
-                break;
-            }
-          } else {
-            const errorText = await response.text();
-            console.log(`Could not fetch ${metric} for ${postUrn}: ${response.status}`);
-          }
-        } catch (metricError) {
-          console.error(`Error fetching ${metric} for ${postUrn}:`, metricError);
-        }
-      }
-
-      analyticsMap.set(postUrn, analytics);
-    } catch (error) {
-      console.error(`Error fetching analytics for ${postUrn}:`, error);
-      analyticsMap.set(postUrn, {
-        impressions: 0,
-        membersReached: 0,
-        reactions: 0,
-        comments: 0,
-        reshares: 0,
+      const analyticsUrl = `https://api.linkedin.com/rest/memberCreatorPostAnalytics?q=entity&entity=${entityParam}&queryType=${metric}&aggregation=TOTAL`;
+      
+      console.log(`Fetching ${metric} for ${postUrn}...`);
+      
+      const response = await fetch(analyticsUrl, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'LinkedIn-Version': LINKEDIN_VERSION,
+          'X-Restli-Protocol-Version': '2.0.0',
+        },
       });
+
+      if (response.ok) {
+        const data = await response.json();
+        const count = data.elements?.[0]?.count || 0;
+        
+        switch (metric) {
+          case 'IMPRESSION':
+            analytics.impressions = count;
+            break;
+          case 'REACTION':
+            analytics.reactions = count;
+            break;
+          case 'COMMENT':
+            analytics.comments = count;
+            break;
+          case 'RESHARE':
+            analytics.reshares = count;
+            break;
+        }
+        console.log(`${metric}: ${count}`);
+      } else {
+        const errorText = await response.text();
+        console.log(`Could not fetch ${metric} for ${postUrn}: ${response.status} - ${errorText}`);
+      }
+    } catch (metricError) {
+      console.error(`Error fetching ${metric} for ${postUrn}:`, metricError);
     }
   }
 
-  return analyticsMap;
+  return analytics;
 }
 
 Deno.serve(async (req) => {
@@ -241,13 +182,14 @@ Deno.serve(async (req) => {
       );
     }
 
-    console.log('Fetching LinkedIn posts for publisher:', publisherId);
+    console.log('Fetching analytics for app-published posts, publisher:', publisherId);
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
+    // Get publisher with LinkedIn credentials
     const { data: publisher, error: publisherError } = await supabase
       .from('publishers')
-      .select('id, linkedin_member_id, linkedin_access_token, linkedin_refresh_token, linkedin_token_expires_at')
+      .select('id, name, linkedin_member_id, linkedin_access_token, linkedin_refresh_token, linkedin_token_expires_at')
       .eq('id', publisherId)
       .single();
 
@@ -266,84 +208,89 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Refresh token if needed
     const accessToken = await refreshTokenIfNeeded(publisher as PublisherData, supabase);
 
-    // Fetch posts from LinkedIn
-    const posts = await fetchLinkedInPosts(accessToken, publisher.linkedin_member_id);
+    // Query posts that were published via the app (have linkedin_post_urn set)
+    const { data: appPosts, error: postsError } = await supabase
+      .from('posts')
+      .select('id, linkedin_post_urn, publisher_name, content, published_at')
+      .eq('publisher_name', publisher.name)
+      .eq('publish_method', 'linkedin_api')
+      .not('linkedin_post_urn', 'is', null)
+      .order('published_at', { ascending: false });
 
-    if (posts.length === 0) {
+    if (postsError) {
+      console.error('Error fetching app posts:', postsError);
       return new Response(
-        JSON.stringify({ success: true, posts: [], syncedCount: 0, message: 'No posts found' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Extract post URNs for analytics fetch
-    const postUrns = posts.map(p => p.id);
-
-    // Fetch analytics for all posts
-    const analyticsMap = await fetchPostAnalytics(accessToken, postUrns);
-
-    // Prepare posts for upsert
-    const postsToUpsert = posts.map(post => {
-      const analytics = analyticsMap.get(post.id) || {
-        impressions: 0,
-        membersReached: 0,
-        reactions: 0,
-        comments: 0,
-        reshares: 0,
-      };
-      
-      const totalEngagements = analytics.reactions + analytics.comments + analytics.reshares;
-      const engagementRate = analytics.impressions > 0 
-        ? parseFloat(((totalEngagements / analytics.impressions) * 100).toFixed(2))
-        : null;
-
-      return {
-        publisher_id: publisherId,
-        linkedin_post_urn: post.id,
-        content: post.commentary || null,
-        published_at: post.createdAt ? new Date(post.createdAt).toISOString() : null,
-        impressions: analytics.impressions,
-        reactions: analytics.reactions,
-        comments: analytics.comments,
-        reshares: analytics.reshares,
-        engagement_rate: engagementRate,
-        fetched_at: new Date().toISOString(),
-      };
-    });
-
-    const { error: upsertError } = await supabase
-      .from('linkedin_posts')
-      .upsert(postsToUpsert, { onConflict: 'publisher_id,linkedin_post_urn' });
-
-    if (upsertError) {
-      console.error('Failed to upsert posts:', upsertError);
-      return new Response(
-        JSON.stringify({ error: 'Failed to save posts to database' }),
+        JSON.stringify({ error: 'Failed to fetch app-published posts' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log(`Successfully synced ${postsToUpsert.length} posts`);
+    if (!appPosts || appPosts.length === 0) {
+      console.log('No app-published posts found for publisher:', publisher.name);
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          syncedCount: 0, 
+          message: 'No app-published posts found to sync analytics for' 
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
-    const { data: savedPosts } = await supabase
-      .from('linkedin_posts')
-      .select('*')
-      .eq('publisher_id', publisherId)
-      .order('published_at', { ascending: false });
+    console.log(`Found ${appPosts.length} app-published posts to fetch analytics for`);
+
+    // Fetch analytics for each post and update the posts table
+    let syncedCount = 0;
+    for (const post of appPosts) {
+      try {
+        const analytics = await fetchPostAnalytics(accessToken, post.linkedin_post_urn);
+        
+        // Calculate engagement rate
+        const totalEngagements = analytics.reactions + analytics.comments + analytics.reshares;
+        const engagementRate = analytics.impressions > 0 
+          ? parseFloat(((totalEngagements / analytics.impressions) * 100).toFixed(2))
+          : null;
+
+        // Update the post with analytics
+        const { error: updateError } = await supabase
+          .from('posts')
+          .update({
+            impressions: analytics.impressions,
+            reactions: analytics.reactions,
+            comments_count: analytics.comments,
+            reshares: analytics.reshares,
+            engagement_rate: engagementRate,
+            analytics_fetched_at: new Date().toISOString(),
+          })
+          .eq('id', post.id);
+
+        if (updateError) {
+          console.error(`Failed to update analytics for post ${post.id}:`, updateError);
+        } else {
+          syncedCount++;
+          console.log(`Updated analytics for post ${post.id}: impressions=${analytics.impressions}, reactions=${analytics.reactions}`);
+        }
+      } catch (error) {
+        console.error(`Error processing post ${post.id}:`, error);
+      }
+    }
+
+    console.log(`Successfully synced analytics for ${syncedCount} posts`);
 
     return new Response(
       JSON.stringify({ 
         success: true, 
-        posts: savedPosts || [],
-        syncedCount: postsToUpsert.length,
+        syncedCount,
+        message: `Synced analytics for ${syncedCount} posts`
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
   } catch (error) {
-    console.error('Error fetching LinkedIn posts:', error);
+    console.error('Error fetching LinkedIn post analytics:', error);
     return new Response(
       JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

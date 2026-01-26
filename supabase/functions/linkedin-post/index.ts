@@ -176,22 +176,23 @@ Deno.serve(async (req) => {
     const postData = await postResponse.json();
     console.log('LinkedIn post response:', JSON.stringify(postData, null, 2));
 
-    // Extract the post ID from response
-    const linkedinPostId = postData.id;
+    // Extract the post ID/URN from response
+    const linkedinPostUrn = postData.id; // This is the raw URN like "urn:li:share:XXX" or "urn:li:ugcPost:XXX"
     // Construct the post URL (format: urn:li:share:XXX -> linkedin.com/feed/update/urn:li:share:XXX)
-    const linkedinPostUrl = linkedinPostId 
-      ? `https://www.linkedin.com/feed/update/${linkedinPostId}`
+    const linkedinPostUrl = linkedinPostUrn 
+      ? `https://www.linkedin.com/feed/update/${linkedinPostUrn}`
       : null;
 
     const publishedAt = new Date().toISOString();
 
-    // Update the post record
+    // Update the post record with both the URL and raw URN
     const { error: updateError } = await supabase
       .from('posts')
       .update({
         status: 'done',
         published_at: publishedAt,
         linkedin_post_url: linkedinPostUrl,
+        linkedin_post_urn: linkedinPostUrn, // Store raw URN for analytics fetching
         publish_method: 'linkedin_api',
       })
       .eq('id', postId);
@@ -219,7 +220,7 @@ Deno.serve(async (req) => {
       JSON.stringify({
         success: true,
         linkedinPostUrl,
-        linkedinPostId,
+        linkedinPostUrn,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
