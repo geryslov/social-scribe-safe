@@ -52,14 +52,13 @@ Deno.serve(async (req) => {
       // State includes return URL
       const state = btoa(JSON.stringify({ type: 'sso', returnUrl }));
       
-      // Community Management API scopes for full access
-      // Includes all scopes needed for posting AND reading posts with analytics
+      // Use only scopes that are authorized for this LinkedIn app
+      // Note: r_member_social requires Community Management API product
       const scopes = [
         'openid',
         'profile', 
         'email',
         'w_member_social',           // Create, modify, delete posts
-        'r_member_social',           // READ member's posts (required to fetch posts!)
         'r_member_postAnalytics',    // Retrieve post analytics/reporting data
         'r_basicprofile',            // Basic profile access
       ];
