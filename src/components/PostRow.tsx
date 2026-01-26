@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Post } from '@/types/post';
 import { Button } from '@/components/ui/button';
-import { Copy, Pencil, Trash2, Check, Calendar, ExternalLink, Undo2, ChevronDown, ChevronUp, Linkedin, Eye, Users, Heart, MessageCircle, Share2, TrendingUp } from 'lucide-react';
+import { Copy, Pencil, Trash2, Check, Calendar, ExternalLink, Undo2, ChevronDown, ChevronUp, Linkedin, Eye, Users, Heart, MessageCircle, Share2, TrendingUp, MousePointerClick, Play } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { EditHistory } from './EditHistory';
@@ -9,6 +9,9 @@ import { PublisherAvatar } from './PublisherAvatar';
 import { LinkedInPublishModal } from './LinkedInPublishModal';
 import { usePublishers } from '@/hooks/usePublishers';
 import { useQueryClient } from '@tanstack/react-query';
+import { PostTypeBadge } from './PostTypeBadge';
+import { ReactionBreakdownTooltip } from './ReactionBreakdown';
+import { VideoMetricsCompact } from './VideoMetricsDisplay';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -167,6 +170,7 @@ export function PostRow({ post, onEdit, onDelete, onStatusChange, showPublisher 
             {showPublisher && (
               <div className="flex items-center gap-2 mb-2">
                 <span className={cn("font-semibold", publisherColor.text)}>{post.publisherName}</span>
+                {post.postType && <PostTypeBadge type={post.postType} />}
                 {post.linkedinUrl && (
                   <a
                     href={post.linkedinUrl}
@@ -267,16 +271,31 @@ export function PostRow({ post, onEdit, onDelete, onStatusChange, showPublisher 
                         <span>{(post.impressions ?? 0).toLocaleString()}</span>
                       </div>
                     )}
+                    {/* Reactions with breakdown tooltip */}
                     {(post.reactions ?? 0) > 0 && (
-                      <div className="flex items-center gap-1" title="Reactions">
-                        <Heart className="h-3 w-3" />
-                        <span>{post.reactions ?? 0}</span>
-                      </div>
+                      post.reactionBreakdown ? (
+                        <ReactionBreakdownTooltip 
+                          breakdown={post.reactionBreakdown} 
+                          totalReactions={post.reactions ?? 0}
+                          className="flex items-center gap-1"
+                        />
+                      ) : (
+                        <div className="flex items-center gap-1" title="Reactions">
+                          <Heart className="h-3 w-3" />
+                          <span>{post.reactions ?? 0}</span>
+                        </div>
+                      )
                     )}
+                    {/* Comments with thread count */}
                     {(post.comments_count ?? 0) > 0 && (
                       <div className="flex items-center gap-1" title="Comments">
                         <MessageCircle className="h-3 w-3" />
-                        <span>{post.comments_count ?? 0}</span>
+                        <span>
+                          {post.comments_count ?? 0}
+                          {(post.threadCount ?? 0) > 0 && (
+                            <span className="text-muted-foreground/60"> ({post.threadCount} threads)</span>
+                          )}
+                        </span>
                       </div>
                     )}
                     {(post.reshares ?? 0) > 0 && (
@@ -284,6 +303,20 @@ export function PostRow({ post, onEdit, onDelete, onStatusChange, showPublisher 
                         <Share2 className="h-3 w-3" />
                         <span>{post.reshares ?? 0}</span>
                       </div>
+                    )}
+                    {/* Link clicks for link posts */}
+                    {(post.linkClicks ?? 0) > 0 && (
+                      <div className="flex items-center gap-1 text-green-400" title="Link Clicks">
+                        <MousePointerClick className="h-3 w-3" />
+                        <span>
+                          {post.linkClicks}
+                          {post.clickThroughRate && ` (${post.clickThroughRate.toFixed(1)}% CTR)`}
+                        </span>
+                      </div>
+                    )}
+                    {/* Video metrics */}
+                    {post.videoMetrics && post.videoMetrics.views > 0 && (
+                      <VideoMetricsCompact metrics={post.videoMetrics} />
                     )}
                     {post.engagement_rate !== null && (post.engagement_rate ?? 0) > 0 && (
                       <div className="flex items-center gap-1" title="Engagement Rate">

@@ -21,6 +21,9 @@ type DbPost = {
   published_at: string | null;
   linkedin_post_url: string | null;
   publish_method: string | null;
+  // Post metadata
+  post_type: string | null;
+  media_urns: string[] | null;
   // Analytics fields
   impressions: number | null;
   unique_impressions: number | null;
@@ -29,9 +32,59 @@ type DbPost = {
   reshares: number | null;
   engagement_rate: number | null;
   analytics_fetched_at: string | null;
+  // Reaction breakdown
+  reaction_like: number | null;
+  reaction_celebrate: number | null;
+  reaction_support: number | null;
+  reaction_love: number | null;
+  reaction_insightful: number | null;
+  reaction_curious: number | null;
+  // Conversation metrics
+  avg_reply_depth: number | null;
+  thread_count: number | null;
+  // Link analytics
+  link_clicks: number | null;
+  click_through_rate: number | null;
+  // Video metrics
+  video_views: number | null;
+  video_unique_viewers: number | null;
+  video_watch_time_seconds: number | null;
+  video_completion_rate: number | null;
+  video_milestone_25: number | null;
+  video_milestone_50: number | null;
+  video_milestone_75: number | null;
+  video_milestone_100: number | null;
 };
 
 function mapDbToPost(dbPost: DbPost): Post {
+  // Build reaction breakdown if any reactions exist
+  const hasReactionBreakdown = dbPost.reaction_like || dbPost.reaction_celebrate || 
+    dbPost.reaction_support || dbPost.reaction_love || 
+    dbPost.reaction_insightful || dbPost.reaction_curious;
+  
+  const reactionBreakdown = hasReactionBreakdown ? {
+    like: dbPost.reaction_like || 0,
+    celebrate: dbPost.reaction_celebrate || 0,
+    support: dbPost.reaction_support || 0,
+    love: dbPost.reaction_love || 0,
+    insightful: dbPost.reaction_insightful || 0,
+    curious: dbPost.reaction_curious || 0,
+  } : null;
+
+  // Build video metrics if any video data exists
+  const hasVideoMetrics = dbPost.video_views && dbPost.video_views > 0;
+  
+  const videoMetrics = hasVideoMetrics ? {
+    views: dbPost.video_views || 0,
+    uniqueViewers: dbPost.video_unique_viewers || 0,
+    watchTimeSeconds: dbPost.video_watch_time_seconds || 0,
+    completionRate: dbPost.video_completion_rate,
+    milestone25: dbPost.video_milestone_25 || 0,
+    milestone50: dbPost.video_milestone_50 || 0,
+    milestone75: dbPost.video_milestone_75 || 0,
+    milestone100: dbPost.video_milestone_100 || 0,
+  } : null;
+
   return {
     id: dbPost.id,
     content: dbPost.content,
@@ -45,6 +98,9 @@ function mapDbToPost(dbPost: DbPost): Post {
     publishedAt: dbPost.published_at,
     linkedinPostUrl: dbPost.linkedin_post_url,
     publishMethod: dbPost.publish_method as Post['publishMethod'],
+    // Post metadata
+    postType: dbPost.post_type as Post['postType'],
+    mediaUrns: dbPost.media_urns,
     // Analytics fields
     impressions: dbPost.impressions,
     unique_impressions: dbPost.unique_impressions,
@@ -52,6 +108,16 @@ function mapDbToPost(dbPost: DbPost): Post {
     comments_count: dbPost.comments_count,
     reshares: dbPost.reshares,
     engagement_rate: dbPost.engagement_rate,
+    // Reaction breakdown
+    reactionBreakdown,
+    // Conversation metrics
+    avgReplyDepth: dbPost.avg_reply_depth,
+    threadCount: dbPost.thread_count,
+    // Link analytics
+    linkClicks: dbPost.link_clicks,
+    clickThroughRate: dbPost.click_through_rate,
+    // Video metrics
+    videoMetrics,
   };
 }
 
