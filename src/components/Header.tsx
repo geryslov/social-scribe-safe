@@ -20,8 +20,8 @@ export function Header() {
   };
 
   const navItems = [
-    { path: '/', label: 'Posts', icon: LayoutDashboard, badge: 0 },
-    { path: '/analytics', label: 'Analytics', icon: BarChart3, badge: 0 },
+    { path: '/', label: 'Analytics', icon: BarChart3, badge: 0 },
+    { path: '/posts', label: 'Posts', icon: LayoutDashboard, badge: 0 },
     { path: '/documents', label: 'Documents', icon: FileText, badge: documentsInReview },
   ];
 

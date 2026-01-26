@@ -192,6 +192,111 @@
   .border-glow:hover::before {
     opacity: 1;
   }
+
+  /* TECHY UI UTILITIES */
+  
+  /* Cyber corners - angular corner decorations */
+  .cyber-corners {
+    position: relative;
+  }
+  
+  .cyber-corners::before,
+  .cyber-corners::after {
+    content: '';
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    border: 1px solid hsl(var(--primary) / 0.4);
+    pointer-events: none;
+  }
+  
+  .cyber-corners::before {
+    top: -1px;
+    left: -1px;
+    border-right: none;
+    border-bottom: none;
+  }
+  
+  .cyber-corners::after {
+    bottom: -1px;
+    right: -1px;
+    border-left: none;
+    border-top: none;
+  }
+  
+  /* Animated glow pulse on stat cards */
+  .stat-glow {
+    animation: glowPulse 3s ease-in-out infinite;
+  }
+  
+  @keyframes glowPulse {
+    0%, 100% {
+      box-shadow: 0 0 20px rgba(139, 92, 246, 0.15);
+    }
+    50% {
+      box-shadow: 0 0 40px rgba(139, 92, 246, 0.3);
+    }
+  }
+  
+  /* Grid overlay for tech look */
+  .grid-overlay {
+    background-image: 
+      linear-gradient(rgba(139, 92, 246, 0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(139, 92, 246, 0.03) 1px, transparent 1px);
+    background-size: 20px 20px;
+  }
+  
+  /* Scanline overlay effect */
+  .scanline {
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(255, 255, 255, 0.02) 2px,
+      rgba(255, 255, 255, 0.02) 4px
+    );
+  }
+  
+  /* Animated cyber border */
+  .cyber-border {
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .cyber-border::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    padding: 1px;
+    border-radius: inherit;
+    background: linear-gradient(
+      135deg,
+      hsl(var(--primary) / 0.5),
+      transparent 50%,
+      hsl(var(--primary) / 0.5)
+    );
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    animation: borderRotate 4s linear infinite;
+  }
+  
+  @keyframes borderRotate {
+    from {
+      background-position: 0% 0%;
+    }
+    to {
+      background-position: 200% 0%;
+    }
+  }
+  
+  /* Data value text styling */
+  .data-value {
+    font-family: 'IBM Plex Mono', monospace;
+    font-feature-settings: 'tnum';
+    text-shadow: 0 0 10px rgba(139, 92, 246, 0.3);
+  }
 }
 
 @layer utilities {
