@@ -88,8 +88,11 @@ export function useAutoSync(publishers: Publisher[], userId: string | undefined)
     syncAllMutation.mutate(connectedPublishers);
   }, [userId, publishers, syncAllMutation]);
 
+  const lastSyncTime = localStorage.getItem(LAST_SYNC_KEY);
+
   return {
     isSyncing: syncAllMutation.isPending,
     syncAll: (connectedPublishers: Publisher[]) => syncAllMutation.mutate(connectedPublishers),
+    lastSyncTime: lastSyncTime ? parseInt(lastSyncTime, 10) : null,
   };
 }

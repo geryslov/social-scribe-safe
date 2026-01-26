@@ -12,12 +12,12 @@ import { PostModal } from '@/components/PostModal';
 import { BulkUploadModal } from '@/components/BulkUploadModal';
 import { LinkedInPostsPanel } from '@/components/LinkedInPostsPanel';
 import { Button } from '@/components/ui/button';
-import { Plus, Inbox, ExternalLink, Loader2, Upload, Users, FileText, CheckCircle, Clock, RefreshCw } from 'lucide-react';
+import { Plus, Inbox, ExternalLink, Loader2, Upload, Users, FileText, CheckCircle, Clock } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { PublisherAvatar } from '@/components/PublisherAvatar';
 import { toast } from 'sonner';
 
-const Index = () => {
+const Posts = () => {
   const navigate = useNavigate();
   const { user, isAdmin, isLoading: authLoading } = useAuth();
   const { posts, isLoading: postsLoading, createPost, updatePost, deletePost, updateStatus, updateLabels } = usePosts();
@@ -402,4 +402,4 @@ const Index = () => {
   );
 };
 
-export default Index;
+export default Posts;

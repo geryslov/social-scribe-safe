@@ -1,6 +1,7 @@
 import { useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Post } from '@/types/post';
-import { Users, ChevronRight, Plus, Pencil, Trash2 } from 'lucide-react';
+import { Users, ChevronRight, Plus, Pencil, Trash2, BarChart3 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { PublisherAvatar } from '@/components/PublisherAvatar';
@@ -38,6 +39,8 @@ interface PublisherSidebarProps {
 }
 
 export function PublisherSidebar({ publishers, selectedPublisher, onSelectPublisher }: PublisherSidebarProps) {
+  const navigate = useNavigate();
+  const location = useLocation();
   const totalPosts = publishers.reduce((acc, p) => acc + p.posts.length, 0);
   const { getPublisherByName, deletePublisher } = usePublishers();
   
@@ -207,6 +210,13 @@ export function PublisherSidebar({ publishers, selectedPublisher, onSelectPublis
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-40">
+                      <DropdownMenuItem onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/publisher/${encodeURIComponent(publisher.name)}`);
+                      }}>
+                        <BarChart3 className="h-4 w-4 mr-2" />
+                        Analytics
+                      </DropdownMenuItem>
                       <DropdownMenuItem onClick={(e) => handleEditPublisher(publisher.name, e as any)}>
                         <Pencil className="h-4 w-4 mr-2" />
                         Edit
