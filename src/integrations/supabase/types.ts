@@ -230,6 +230,101 @@ export type Database = {
           },
         ]
       }
+      post_analytics_history: {
+        Row: {
+          comments: number | null
+          created_at: string | null
+          id: string
+          impressions: number | null
+          post_id: string
+          reactions: number | null
+          reshares: number | null
+          snapshot_date: string
+          unique_impressions: number | null
+        }
+        Insert: {
+          comments?: number | null
+          created_at?: string | null
+          id?: string
+          impressions?: number | null
+          post_id: string
+          reactions?: number | null
+          reshares?: number | null
+          snapshot_date: string
+          unique_impressions?: number | null
+        }
+        Update: {
+          comments?: number | null
+          created_at?: string | null
+          id?: string
+          impressions?: number | null
+          post_id?: string
+          reactions?: number | null
+          reshares?: number | null
+          snapshot_date?: string
+          unique_impressions?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_analytics_history_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      post_comments: {
+        Row: {
+          author_name: string | null
+          author_urn: string | null
+          commented_at: string | null
+          content: string | null
+          created_at: string | null
+          id: string
+          linkedin_comment_urn: string | null
+          parent_comment_id: string | null
+          post_id: string
+        }
+        Insert: {
+          author_name?: string | null
+          author_urn?: string | null
+          commented_at?: string | null
+          content?: string | null
+          created_at?: string | null
+          id?: string
+          linkedin_comment_urn?: string | null
+          parent_comment_id?: string | null
+          post_id: string
+        }
+        Update: {
+          author_name?: string | null
+          author_urn?: string | null
+          commented_at?: string | null
+          content?: string | null
+          created_at?: string | null
+          id?: string
+          linkedin_comment_urn?: string | null
+          parent_comment_id?: string | null
+          post_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_comments_parent_comment_id_fkey"
+            columns: ["parent_comment_id"]
+            isOneToOne: false
+            referencedRelation: "post_comments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "post_comments_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       post_edit_history: {
         Row: {
           edited_at: string
@@ -277,6 +372,8 @@ export type Database = {
       posts: {
         Row: {
           analytics_fetched_at: string | null
+          avg_reply_depth: number | null
+          click_through_rate: number | null
           comments_count: number | null
           content: string
           created_at: string
@@ -286,22 +383,42 @@ export type Database = {
           id: string
           impressions: number | null
           labels: string[] | null
+          link_clicks: number | null
           linkedin_post_url: string | null
           linkedin_post_urn: string | null
           linkedin_url: string | null
+          media_urns: string[] | null
+          post_type: string | null
           publish_method: string | null
           published_at: string | null
           publisher_name: string
           publisher_role: string | null
+          reaction_celebrate: number | null
+          reaction_curious: number | null
+          reaction_insightful: number | null
+          reaction_like: number | null
+          reaction_love: number | null
+          reaction_support: number | null
           reactions: number | null
           reshares: number | null
           scheduled_date: string
           status: string
+          thread_count: number | null
           unique_impressions: number | null
           updated_at: string
+          video_completion_rate: number | null
+          video_milestone_100: number | null
+          video_milestone_25: number | null
+          video_milestone_50: number | null
+          video_milestone_75: number | null
+          video_unique_viewers: number | null
+          video_views: number | null
+          video_watch_time_seconds: number | null
         }
         Insert: {
           analytics_fetched_at?: string | null
+          avg_reply_depth?: number | null
+          click_through_rate?: number | null
           comments_count?: number | null
           content: string
           created_at?: string
@@ -311,22 +428,42 @@ export type Database = {
           id?: string
           impressions?: number | null
           labels?: string[] | null
+          link_clicks?: number | null
           linkedin_post_url?: string | null
           linkedin_post_urn?: string | null
           linkedin_url?: string | null
+          media_urns?: string[] | null
+          post_type?: string | null
           publish_method?: string | null
           published_at?: string | null
           publisher_name: string
           publisher_role?: string | null
+          reaction_celebrate?: number | null
+          reaction_curious?: number | null
+          reaction_insightful?: number | null
+          reaction_like?: number | null
+          reaction_love?: number | null
+          reaction_support?: number | null
           reactions?: number | null
           reshares?: number | null
           scheduled_date?: string
           status?: string
+          thread_count?: number | null
           unique_impressions?: number | null
           updated_at?: string
+          video_completion_rate?: number | null
+          video_milestone_100?: number | null
+          video_milestone_25?: number | null
+          video_milestone_50?: number | null
+          video_milestone_75?: number | null
+          video_unique_viewers?: number | null
+          video_views?: number | null
+          video_watch_time_seconds?: number | null
         }
         Update: {
           analytics_fetched_at?: string | null
+          avg_reply_depth?: number | null
+          click_through_rate?: number | null
           comments_count?: number | null
           content?: string
           created_at?: string
@@ -336,19 +473,37 @@ export type Database = {
           id?: string
           impressions?: number | null
           labels?: string[] | null
+          link_clicks?: number | null
           linkedin_post_url?: string | null
           linkedin_post_urn?: string | null
           linkedin_url?: string | null
+          media_urns?: string[] | null
+          post_type?: string | null
           publish_method?: string | null
           published_at?: string | null
           publisher_name?: string
           publisher_role?: string | null
+          reaction_celebrate?: number | null
+          reaction_curious?: number | null
+          reaction_insightful?: number | null
+          reaction_like?: number | null
+          reaction_love?: number | null
+          reaction_support?: number | null
           reactions?: number | null
           reshares?: number | null
           scheduled_date?: string
           status?: string
+          thread_count?: number | null
           unique_impressions?: number | null
           updated_at?: string
+          video_completion_rate?: number | null
+          video_milestone_100?: number | null
+          video_milestone_25?: number | null
+          video_milestone_50?: number | null
+          video_milestone_75?: number | null
+          video_unique_viewers?: number | null
+          video_views?: number | null
+          video_watch_time_seconds?: number | null
         }
         Relationships: [
           {

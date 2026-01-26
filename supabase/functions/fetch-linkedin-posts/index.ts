@@ -35,6 +35,13 @@ interface PostAnalytics {
   reactions: number;
   comments: number;
   reshares: number;
+  // Reaction breakdown
+  reactionLike: number;
+  reactionCelebrate: number;
+  reactionSupport: number;
+  reactionLove: number;
+  reactionInsightful: number;
+  reactionCurious: number;
 }
 
 // Refresh token if expired
@@ -94,8 +101,52 @@ async function refreshTokenIfNeeded(
   return newAccessToken;
 }
 
+// Fetch reaction breakdown for a post
+async function fetchReactionBreakdown(
+  accessToken: string,
+  postUrn: string
+): Promise<{ like: number; celebrate: number; support: number; love: number; insightful: number; curious: number }> {
+  const breakdown = { like: 0, celebrate: 0, support: 0, love: 0, insightful: 0, curious: 0 };
+  
+  try {
+    // Try to get reaction breakdown using the socialActions API
+    const encodedUrn = encodeURIComponent(postUrn);
+    const reactionsUrl = `https://api.linkedin.com/rest/reactions/(entity:${encodedUrn})?q=entity`;
+    
+    console.log(`Fetching reaction breakdown for ${postUrn}...`);
+    
+    const response = await fetch(reactionsUrl, {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'LinkedIn-Version': LINKEDIN_VERSION,
+        'X-Restli-Protocol-Version': '2.0.0',
+      },
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      // Parse reaction types from response
+      if (data.elements) {
+        for (const element of data.elements) {
+          const reactionType = element.reactionType?.toLowerCase();
+          if (reactionType && reactionType in breakdown) {
+            breakdown[reactionType as keyof typeof breakdown]++;
+          }
+        }
+      }
+      console.log('Reaction breakdown:', breakdown);
+    } else {
+      const errorText = await response.text();
+      console.log(`Could not fetch reaction breakdown: ${response.status} - ${errorText}`);
+    }
+  } catch (error) {
+    console.error('Error fetching reaction breakdown:', error);
+  }
+  
+  return breakdown;
+}
+
 // Fetch analytics for a single post URN using memberCreatorPostAnalytics API
-// This uses the r_member_postAnalytics scope
 async function fetchPostAnalytics(
   accessToken: string,
   postUrn: string
@@ -106,10 +157,15 @@ async function fetchPostAnalytics(
     reactions: 0,
     comments: 0,
     reshares: 0,
+    reactionLike: 0,
+    reactionCelebrate: 0,
+    reactionSupport: 0,
+    reactionLove: 0,
+    reactionInsightful: 0,
+    reactionCurious: 0,
   };
 
   // The URN format should be: urn:li:ugcPost:xxx or urn:li:share:xxx
-  // For memberCreatorPostAnalytics, we need to format the entity parameter correctly
   const isUgcPost = postUrn.includes('ugcPost');
   const isShare = postUrn.includes('share');
   
@@ -169,7 +225,52 @@ async function fetchPostAnalytics(
     }
   }
 
+  // Fetch reaction breakdown if we have reactions
+  if (analytics.reactions > 0) {
+    const breakdown = await fetchReactionBreakdown(accessToken, postUrn);
+    analytics.reactionLike = breakdown.like;
+    analytics.reactionCelebrate = breakdown.celebrate;
+    analytics.reactionSupport = breakdown.support;
+    analytics.reactionLove = breakdown.love;
+    analytics.reactionInsightful = breakdown.insightful;
+    analytics.reactionCurious = breakdown.curious;
+  }
+
   return analytics;
+}
+
+// Save analytics snapshot for trend tracking
+async function saveAnalyticsSnapshot(
+  supabase: any,
+  postId: string,
+  analytics: PostAnalytics
+): Promise<void> {
+  const today = new Date().toISOString().split('T')[0];
+  
+  try {
+    // Upsert the snapshot for today
+    const { error } = await supabase
+      .from('post_analytics_history')
+      .upsert({
+        post_id: postId,
+        snapshot_date: today,
+        impressions: analytics.impressions,
+        unique_impressions: analytics.uniqueImpressions,
+        reactions: analytics.reactions,
+        comments: analytics.comments,
+        reshares: analytics.reshares,
+      }, {
+        onConflict: 'post_id,snapshot_date',
+      });
+
+    if (error) {
+      console.error('Failed to save analytics snapshot:', error);
+    } else {
+      console.log(`Saved analytics snapshot for post ${postId} on ${today}`);
+    }
+  } catch (error) {
+    console.error('Error saving analytics snapshot:', error);
+  }
 }
 
 Deno.serve(async (req) => {
@@ -259,7 +360,7 @@ Deno.serve(async (req) => {
           ? parseFloat(((totalEngagements / analytics.impressions) * 100).toFixed(2))
           : null;
 
-        // Update the post with analytics
+        // Update the post with analytics including reaction breakdown
         const { error: updateError } = await supabase
           .from('posts')
           .update({
@@ -269,6 +370,12 @@ Deno.serve(async (req) => {
             comments_count: analytics.comments,
             reshares: analytics.reshares,
             engagement_rate: engagementRate,
+            reaction_like: analytics.reactionLike,
+            reaction_celebrate: analytics.reactionCelebrate,
+            reaction_support: analytics.reactionSupport,
+            reaction_love: analytics.reactionLove,
+            reaction_insightful: analytics.reactionInsightful,
+            reaction_curious: analytics.reactionCurious,
             analytics_fetched_at: new Date().toISOString(),
           })
           .eq('id', post.id);
@@ -278,6 +385,9 @@ Deno.serve(async (req) => {
         } else {
           syncedCount++;
           console.log(`Updated analytics for post ${post.id}: impressions=${analytics.impressions}, reactions=${analytics.reactions}`);
+          
+          // Save snapshot for trend tracking
+          await saveAnalyticsSnapshot(supabase, post.id, analytics);
         }
       } catch (error) {
         console.error(`Error processing post ${post.id}:`, error);
