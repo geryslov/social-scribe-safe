@@ -1,4 +1,4 @@
-import { Flame, LogOut, LogIn, User, FileText, LayoutDashboard } from 'lucide-react';
+import { Flame, LogOut, LogIn, User, FileText, LayoutDashboard, BarChart3 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -21,6 +21,7 @@ export function Header() {
 
   const navItems = [
     { path: '/', label: 'Posts', icon: LayoutDashboard, badge: 0 },
+    { path: '/analytics', label: 'Analytics', icon: BarChart3, badge: 0 },
     { path: '/documents', label: 'Documents', icon: FileText, badge: documentsInReview },
   ];
 
