@@ -4,6 +4,7 @@ import { Post } from '@/types/post';
 import { useAuth } from '@/hooks/useAuth';
 import { usePosts } from '@/hooks/usePosts';
 import { usePublishers } from '@/hooks/usePublishers';
+import { useAutoSync } from '@/hooks/useAutoSync';
 import { Header } from '@/components/Header';
 import { PublisherSidebar } from '@/components/PublisherSidebar';
 import { PostRow } from '@/components/PostRow';
@@ -11,7 +12,7 @@ import { PostModal } from '@/components/PostModal';
 import { BulkUploadModal } from '@/components/BulkUploadModal';
 import { LinkedInPostsPanel } from '@/components/LinkedInPostsPanel';
 import { Button } from '@/components/ui/button';
-import { Plus, Inbox, ExternalLink, Loader2, Upload, Users, FileText, CheckCircle, Clock } from 'lucide-react';
+import { Plus, Inbox, ExternalLink, Loader2, Upload, Users, FileText, CheckCircle, Clock, RefreshCw } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { PublisherAvatar } from '@/components/PublisherAvatar';
 import { toast } from 'sonner';
@@ -21,6 +22,9 @@ const Index = () => {
   const { user, isAdmin, isLoading: authLoading } = useAuth();
   const { posts, isLoading: postsLoading, createPost, updatePost, deletePost, updateStatus, updateLabels } = usePosts();
   const { publishers: dbPublishers } = usePublishers();
+  
+  // Auto-sync LinkedIn analytics on login
+  const { isSyncing: isAutoSyncing } = useAutoSync(dbPublishers, user?.id);
 
   const [selectedPublisher, setSelectedPublisher] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -166,8 +170,11 @@ const Index = () => {
 
   if (authLoading || postsLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-3">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        {isAutoSyncing && (
+          <p className="text-sm text-muted-foreground">Syncing latest analytics...</p>
+        )}
       </div>
     );
   }
