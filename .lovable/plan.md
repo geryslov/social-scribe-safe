@@ -1,178 +1,196 @@
 
 
-# Plan: Enhanced Analytics & Reporting UI
+# Plan: Techy Analytics-First UI with Per-Publisher Dashboards
 
 ## Overview
 
-Transform the current basic analytics display into a comprehensive, visually engaging analytics dashboard with data visualizations, comparative insights, and improved information hierarchy.
+Transform the app to be analytics-first with a more technical/futuristic aesthetic. Analytics becomes the landing page, with drill-down capability to view individual publisher performance.
 
-## Current State Analysis
+## Current State
 
-The current implementation has:
-- Basic stat cards showing counts (Posts, Reach, Impressions, Reactions, Comments, Reshares)
-- Inline post metrics displayed as small icons with numbers
-- A simple 3x2 grid for aggregate stats
-- No charts or visual trends
-- No comparative analysis between posts
-- Analytics only visible when viewing a specific publisher
+- Analytics is a secondary page at `/analytics`
+- Index page shows posts list with basic stats
+- UI has a good dark theme but could be more "techy"
+- No per-publisher analytics view
 
-## Proposed Enhancements
+## Proposed Changes
 
-### 1. Dedicated Analytics Dashboard Tab
+### 1. Make Analytics the Main Page
 
-Add a new "Analytics" view accessible from the header that provides a comprehensive overview:
+Swap routing so Analytics becomes the home page:
+- `/` - Analytics Dashboard (global view)
+- `/publisher/:name` - Publisher-specific analytics + posts
+- `/posts` - Current posts view (moved from /)
 
-| Section | Description |
-|---------|-------------|
-| Performance Overview | Large stat cards with trend indicators |
-| Performance Chart | Line/Area chart showing metrics over time |
-| Top Performing Posts | Ranked list of best posts by engagement |
-| Publisher Comparison | Compare performance across publishers |
+### 2. Enhanced Techy Visual Design
 
-### 2. Enhanced Stat Cards with Trend Indicators
+Add cyberpunk/tech-inspired elements:
 
-Upgrade the current stat cards to show:
-- Current value prominently
-- Trend arrow (up/down) compared to previous period
-- Percentage change
-- Sparkline mini-chart showing recent trend
+| Element | Current | Enhanced |
+|---------|---------|----------|
+| Stat Cards | Solid backgrounds | Glowing borders, scanline effects, animated data |
+| Charts | Standard fills | Neon gradients, grid overlays, pulsing dots |
+| Numbers | Plain text | Monospace font with counting animation |
+| Backgrounds | Gradient | Dot matrix pattern, subtle grid lines |
+| Cards | Glass effect | Holographic borders, corner accents |
 
+**New CSS Utilities:**
 ```text
-+----------------------------------+
-|  [Eye icon]                      |
-|  1,247                  +12.5%   |
-|  Impressions               ^     |
-|  [------sparkline------]         |
-+----------------------------------+
+.stat-glow - Animated glow pulse on stat cards
+.grid-overlay - Subtle tech grid pattern
+.data-value - Monospace with number animation
+.cyber-border - Animated gradient border
+.scanline - Subtle scanline overlay effect
+.corner-accent - Angular corner decorations
 ```
 
-### 3. Performance Over Time Chart
+### 3. Per-Publisher Analytics Page
 
-Add a visual chart using Recharts (already installed) showing:
-- Impressions and unique reach over time
-- Reactions, comments, reshares as stacked area
-- Toggle between different time ranges (7d, 30d, 90d)
-- Hover tooltips with detailed breakdown
+New route `/publisher/:name` with:
+- Publisher profile header with avatar and connection status
+- Personal performance stats (same cards as global but filtered)
+- Personal performance chart
+- Recent posts list with inline metrics
+- Quick actions (Sync, View LinkedIn, Create Post)
 
-### 4. Top Performing Posts Component
-
-A ranked leaderboard showing:
-- Top 5 posts sorted by engagement rate
-- Post preview snippet
-- Key metrics (reach, reactions, engagement %)
-- Quick link to view on LinkedIn
-
+**Layout:**
 ```text
-+------------------------------------------+
-| #1 | "Great insights about..."  | 8.2%   |
-|    | [Eye] 245  [Heart] 20      | Eng.   |
-+------------------------------------------+
-| #2 | "Excited to share..."      | 6.5%   |
-|    | [Eye] 189  [Heart] 12      | Eng.   |
-+------------------------------------------+
++------------------------------------------------------------------+
+|                          HEADER                                   |
++------------------------------------------------------------------+
+|                                                                   |
+|  [Avatar]  PUBLISHER NAME                                         |
+|            @role | LinkedIn Connected                             |
+|                                                                   |
+|  +----------+  +----------+  +----------+  +----------+           |
+|  | Reach    |  | Impress. |  | Reactions|  | Engage%  |           |
+|  | 12,450   |  | 24,800   |  | 892      |  | 5.2%     |           |
+|  | [spark]  |  | [spark]  |  | [spark]  |  |          |           |
+|  +----------+  +----------+  +----------+  +----------+           |
+|                                                                   |
+|  +--------------------------------------------------+             |
+|  |         PERFORMANCE CHART (FILTERED)             |             |
+|  |                                                  |             |
+|  +--------------------------------------------------+             |
+|                                                                   |
+|  Recent Posts                              [Sync] [New Post]      |
+|  +--------------------------------------------------+             |
+|  | Post 1 with inline metrics                       |             |
+|  | Post 2 with inline metrics                       |             |
+|  +--------------------------------------------------+             |
+|                                                                   |
++------------------------------------------------------------------+
 ```
 
-### 5. Publisher Performance Comparison
+### 4. Enhanced Global Analytics Page
 
-When viewing "All Publishers", show a comparative view:
-- Bar chart comparing total reach by publisher
-- Ranking of publishers by engagement rate
-- Average performance benchmarks
+Upgrade the current Analytics page with techy styling:
+- Add animated number counters on stat cards
+- Add grid overlay to chart backgrounds
+- Clicking a publisher in the comparison opens their dedicated page
+- Add "live" indicator with pulsing dot
+- Add data freshness timestamp
 
-### 6. Improved Post-Level Analytics Display
+### 5. Sidebar Navigation Update
 
-Enhance the current inline display with:
-- Visual progress bars for metrics relative to average
-- Color-coded performance indicators (green = above avg, gray = below)
-- Expandable detailed breakdown
+Modify sidebar to work as analytics navigation:
+- Clicking publisher goes to `/publisher/:name`
+- Add mini-sparklines next to each publisher
+- Show engagement rate badge per publisher
+- "All Publishers" goes to global analytics at `/`
 
-### 7. Global "Sync All Analytics" Button
+### 6. Techy Component Enhancements
 
-Add ability to sync analytics for all connected publishers at once instead of one at a time.
+**StatCardWithTrend Upgrades:**
+- Monospace font for numbers
+- Counting animation on mount
+- Glowing border accent
+- Corner decoration lines
+- Animated sparkline with gradient glow
+
+**PerformanceChart Upgrades:**
+- Grid dot pattern overlay
+- Glowing data points
+- Animated line drawing on load
+- Neon gradient fills
+- Reference lines with labels
+
+**New UI Elements:**
+- `<DataPulse />` - Animated dot indicating live data
+- `<CyberCard />` - Card with tech border styling
+- `<CountUp />` - Animated number counter
 
 ## Files to Create/Modify
 
-| File | Action | Purpose |
-|------|--------|---------|
-| `src/components/AnalyticsDashboard.tsx` | Create | Main analytics dashboard component |
-| `src/components/StatCardWithTrend.tsx` | Create | Enhanced stat card with sparklines |
-| `src/components/PerformanceChart.tsx` | Create | Recharts-based performance visualization |
-| `src/components/TopPostsLeaderboard.tsx` | Create | Top performing posts ranking |
-| `src/components/PublisherComparison.tsx` | Create | Cross-publisher comparison view |
-| `src/hooks/useAnalytics.tsx` | Create | Analytics data aggregation hook |
-| `src/components/LinkedInPostsPanel.tsx` | Modify | Integrate enhanced components |
-| `src/pages/Index.tsx` | Modify | Add analytics view toggle |
-| `src/components/Header.tsx` | Modify | Add Analytics navigation option |
+| File | Action | Description |
+|------|--------|-------------|
+| `src/App.tsx` | Modify | Update routes, Analytics at `/`, Posts at `/posts` |
+| `src/pages/Analytics.tsx` | Modify | Enhance with techy styling, add publisher drill-down |
+| `src/pages/PublisherAnalytics.tsx` | Create | Per-publisher analytics page |
+| `src/pages/Posts.tsx` | Create | Rename Index.tsx functionality |
+| `src/components/Header.tsx` | Modify | Update nav to reflect new structure |
+| `src/index.css` | Modify | Add techy CSS utilities |
+| `src/components/StatCardWithTrend.tsx` | Modify | Add techy styling, animations |
+| `src/components/PerformanceChart.tsx` | Modify | Add grid overlay, glow effects |
+| `src/components/PublisherSidebar.tsx` | Modify | Add sparklines, route to analytics |
+| `src/components/ui/cyber-card.tsx` | Create | Techy card component |
+| `src/components/DataPulse.tsx` | Create | Live data indicator |
+| `src/hooks/useAnalytics.tsx` | Modify | Support publisher filtering |
 
-## Implementation Details
+## Visual Design Details
 
-### New Analytics Hook
+### Color Enhancements
+- Primary glow: `rgba(139, 92, 246, 0.5)` with box-shadow animation
+- Data accent: Cyan `#22D3EE` for live indicators
+- Grid lines: `rgba(139, 92, 246, 0.1)` subtle pattern
+- Text numbers: `#E0E7FF` with slight glow
 
-```text
-useAnalytics hook returns:
-- aggregatedStats: total metrics across all/filtered posts
-- trendData: time-series data for charts
-- topPosts: ranked posts by engagement
-- publisherRanking: publishers sorted by performance
-- averages: benchmark values for comparison
-```
+### Animations
+- Stat numbers count up from 0 on first view
+- Sparklines animate drawing from left to right
+- Border glow pulses subtly every 3 seconds
+- Data points on charts pulse on hover
+- Smooth transitions between publisher views
 
-### Chart Component Structure
+### Typography
+- All numbers use `font-mono` (IBM Plex Mono)
+- Stats show with tabular-nums for alignment
+- Micro-labels in uppercase with letter-spacing
 
-Using the existing Recharts integration:
-- AreaChart for impressions/reach over time
-- BarChart for publisher comparison
-- Composed chart for multi-metric visualization
-
-### UI/UX Considerations
-
-- Responsive design: Stack charts on mobile, side-by-side on desktop
-- Loading skeletons while data fetches
-- Empty states with guidance for new users
-- Consistent color palette matching existing design
-- Smooth transitions between views
-
-## Visual Preview
-
-### Analytics Dashboard Layout (Desktop)
+## Navigation Flow
 
 ```text
-+------------------------------------------------------------------+
-| [Publishers] |  Analytics Dashboard                              |
-|              |                                                   |
-|  All         |  [Total Reach]  [Impressions]  [Engagement Rate]  |
-|  Publisher 1 |    1,247           2,456          4.2%            |
-|  Publisher 2 |    ^+12%           ^+8%           ^+0.5%          |
-|              |                                                   |
-|              |  Performance Over Time          [7d][30d][90d]    |
-|              |  +------------------------------------------+     |
-|              |  |                    __                    |     |
-|              |  |              __---   ---                 |     |
-|              |  |        __---            ---__            |     |
-|              |  |  __---                       ---         |     |
-|              |  +------------------------------------------+     |
-|              |                                                   |
-|              |  Top Posts                Publisher Ranking       |
-|              |  +------------------+    +------------------+     |
-|              |  | #1 Post A 8.2%   |    | Publisher 1 5.2% |     |
-|              |  | #2 Post B 6.5%   |    | Publisher 2 4.1% |     |
-|              |  | #3 Post C 5.1%   |    | Publisher 3 3.8% |     |
-|              |  +------------------+    +------------------+     |
-+------------------------------------------------------------------+
+User logs in
+    |
+    v
+Analytics Dashboard (/) 
+    |
+    +-- Click publisher in sidebar --> /publisher/:name
+    |                                       |
+    |                                       +-- View individual analytics
+    |                                       +-- See their posts
+    |                                       +-- Click "View All Posts" --> /posts
+    |
+    +-- Click "Posts" in header --> /posts
+    |                                  |
+    |                                  +-- Current Index.tsx functionality
+    |
+    +-- Click "Analytics" in header --> / (same page)
 ```
 
 ## Benefits
 
-1. **Better Insights**: Visual charts make trends immediately apparent
-2. **Actionable Data**: Top posts help identify what content works
-3. **Comparative Analysis**: Understand relative performance across publishers
-4. **Professional Reporting**: Dashboard-quality visuals for stakeholders
-5. **Efficiency**: Bulk sync saves time for multi-publisher accounts
+1. **Analytics-First**: Immediate insights when logging in
+2. **Professional/Techy Feel**: Data-driven aesthetic appeals to power users
+3. **Per-Publisher Deep Dive**: Understand individual performance at a glance
+4. **Improved Navigation**: Logical flow from overview to details
+5. **Visual Polish**: Animations and effects make data feel "alive"
 
-## Technical Notes
+## Technical Considerations
 
-- Uses existing Recharts library (already installed)
-- Leverages existing chart component infrastructure (`src/components/ui/chart.tsx`)
-- Maintains consistent styling with existing UI patterns
-- No additional dependencies required
+- CSS animations should be performant (use transform/opacity)
+- Number counting uses requestAnimationFrame for smooth animation
+- Sparklines memoized to prevent re-renders
+- Route changes use React Router with proper loading states
+- Publisher filtering reuses existing `useAnalytics` hook with name parameter
 
