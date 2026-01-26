@@ -342,7 +342,6 @@ const Index = () => {
                     onEdit={handleEdit}
                     onDelete={handleDelete}
                     onStatusChange={handleStatusChange}
-                    onLabelsUpdate={handleLabelsUpdate}
                     showPublisher={selectedPublisher === null}
                     index={index}
                     isAdmin={isAdmin}
@@ -366,7 +365,6 @@ const Index = () => {
                     onEdit={handleEdit}
                     onDelete={handleDelete}
                     onStatusChange={handleStatusChange}
-                    onLabelsUpdate={handleLabelsUpdate}
                     showPublisher={selectedPublisher === null}
                     index={index}
                     isAdmin={isAdmin}

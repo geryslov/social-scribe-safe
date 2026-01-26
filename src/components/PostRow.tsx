@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Post } from '@/types/post';
 import { Button } from '@/components/ui/button';
-import { Copy, Pencil, Trash2, Check, Calendar, ExternalLink, Undo2, ChevronDown, ChevronUp, Sparkles, Loader2, Tag, Linkedin } from 'lucide-react';
+import { Copy, Pencil, Trash2, Check, Calendar, ExternalLink, Undo2, ChevronDown, ChevronUp, Linkedin, Eye, Users, Heart, MessageCircle, Share2, TrendingUp } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { EditHistory } from './EditHistory';
@@ -9,7 +9,6 @@ import { PublisherAvatar } from './PublisherAvatar';
 import { LinkedInPublishModal } from './LinkedInPublishModal';
 import { usePublishers } from '@/hooks/usePublishers';
 import { useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -42,22 +41,27 @@ const getPublisherColor = (name: string) => {
 };
 
 interface PostRowProps {
-  post: Post;
+  post: Post & {
+    impressions?: number | null;
+    unique_impressions?: number | null;
+    reactions?: number | null;
+    comments_count?: number | null;
+    reshares?: number | null;
+    engagement_rate?: number | null;
+  };
   onEdit: (post: Post) => void;
   onDelete: (postId: string) => void;
   onStatusChange?: (postId: string, status: Post['status'], publisherName?: string) => void;
-  onLabelsUpdate?: (postId: string, labels: string[]) => void;
   showPublisher?: boolean;
   index: number;
   isAdmin?: boolean;
 }
 
-export function PostRow({ post, onEdit, onDelete, onStatusChange, onLabelsUpdate, showPublisher = false, index, isAdmin = false }: PostRowProps) {
+export function PostRow({ post, onEdit, onDelete, onStatusChange, showPublisher = false, index, isAdmin = false }: PostRowProps) {
   const [copied, setCopied] = useState(false);
   const [showPublishDialog, setShowPublishDialog] = useState(false);
   const [showLinkedInModal, setShowLinkedInModal] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
   
   const { publishers } = usePublishers();
   const queryClient = useQueryClient();
@@ -65,31 +69,6 @@ export function PostRow({ post, onEdit, onDelete, onStatusChange, onLabelsUpdate
   // Find the publisher for this post
   const publisher = publishers.find(p => p.name === post.publisherName);
   const isPublisherConnected = publisher?.linkedin_connected ?? false;
-
-  const handleAnalyzePost = async () => {
-    if (!onLabelsUpdate) return;
-    
-    setIsAnalyzing(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('analyze-post', {
-        body: { content: post.content },
-      });
-
-      if (error) throw error;
-
-      if (data.success && data.labels) {
-        onLabelsUpdate(post.id, data.labels);
-        toast.success(`Added ${data.labels.length} labels`);
-      } else {
-        toast.error(data.error || 'Failed to analyze post');
-      }
-    } catch (error) {
-      console.error('Error analyzing post:', error);
-      toast.error('Failed to analyze post');
-    } finally {
-      setIsAnalyzing(false);
-    }
-  };
 
   const handleCopy = async () => {
     try {
@@ -276,40 +255,49 @@ export function PostRow({ post, onEdit, onDelete, onStatusChange, onLabelsUpdate
                   via {post.publishMethod === 'linkedin_api' ? 'API' : post.publishMethod}
                 </span>
               )}
-              
-              {/* Labels */}
-              {post.labels && post.labels.length > 0 && (
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  {post.labels.map((label, i) => (
-                    <span
-                      key={i}
-                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs bg-primary/10 text-primary border border-primary/20"
-                    >
-                      <Tag className="h-3 w-3" />
-                      {label}
-                    </span>
-                  ))}
-                </div>
-              )}
-              
-              {/* Analyze button */}
-              {isAdmin && onLabelsUpdate && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 px-2 text-xs text-muted-foreground hover:text-primary"
-                  onClick={handleAnalyzePost}
-                  disabled={isAnalyzing}
-                >
-                  {isAnalyzing ? (
-                    <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                  ) : (
-                    <Sparkles className="h-3 w-3 mr-1" />
-                  )}
-                  {post.labels && post.labels.length > 0 ? 'Re-analyze' : 'Add labels'}
-                </Button>
-              )}
             </div>
+            
+            {/* Analytics for published posts */}
+            {post.status === 'done' && post.publishMethod === 'linkedin_api' && (
+              <div className="flex flex-wrap gap-3 text-xs text-muted-foreground mt-2 pt-2 border-t border-border/50">
+                {(post.impressions ?? 0) > 0 && (
+                  <div className="flex items-center gap-1" title="Total Impressions">
+                    <Eye className="h-3 w-3" />
+                    <span>{(post.impressions ?? 0).toLocaleString()}</span>
+                  </div>
+                )}
+                {(post.unique_impressions ?? 0) > 0 && (
+                  <div className="flex items-center gap-1" title="Unique Reach">
+                    <Users className="h-3 w-3" />
+                    <span>{(post.unique_impressions ?? 0).toLocaleString()}</span>
+                  </div>
+                )}
+                {(post.reactions ?? 0) > 0 && (
+                  <div className="flex items-center gap-1" title="Reactions">
+                    <Heart className="h-3 w-3" />
+                    <span>{post.reactions ?? 0}</span>
+                  </div>
+                )}
+                {(post.comments_count ?? 0) > 0 && (
+                  <div className="flex items-center gap-1" title="Comments">
+                    <MessageCircle className="h-3 w-3" />
+                    <span>{post.comments_count ?? 0}</span>
+                  </div>
+                )}
+                {(post.reshares ?? 0) > 0 && (
+                  <div className="flex items-center gap-1" title="Reshares">
+                    <Share2 className="h-3 w-3" />
+                    <span>{post.reshares ?? 0}</span>
+                  </div>
+                )}
+                {post.engagement_rate !== null && (post.engagement_rate ?? 0) > 0 && (
+                  <div className="flex items-center gap-1" title="Engagement Rate">
+                    <TrendingUp className="h-3 w-3" />
+                    <span>{post.engagement_rate?.toFixed(1)}%</span>
+                  </div>
+                )}
+              </div>
+            )}
             
             {/* Edit History - only visible to admins */}
             {isAdmin && <EditHistory postId={post.id} />}
