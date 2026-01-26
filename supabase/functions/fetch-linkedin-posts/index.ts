@@ -31,6 +31,7 @@ interface AppPublishedPost {
 
 interface PostAnalytics {
   impressions: number;
+  uniqueImpressions: number;
   reactions: number;
   comments: number;
   reshares: number;
@@ -101,6 +102,7 @@ async function fetchPostAnalytics(
 ): Promise<PostAnalytics> {
   const analytics: PostAnalytics = {
     impressions: 0,
+    uniqueImpressions: 0,
     reactions: 0,
     comments: 0,
     reshares: 0,
@@ -120,7 +122,7 @@ async function fetchPostAnalytics(
   const entityType = isUgcPost ? 'ugcPost' : 'share';
   const entityParam = `(${entityType}:${encodeURIComponent(postUrn)})`;
 
-  const metrics = ['IMPRESSION', 'REACTION', 'COMMENT', 'RESHARE'];
+  const metrics = ['IMPRESSION', 'MEMBERS_REACHED', 'REACTION', 'COMMENT', 'RESHARE'];
 
   for (const metric of metrics) {
     try {
@@ -143,6 +145,9 @@ async function fetchPostAnalytics(
         switch (metric) {
           case 'IMPRESSION':
             analytics.impressions = count;
+            break;
+          case 'MEMBERS_REACHED':
+            analytics.uniqueImpressions = count;
             break;
           case 'REACTION':
             analytics.reactions = count;
@@ -259,6 +264,7 @@ Deno.serve(async (req) => {
           .from('posts')
           .update({
             impressions: analytics.impressions,
+            unique_impressions: analytics.uniqueImpressions,
             reactions: analytics.reactions,
             comments_count: analytics.comments,
             reshares: analytics.reshares,

@@ -10,6 +10,7 @@ export interface AppPublishedPost {
   linkedin_post_url: string | null;
   linkedin_post_urn: string | null;
   impressions: number | null;
+  unique_impressions: number | null;
   reactions: number | null;
   comments_count: number | null;
   reshares: number | null;
@@ -28,7 +29,7 @@ export function useLinkedInPosts(publisherId?: string, publisherName?: string) {
       
       const { data, error } = await supabase
         .from('posts')
-        .select('id, publisher_name, content, published_at, linkedin_post_url, linkedin_post_urn, impressions, reactions, comments_count, reshares, engagement_rate, analytics_fetched_at')
+        .select('id, publisher_name, content, published_at, linkedin_post_url, linkedin_post_urn, impressions, unique_impressions, reactions, comments_count, reshares, engagement_rate, analytics_fetched_at')
         .eq('publisher_name', publisherName)
         .eq('publish_method', 'linkedin_api')
         .not('linkedin_post_urn', 'is', null)
@@ -77,8 +78,10 @@ export function useLinkedInPosts(publisherId?: string, publisherName?: string) {
   const stats = {
     totalPosts: posts.length,
     totalImpressions: posts.reduce((sum, p) => sum + (p.impressions || 0), 0),
+    totalUniqueImpressions: posts.reduce((sum, p) => sum + (p.unique_impressions || 0), 0),
     totalReactions: posts.reduce((sum, p) => sum + (p.reactions || 0), 0),
     totalComments: posts.reduce((sum, p) => sum + (p.comments_count || 0), 0),
+    totalReshares: posts.reduce((sum, p) => sum + (p.reshares || 0), 0),
     avgEngagementRate: posts.length > 0 
       ? posts.reduce((sum, p) => sum + (p.engagement_rate || 0), 0) / posts.length
       : 0,

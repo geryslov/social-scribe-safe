@@ -297,6 +297,7 @@ export type Database = {
           reshares: number | null
           scheduled_date: string
           status: string
+          unique_impressions: number | null
           updated_at: string
         }
         Insert: {
@@ -321,6 +322,7 @@ export type Database = {
           reshares?: number | null
           scheduled_date?: string
           status?: string
+          unique_impressions?: number | null
           updated_at?: string
         }
         Update: {
@@ -345,6 +347,7 @@ export type Database = {
           reshares?: number | null
           scheduled_date?: string
           status?: string
+          unique_impressions?: number | null
           updated_at?: string
         }
         Relationships: [
