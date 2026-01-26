@@ -1,4 +1,4 @@
-import { RefreshCw, ExternalLink, Eye, Heart, MessageCircle, Share2, TrendingUp } from 'lucide-react';
+import { RefreshCw, ExternalLink, Eye, Users, Heart, MessageCircle, Share2, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -24,27 +24,33 @@ function PostCard({ post }: { post: AppPublishedPost }) {
         {/* Metrics row */}
         <div className="flex flex-wrap gap-3 text-xs text-muted-foreground mb-2">
           {(post.impressions ?? 0) > 0 && (
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1" title="Total Impressions">
               <Eye className="h-3 w-3" />
               <span>{(post.impressions ?? 0).toLocaleString()}</span>
             </div>
           )}
-          <div className="flex items-center gap-1">
+          {(post.unique_impressions ?? 0) > 0 && (
+            <div className="flex items-center gap-1" title="Unique Reach">
+              <Users className="h-3 w-3" />
+              <span>{(post.unique_impressions ?? 0).toLocaleString()}</span>
+            </div>
+          )}
+          <div className="flex items-center gap-1" title="Reactions">
             <Heart className="h-3 w-3" />
             <span>{post.reactions ?? 0}</span>
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1" title="Comments">
             <MessageCircle className="h-3 w-3" />
             <span>{post.comments_count ?? 0}</span>
           </div>
           {(post.reshares ?? 0) > 0 && (
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1" title="Reshares">
               <Share2 className="h-3 w-3" />
               <span>{post.reshares ?? 0}</span>
             </div>
           )}
           {post.engagement_rate !== null && post.engagement_rate > 0 && (
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1" title="Engagement Rate">
               <TrendingUp className="h-3 w-3" />
               <span>{post.engagement_rate.toFixed(1)}%</span>
             </div>
@@ -76,10 +82,22 @@ function PostCard({ post }: { post: AppPublishedPost }) {
 
 function StatsOverview({ stats }: { stats: ReturnType<typeof useLinkedInPosts>['stats'] }) {
   return (
-    <div className="grid grid-cols-2 gap-2 mb-4">
+    <div className="grid grid-cols-3 gap-2 mb-4">
       <div className="bg-muted/50 rounded-lg p-2 text-center">
         <div className="text-lg font-semibold">{stats.totalPosts}</div>
         <div className="text-xs text-muted-foreground">Posts</div>
+      </div>
+      <div className="bg-muted/50 rounded-lg p-2 text-center">
+        <div className="text-lg font-semibold">
+          {stats.totalUniqueImpressions > 0 ? stats.totalUniqueImpressions.toLocaleString() : '-'}
+        </div>
+        <div className="text-xs text-muted-foreground">Reach</div>
+      </div>
+      <div className="bg-muted/50 rounded-lg p-2 text-center">
+        <div className="text-lg font-semibold">
+          {stats.totalImpressions > 0 ? stats.totalImpressions.toLocaleString() : '-'}
+        </div>
+        <div className="text-xs text-muted-foreground">Impressions</div>
       </div>
       <div className="bg-muted/50 rounded-lg p-2 text-center">
         <div className="text-lg font-semibold">{stats.totalReactions}</div>
@@ -90,10 +108,8 @@ function StatsOverview({ stats }: { stats: ReturnType<typeof useLinkedInPosts>['
         <div className="text-xs text-muted-foreground">Comments</div>
       </div>
       <div className="bg-muted/50 rounded-lg p-2 text-center">
-        <div className="text-lg font-semibold">
-          {stats.totalImpressions > 0 ? stats.totalImpressions.toLocaleString() : '-'}
-        </div>
-        <div className="text-xs text-muted-foreground">Impressions</div>
+        <div className="text-lg font-semibold">{stats.totalReshares}</div>
+        <div className="text-xs text-muted-foreground">Reshares</div>
       </div>
     </div>
   );
