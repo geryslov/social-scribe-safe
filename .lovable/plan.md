@@ -1,111 +1,93 @@
 
+# Plan: Add MEMBERS_REACHED (Unique Impressions) Metric
 
-# Plan: Fetch Analytics for App-Published Posts Only
+## Overview
 
-## Problem Analysis
+Add the `MEMBERS_REACHED` metric from LinkedIn's `memberCreatorPostAnalytics` API to track how many unique people saw each post. This metric differs from impressions in that it counts unique viewers rather than total views.
 
-The current implementation tries to fetch ALL LinkedIn posts using the `/rest/posts` endpoint, which requires the `r_member_social` scope (part of Community Management API) that is not available for your application.
+## Changes Required
 
-However, your app already stores the LinkedIn post URN when it publishes a post. We can use this URN with the `r_member_postAnalytics` scope (which you DO have) to fetch analytics for those specific posts.
+### 1. Database Migration
 
-## Solution Overview
+Add a new column to store the unique reach count:
 
-Instead of trying to read all posts from LinkedIn, we will:
-1. Look at posts in your database that were published via the app
-2. Extract the LinkedIn URN from each post
-3. Use the `memberCreatorPostAnalytics` API to fetch metrics for those specific posts
-4. Display the analytics alongside your app's posts
+| Column | Type | Default | Description |
+|--------|------|---------|-------------|
+| `unique_impressions` | integer | 0 | Unique people who saw the post |
 
-This approach:
-- Uses only the `r_member_postAnalytics` scope (already authorized)
-- Tracks only posts published through your app (which is what you wanted)
-- Provides full analytics: impressions, reactions, comments, reshares
+### 2. Edge Function Update
 
-## Implementation Steps
+**File: `supabase/functions/fetch-linkedin-posts/index.ts`**
 
-### Step 1: Update Database Schema
-Add a `linkedin_post_urn` column to the `posts` table to store the raw URN separately from the URL for easier querying.
+Changes:
+- Add `uniqueImpressions` field to `PostAnalytics` interface (line 32-37)
+- Add `'MEMBERS_REACHED'` to the metrics array (line 123)
+- Add case for `MEMBERS_REACHED` in the switch statement (line 143-156)
+- Include `unique_impressions` in the database update (line 258-267)
 
+### 3. Frontend Hook Update
+
+**File: `src/hooks/useLinkedInPosts.tsx`**
+
+Changes:
+- Add `unique_impressions: number | null` to `AppPublishedPost` interface (line 5-18)
+- Add `unique_impressions` to the select query (line 31)
+- Add `totalUniqueImpressions` to stats calculation (line 77-85)
+
+### 4. UI Component Updates
+
+**File: `src/components/LinkedInPostsPanel.tsx`**
+
+Changes:
+- Import `Users` icon from lucide-react (line 1)
+- Add unique impressions display in `PostCard` metrics row (line 25-52), showing alongside regular impressions with a Users icon
+- Add "Unique Reach" stat to `StatsOverview` component (line 79-98), expanding to a 3-column grid
+
+## UI Design
+
+### Post Card Metrics Row (Updated)
 ```text
-posts table changes:
-+---------------------+------+
-| linkedin_post_urn   | text |  <- NEW: stores raw URN like "urn:li:share:123"
-+---------------------+------+
-| impressions         | int  |  <- NEW: cached analytics
-| reactions           | int  |  <- NEW: cached analytics
-| comments            | int  |  <- NEW: cached analytics
-| reshares            | int  |  <- NEW: cached analytics
-| engagement_rate     | num  |  <- NEW: calculated rate
-| analytics_fetched_at| ts   |  <- NEW: last sync time
-+---------------------+------+
+[Eye] 18  [Users] 12  [Heart] 1  [MessageCircle] 0  [Share2] 0  [TrendingUp] 5.6%
+  ^         ^
+  |         └── NEW: Unique impressions (MEMBERS_REACHED)
+  └── Total impressions
 ```
 
-### Step 2: Update linkedin-post Edge Function
-When publishing a post, store the raw URN in the new `linkedin_post_urn` column.
+### Stats Overview Grid (Updated to 3x2 layout)
+```text
++--------+--------+--------+
+| Posts  | Reach  | Impr.  |
+|   1    |   12   |   18   |
++--------+--------+--------+
+| React. | Comm.  | Reshare|
+|   1    |   0    |   0    |
++--------+--------+--------+
+```
 
-### Step 3: Rewrite fetch-linkedin-posts Edge Function
-Change the approach to:
-1. Query the `posts` table for app-published posts with LinkedIn URNs
-2. Use `memberCreatorPostAnalytics` API to fetch metrics for each URN
-3. Update the `posts` table with the fetched analytics
+## Implementation Details
 
-### Step 4: Update Frontend Hook
-Modify `useLinkedInPosts` to:
-- Query posts from the `posts` table (not the separate `linkedin_posts` table)
-- Show analytics for posts published via the app
-
-### Step 5: Update LinkedInPostsPanel Component
-Update the UI to display analytics for app-published posts, with a sync button to refresh metrics.
-
-## Technical Details
-
-### API Used: memberCreatorPostAnalytics
-This API works with the `r_member_postAnalytics` scope you already have:
+### LinkedIn API Call
+The `MEMBERS_REACHED` metric uses the same API endpoint as other metrics:
 
 ```
 GET /rest/memberCreatorPostAnalytics
   ?q=entity
   &entity=(share:urn:li:share:123)
-  &queryType=IMPRESSION
+  &queryType=MEMBERS_REACHED
   &aggregation=TOTAL
 ```
 
-Metrics available:
-- IMPRESSION - Number of times the post was shown
-- REACTION - Likes and other reactions
-- COMMENT - Number of comments
-- RESHARE - Number of shares
+### Files to Modify
 
-### Data Flow
-
-```text
-1. User publishes post via app
-   └─> linkedin-post function
-       └─> Stores URN in posts.linkedin_post_urn
-
-2. User clicks "Sync Analytics"
-   └─> fetch-linkedin-posts function
-       ├─> Queries posts with linkedin_post_urn
-       ├─> Calls memberCreatorPostAnalytics API for each
-       └─> Updates posts table with metrics
-
-3. UI displays analytics from posts table
-```
-
-## Files to Modify
-
-| File | Changes |
-|------|---------|
-| Database migration | Add analytics columns to posts table |
-| `supabase/functions/linkedin-post/index.ts` | Store raw URN in new column |
-| `supabase/functions/fetch-linkedin-posts/index.ts` | Complete rewrite to fetch analytics for app posts only |
-| `src/hooks/useLinkedInPosts.tsx` | Query posts table instead of linkedin_posts |
-| `src/components/LinkedInPostsPanel.tsx` | Update to show app-published posts with analytics |
+| File | Type of Change |
+|------|----------------|
+| Database migration | Add `unique_impressions` column |
+| `supabase/functions/fetch-linkedin-posts/index.ts` | Fetch MEMBERS_REACHED metric |
+| `src/hooks/useLinkedInPosts.tsx` | Add field to interface and stats |
+| `src/components/LinkedInPostsPanel.tsx` | Display unique reach in UI |
 
 ## Benefits
 
-1. **Works with your current scopes** - No additional LinkedIn permissions needed
-2. **Focused on app posts** - Only tracks what you published through the app
-3. **Simpler architecture** - Uses existing posts table instead of separate sync table
-4. **Full analytics** - Impressions, reactions, comments, reshares, engagement rate
-
+1. **Unique vs Total Views** - See how many individual people saw the post vs repeat views
+2. **Better Reach Understanding** - Understand true audience reach
+3. **Engagement Context** - Compare reactions to unique viewers for better engagement analysis
