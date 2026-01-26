@@ -12,7 +12,9 @@ import { PostModal } from '@/components/PostModal';
 import { BulkUploadModal } from '@/components/BulkUploadModal';
 import { LinkedInPostsPanel } from '@/components/LinkedInPostsPanel';
 import { Button } from '@/components/ui/button';
-import { Plus, Inbox, ExternalLink, Loader2, Upload, Users, FileText, CheckCircle, Clock } from 'lucide-react';
+import { Plus, Inbox, ExternalLink, Loader2, Upload, Users, Eye, Heart, TrendingUp } from 'lucide-react';
+import { useAnalytics } from '@/hooks/useAnalytics';
+import { CountUp } from '@/components/CountUp';
 import { Card, CardContent } from '@/components/ui/card';
 import { PublisherAvatar } from '@/components/PublisherAvatar';
 import { toast } from 'sonner';
@@ -98,17 +100,8 @@ const Posts = () => {
   const currentPublisher = selectedPublisher ? publishers.find(p => p.name === selectedPublisher) : null;
   const currentDbPublisher = selectedPublisher ? dbPublishers.find(p => p.name === selectedPublisher) : null;
 
-  // Global stats (always based on all posts, not filtered)
-  const globalStats = useMemo(() => {
-    const published = posts.filter(p => p.status === 'done').length;
-    const unpublished = posts.filter(p => p.status !== 'done').length;
-    return {
-      totalPublishers: publishers.length,
-      totalPosts: posts.length,
-      published,
-      unpublished,
-    };
-  }, [posts, publishers]);
+  // Get aggregated analytics stats
+  const { stats: analyticsStats, isLoading: analyticsLoading } = useAnalytics(null, '30d');
 
   const handleEdit = (post: Post) => {
     setEditingPost(post);
@@ -192,49 +185,57 @@ const Posts = () => {
         
         <main className="flex-1 overflow-y-auto h-[calc(100vh-73px)]">
           <div className="p-8">
-          {/* Summary Stats */}
+          {/* Summary Stats - Aggregated Analytics */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-            <Card className="bg-card border-border/60">
-              <CardContent className="p-4 flex items-center gap-3">
-                <div className="p-2.5 rounded-xl bg-primary/10">
-                  <Users className="h-5 w-5 text-primary" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold">{globalStats.totalPublishers}</p>
-                  <p className="text-xs text-muted-foreground">Publishers</p>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="bg-card border-border/60">
+            <Card className="bg-card border-border/60 stat-glow">
               <CardContent className="p-4 flex items-center gap-3">
                 <div className="p-2.5 rounded-xl bg-info/10">
-                  <FileText className="h-5 w-5 text-info" />
+                  <Users className="h-5 w-5 text-info" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold">{globalStats.totalPosts}</p>
-                  <p className="text-xs text-muted-foreground">Total Posts</p>
+                  <p className="text-2xl font-bold font-mono tabular-nums data-value">
+                    <CountUp end={analyticsStats.totalReach} />
+                  </p>
+                  <p className="text-xs text-muted-foreground">Total Reach</p>
                 </div>
               </CardContent>
             </Card>
-            <Card className="bg-card border-border/60">
+            <Card className="bg-card border-border/60 stat-glow">
+              <CardContent className="p-4 flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-primary/10">
+                  <Eye className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold font-mono tabular-nums data-value">
+                    <CountUp end={analyticsStats.totalImpressions} />
+                  </p>
+                  <p className="text-xs text-muted-foreground">Impressions</p>
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="bg-card border-border/60 stat-glow">
+              <CardContent className="p-4 flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-destructive/10">
+                  <Heart className="h-5 w-5 text-destructive" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold font-mono tabular-nums data-value">
+                    <CountUp end={analyticsStats.totalReactions} />
+                  </p>
+                  <p className="text-xs text-muted-foreground">Reactions</p>
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="bg-card border-border/60 stat-glow">
               <CardContent className="p-4 flex items-center gap-3">
                 <div className="p-2.5 rounded-xl bg-success/10">
-                  <CheckCircle className="h-5 w-5 text-success" />
+                  <TrendingUp className="h-5 w-5 text-success" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold">{globalStats.published}</p>
-                  <p className="text-xs text-muted-foreground">Published</p>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="bg-card border-border/60">
-              <CardContent className="p-4 flex items-center gap-3">
-                <div className="p-2.5 rounded-xl bg-warning/10">
-                  <Clock className="h-5 w-5 text-warning" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold">{globalStats.unpublished}</p>
-                  <p className="text-xs text-muted-foreground">Unpublished</p>
+                  <p className="text-2xl font-bold font-mono tabular-nums data-value">
+                    <CountUp end={analyticsStats.avgEngagementRate} decimals={1} suffix="%" />
+                  </p>
+                  <p className="text-xs text-muted-foreground">Avg Engagement</p>
                 </div>
               </CardContent>
             </Card>
