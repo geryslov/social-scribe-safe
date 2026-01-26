@@ -41,14 +41,7 @@ const getPublisherColor = (name: string) => {
 };
 
 interface PostRowProps {
-  post: Post & {
-    impressions?: number | null;
-    unique_impressions?: number | null;
-    reactions?: number | null;
-    comments_count?: number | null;
-    reshares?: number | null;
-    engagement_rate?: number | null;
-  };
+  post: Post;
   onEdit: (post: Post) => void;
   onDelete: (postId: string) => void;
   onStatusChange?: (postId: string, status: Post['status'], publisherName?: string) => void;
@@ -258,43 +251,49 @@ export function PostRow({ post, onEdit, onDelete, onStatusChange, showPublisher 
             </div>
             
             {/* Analytics for published posts */}
-            {post.status === 'done' && post.publishMethod === 'linkedin_api' && (
+            {post.status === 'done' && (
               <div className="flex flex-wrap gap-3 text-xs text-muted-foreground mt-2 pt-2 border-t border-border/50">
-                {(post.impressions ?? 0) > 0 && (
-                  <div className="flex items-center gap-1" title="Total Impressions">
-                    <Eye className="h-3 w-3" />
-                    <span>{(post.impressions ?? 0).toLocaleString()}</span>
-                  </div>
-                )}
-                {(post.unique_impressions ?? 0) > 0 && (
-                  <div className="flex items-center gap-1" title="Unique Reach">
-                    <Users className="h-3 w-3" />
-                    <span>{(post.unique_impressions ?? 0).toLocaleString()}</span>
-                  </div>
-                )}
-                {(post.reactions ?? 0) > 0 && (
-                  <div className="flex items-center gap-1" title="Reactions">
-                    <Heart className="h-3 w-3" />
-                    <span>{post.reactions ?? 0}</span>
-                  </div>
-                )}
-                {(post.comments_count ?? 0) > 0 && (
-                  <div className="flex items-center gap-1" title="Comments">
-                    <MessageCircle className="h-3 w-3" />
-                    <span>{post.comments_count ?? 0}</span>
-                  </div>
-                )}
-                {(post.reshares ?? 0) > 0 && (
-                  <div className="flex items-center gap-1" title="Reshares">
-                    <Share2 className="h-3 w-3" />
-                    <span>{post.reshares ?? 0}</span>
-                  </div>
-                )}
-                {post.engagement_rate !== null && (post.engagement_rate ?? 0) > 0 && (
-                  <div className="flex items-center gap-1" title="Engagement Rate">
-                    <TrendingUp className="h-3 w-3" />
-                    <span>{post.engagement_rate?.toFixed(1)}%</span>
-                  </div>
+                {((post.impressions ?? 0) > 0 || (post.unique_impressions ?? 0) > 0 || (post.reactions ?? 0) > 0) ? (
+                  <>
+                    {(post.unique_impressions ?? 0) > 0 && (
+                      <div className="flex items-center gap-1" title="Unique Reach">
+                        <Users className="h-3 w-3" />
+                        <span>{(post.unique_impressions ?? 0).toLocaleString()}</span>
+                      </div>
+                    )}
+                    {(post.impressions ?? 0) > 0 && (
+                      <div className="flex items-center gap-1" title="Total Impressions">
+                        <Eye className="h-3 w-3" />
+                        <span>{(post.impressions ?? 0).toLocaleString()}</span>
+                      </div>
+                    )}
+                    {(post.reactions ?? 0) > 0 && (
+                      <div className="flex items-center gap-1" title="Reactions">
+                        <Heart className="h-3 w-3" />
+                        <span>{post.reactions ?? 0}</span>
+                      </div>
+                    )}
+                    {(post.comments_count ?? 0) > 0 && (
+                      <div className="flex items-center gap-1" title="Comments">
+                        <MessageCircle className="h-3 w-3" />
+                        <span>{post.comments_count ?? 0}</span>
+                      </div>
+                    )}
+                    {(post.reshares ?? 0) > 0 && (
+                      <div className="flex items-center gap-1" title="Reshares">
+                        <Share2 className="h-3 w-3" />
+                        <span>{post.reshares ?? 0}</span>
+                      </div>
+                    )}
+                    {post.engagement_rate !== null && (post.engagement_rate ?? 0) > 0 && (
+                      <div className="flex items-center gap-1" title="Engagement Rate">
+                        <TrendingUp className="h-3 w-3" />
+                        <span>{post.engagement_rate?.toFixed(1)}%</span>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <span className="text-muted-foreground/60 italic">No analytics yet</span>
                 )}
               </div>
             )}

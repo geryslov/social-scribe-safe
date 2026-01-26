@@ -21,6 +21,14 @@ type DbPost = {
   published_at: string | null;
   linkedin_post_url: string | null;
   publish_method: string | null;
+  // Analytics fields
+  impressions: number | null;
+  unique_impressions: number | null;
+  reactions: number | null;
+  comments_count: number | null;
+  reshares: number | null;
+  engagement_rate: number | null;
+  analytics_fetched_at: string | null;
 };
 
 function mapDbToPost(dbPost: DbPost): Post {
@@ -37,6 +45,13 @@ function mapDbToPost(dbPost: DbPost): Post {
     publishedAt: dbPost.published_at,
     linkedinPostUrl: dbPost.linkedin_post_url,
     publishMethod: dbPost.publish_method as Post['publishMethod'],
+    // Analytics fields
+    impressions: dbPost.impressions,
+    unique_impressions: dbPost.unique_impressions,
+    reactions: dbPost.reactions,
+    comments_count: dbPost.comments_count,
+    reshares: dbPost.reshares,
+    engagement_rate: dbPost.engagement_rate,
   };
 }
 
