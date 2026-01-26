@@ -1,93 +1,178 @@
 
-# Plan: Add MEMBERS_REACHED (Unique Impressions) Metric
+
+# Plan: Enhanced Analytics & Reporting UI
 
 ## Overview
 
-Add the `MEMBERS_REACHED` metric from LinkedIn's `memberCreatorPostAnalytics` API to track how many unique people saw each post. This metric differs from impressions in that it counts unique viewers rather than total views.
+Transform the current basic analytics display into a comprehensive, visually engaging analytics dashboard with data visualizations, comparative insights, and improved information hierarchy.
 
-## Changes Required
+## Current State Analysis
 
-### 1. Database Migration
+The current implementation has:
+- Basic stat cards showing counts (Posts, Reach, Impressions, Reactions, Comments, Reshares)
+- Inline post metrics displayed as small icons with numbers
+- A simple 3x2 grid for aggregate stats
+- No charts or visual trends
+- No comparative analysis between posts
+- Analytics only visible when viewing a specific publisher
 
-Add a new column to store the unique reach count:
+## Proposed Enhancements
 
-| Column | Type | Default | Description |
-|--------|------|---------|-------------|
-| `unique_impressions` | integer | 0 | Unique people who saw the post |
+### 1. Dedicated Analytics Dashboard Tab
 
-### 2. Edge Function Update
+Add a new "Analytics" view accessible from the header that provides a comprehensive overview:
 
-**File: `supabase/functions/fetch-linkedin-posts/index.ts`**
+| Section | Description |
+|---------|-------------|
+| Performance Overview | Large stat cards with trend indicators |
+| Performance Chart | Line/Area chart showing metrics over time |
+| Top Performing Posts | Ranked list of best posts by engagement |
+| Publisher Comparison | Compare performance across publishers |
 
-Changes:
-- Add `uniqueImpressions` field to `PostAnalytics` interface (line 32-37)
-- Add `'MEMBERS_REACHED'` to the metrics array (line 123)
-- Add case for `MEMBERS_REACHED` in the switch statement (line 143-156)
-- Include `unique_impressions` in the database update (line 258-267)
+### 2. Enhanced Stat Cards with Trend Indicators
 
-### 3. Frontend Hook Update
+Upgrade the current stat cards to show:
+- Current value prominently
+- Trend arrow (up/down) compared to previous period
+- Percentage change
+- Sparkline mini-chart showing recent trend
 
-**File: `src/hooks/useLinkedInPosts.tsx`**
-
-Changes:
-- Add `unique_impressions: number | null` to `AppPublishedPost` interface (line 5-18)
-- Add `unique_impressions` to the select query (line 31)
-- Add `totalUniqueImpressions` to stats calculation (line 77-85)
-
-### 4. UI Component Updates
-
-**File: `src/components/LinkedInPostsPanel.tsx`**
-
-Changes:
-- Import `Users` icon from lucide-react (line 1)
-- Add unique impressions display in `PostCard` metrics row (line 25-52), showing alongside regular impressions with a Users icon
-- Add "Unique Reach" stat to `StatsOverview` component (line 79-98), expanding to a 3-column grid
-
-## UI Design
-
-### Post Card Metrics Row (Updated)
 ```text
-[Eye] 18  [Users] 12  [Heart] 1  [MessageCircle] 0  [Share2] 0  [TrendingUp] 5.6%
-  ^         ^
-  |         └── NEW: Unique impressions (MEMBERS_REACHED)
-  └── Total impressions
++----------------------------------+
+|  [Eye icon]                      |
+|  1,247                  +12.5%   |
+|  Impressions               ^     |
+|  [------sparkline------]         |
++----------------------------------+
 ```
 
-### Stats Overview Grid (Updated to 3x2 layout)
+### 3. Performance Over Time Chart
+
+Add a visual chart using Recharts (already installed) showing:
+- Impressions and unique reach over time
+- Reactions, comments, reshares as stacked area
+- Toggle between different time ranges (7d, 30d, 90d)
+- Hover tooltips with detailed breakdown
+
+### 4. Top Performing Posts Component
+
+A ranked leaderboard showing:
+- Top 5 posts sorted by engagement rate
+- Post preview snippet
+- Key metrics (reach, reactions, engagement %)
+- Quick link to view on LinkedIn
+
 ```text
-+--------+--------+--------+
-| Posts  | Reach  | Impr.  |
-|   1    |   12   |   18   |
-+--------+--------+--------+
-| React. | Comm.  | Reshare|
-|   1    |   0    |   0    |
-+--------+--------+--------+
++------------------------------------------+
+| #1 | "Great insights about..."  | 8.2%   |
+|    | [Eye] 245  [Heart] 20      | Eng.   |
++------------------------------------------+
+| #2 | "Excited to share..."      | 6.5%   |
+|    | [Eye] 189  [Heart] 12      | Eng.   |
++------------------------------------------+
 ```
+
+### 5. Publisher Performance Comparison
+
+When viewing "All Publishers", show a comparative view:
+- Bar chart comparing total reach by publisher
+- Ranking of publishers by engagement rate
+- Average performance benchmarks
+
+### 6. Improved Post-Level Analytics Display
+
+Enhance the current inline display with:
+- Visual progress bars for metrics relative to average
+- Color-coded performance indicators (green = above avg, gray = below)
+- Expandable detailed breakdown
+
+### 7. Global "Sync All Analytics" Button
+
+Add ability to sync analytics for all connected publishers at once instead of one at a time.
+
+## Files to Create/Modify
+
+| File | Action | Purpose |
+|------|--------|---------|
+| `src/components/AnalyticsDashboard.tsx` | Create | Main analytics dashboard component |
+| `src/components/StatCardWithTrend.tsx` | Create | Enhanced stat card with sparklines |
+| `src/components/PerformanceChart.tsx` | Create | Recharts-based performance visualization |
+| `src/components/TopPostsLeaderboard.tsx` | Create | Top performing posts ranking |
+| `src/components/PublisherComparison.tsx` | Create | Cross-publisher comparison view |
+| `src/hooks/useAnalytics.tsx` | Create | Analytics data aggregation hook |
+| `src/components/LinkedInPostsPanel.tsx` | Modify | Integrate enhanced components |
+| `src/pages/Index.tsx` | Modify | Add analytics view toggle |
+| `src/components/Header.tsx` | Modify | Add Analytics navigation option |
 
 ## Implementation Details
 
-### LinkedIn API Call
-The `MEMBERS_REACHED` metric uses the same API endpoint as other metrics:
+### New Analytics Hook
 
+```text
+useAnalytics hook returns:
+- aggregatedStats: total metrics across all/filtered posts
+- trendData: time-series data for charts
+- topPosts: ranked posts by engagement
+- publisherRanking: publishers sorted by performance
+- averages: benchmark values for comparison
 ```
-GET /rest/memberCreatorPostAnalytics
-  ?q=entity
-  &entity=(share:urn:li:share:123)
-  &queryType=MEMBERS_REACHED
-  &aggregation=TOTAL
+
+### Chart Component Structure
+
+Using the existing Recharts integration:
+- AreaChart for impressions/reach over time
+- BarChart for publisher comparison
+- Composed chart for multi-metric visualization
+
+### UI/UX Considerations
+
+- Responsive design: Stack charts on mobile, side-by-side on desktop
+- Loading skeletons while data fetches
+- Empty states with guidance for new users
+- Consistent color palette matching existing design
+- Smooth transitions between views
+
+## Visual Preview
+
+### Analytics Dashboard Layout (Desktop)
+
+```text
++------------------------------------------------------------------+
+| [Publishers] |  Analytics Dashboard                              |
+|              |                                                   |
+|  All         |  [Total Reach]  [Impressions]  [Engagement Rate]  |
+|  Publisher 1 |    1,247           2,456          4.2%            |
+|  Publisher 2 |    ^+12%           ^+8%           ^+0.5%          |
+|              |                                                   |
+|              |  Performance Over Time          [7d][30d][90d]    |
+|              |  +------------------------------------------+     |
+|              |  |                    __                    |     |
+|              |  |              __---   ---                 |     |
+|              |  |        __---            ---__            |     |
+|              |  |  __---                       ---         |     |
+|              |  +------------------------------------------+     |
+|              |                                                   |
+|              |  Top Posts                Publisher Ranking       |
+|              |  +------------------+    +------------------+     |
+|              |  | #1 Post A 8.2%   |    | Publisher 1 5.2% |     |
+|              |  | #2 Post B 6.5%   |    | Publisher 2 4.1% |     |
+|              |  | #3 Post C 5.1%   |    | Publisher 3 3.8% |     |
+|              |  +------------------+    +------------------+     |
++------------------------------------------------------------------+
 ```
-
-### Files to Modify
-
-| File | Type of Change |
-|------|----------------|
-| Database migration | Add `unique_impressions` column |
-| `supabase/functions/fetch-linkedin-posts/index.ts` | Fetch MEMBERS_REACHED metric |
-| `src/hooks/useLinkedInPosts.tsx` | Add field to interface and stats |
-| `src/components/LinkedInPostsPanel.tsx` | Display unique reach in UI |
 
 ## Benefits
 
-1. **Unique vs Total Views** - See how many individual people saw the post vs repeat views
-2. **Better Reach Understanding** - Understand true audience reach
-3. **Engagement Context** - Compare reactions to unique viewers for better engagement analysis
+1. **Better Insights**: Visual charts make trends immediately apparent
+2. **Actionable Data**: Top posts help identify what content works
+3. **Comparative Analysis**: Understand relative performance across publishers
+4. **Professional Reporting**: Dashboard-quality visuals for stakeholders
+5. **Efficiency**: Bulk sync saves time for multi-publisher accounts
+
+## Technical Notes
+
+- Uses existing Recharts library (already installed)
+- Leverages existing chart component infrastructure (`src/components/ui/chart.tsx`)
+- Maintains consistent styling with existing UI patterns
+- No additional dependencies required
+
