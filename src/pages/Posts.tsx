@@ -10,7 +10,7 @@ import { PublisherSidebar } from '@/components/PublisherSidebar';
 import { PostRow } from '@/components/PostRow';
 import { PostModal } from '@/components/PostModal';
 import { BulkUploadModal } from '@/components/BulkUploadModal';
-import { LinkedInPostsPanel } from '@/components/LinkedInPostsPanel';
+
 import { Button } from '@/components/ui/button';
 import { Plus, Inbox, ExternalLink, Loader2, Upload, Users, Eye, Heart, TrendingUp } from 'lucide-react';
 import { useAnalytics } from '@/hooks/useAnalytics';
@@ -306,16 +306,6 @@ const Posts = () => {
               )}
             </div>
 
-            {/* LinkedIn Posts Panel - Only show when a specific publisher is selected */}
-            {currentDbPublisher && (
-              <div className="mb-8">
-                <LinkedInPostsPanel 
-                  publisherId={currentDbPublisher.id}
-                  publisherName={currentDbPublisher.name}
-                  isLinkedInConnected={currentDbPublisher.linkedin_connected ?? false}
-                />
-              </div>
-            )}
             
             {/* Active Posts Section */}
             <div className="space-y-4">
