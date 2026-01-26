@@ -1,170 +1,396 @@
 
-# Plan: Remove App-Published Posts Section & Show Inline Analytics Per Post
+
+# Plan: Enhanced LinkedIn Analytics Implementation
 
 ## Overview
 
-Remove the separate "App-Published Posts" panel from the publisher view and ensure each published post displays an inline analytics summary directly in the post row. This streamlines the UI by showing metrics where they're contextually relevant.
+This plan details where and how to implement the additional LinkedIn metrics you can retrieve, organized by metric category and mapped to your existing UI structure.
 
-## Current State
+---
 
-1. **LinkedInPostsPanel** (`src/components/LinkedInPostsPanel.tsx`) is rendered on the Posts page when a publisher is selected (lines 310-318 in `Posts.tsx`)
-2. **PostRow** already has inline analytics display code (lines 260-300), but it only shows when:
-   - `post.status === 'done'` AND
-   - `post.publishMethod === 'linkedin_api'`
-3. The **usePosts hook** does NOT fetch analytics columns from the database - it only selects `*` but the mapping function ignores analytics fields
+## Current Architecture Summary
 
-## Problems Identified
+| Layer | Component | Current State |
+|-------|-----------|---------------|
+| **Data Storage** | `posts` table | Has: impressions, unique_impressions, reactions, comments_count, reshares, engagement_rate |
+| **Edge Function** | `fetch-linkedin-posts` | Fetches 5 metrics: IMPRESSION, MEMBERS_REACHED, REACTION, COMMENT, RESHARE |
+| **Post Display** | `PostRow.tsx` | Shows inline analytics for published posts |
+| **Analytics Dashboard** | `Analytics.tsx` | Global stats + charts + publisher rankings |
+| **Publisher Analytics** | `PublisherAnalytics.tsx` | Per-publisher stats + charts + top posts |
 
-1. The `usePosts` hook fetches posts but doesn't include analytics fields in the returned `Post` object
-2. The `PostRow` component has analytics display logic but it's conditional on `publishMethod === 'linkedin_api'` only
-3. Analytics data exists in the database but isn't being passed through to the UI
+---
 
-## Proposed Changes
+## New Metrics Implementation Plan
 
-### 1. Update usePosts Hook
+### 1. Post Metadata (Already Partially Available)
 
-Modify `src/hooks/usePosts.tsx` to include analytics columns in the mapping:
+**What you can track:**
+- Post text (already stored)
+- Creation time (already stored as `published_at`)
+- Author (stored as `publisher_name`)
+- Post type (text, image, video, link) - **NEW**
+- Media assets (image/video URNs) - **NEW**
+- Permalink (already stored as `linkedin_post_url`)
 
-**Add to DbPost type:**
-- `impressions: number | null`
-- `unique_impressions: number | null`  
-- `reactions: number | null`
-- `comments_count: number | null`
-- `reshares: number | null`
-- `engagement_rate: number | null`
-- `analytics_fetched_at: string | null`
-
-**Update mapDbToPost function** to include these fields in the returned Post object.
-
-### 2. Update Post Type
-
-Modify `src/types/post.ts` to include analytics fields:
-
-```
-impressions?: number | null;
-unique_impressions?: number | null;
-reactions?: number | null;
-comments_count?: number | null;
-reshares?: number | null;
-engagement_rate?: number | null;
-```
-
-### 3. Update PostRow Component
-
-Modify `src/components/PostRow.tsx` to:
-- Show analytics for ALL published posts (status === 'done'), not just API-published ones
-- Show analytics even when all values are zero (with a "No analytics yet" message)
-- Remove the `publishMethod === 'linkedin_api'` condition
-
-### 4. Remove LinkedInPostsPanel from Posts Page
-
-Modify `src/pages/Posts.tsx`:
-- Remove the import for `LinkedInPostsPanel`
-- Remove the conditional render block (lines 309-318)
-
-## Files to Modify
-
-| File | Action | Description |
-|------|--------|-------------|
-| `src/types/post.ts` | Modify | Add analytics fields to Post interface |
-| `src/hooks/usePosts.tsx` | Modify | Include analytics columns in query and mapping |
-| `src/components/PostRow.tsx` | Modify | Show analytics for all published posts, improve display |
-| `src/pages/Posts.tsx` | Modify | Remove LinkedInPostsPanel import and render |
-
-## Implementation Details
-
-### Post Type Updates
+**Where to display:**
 
 ```text
-// Add to src/types/post.ts
-export interface Post {
-  // ... existing fields ...
-  
-  // Analytics fields
-  impressions?: number | null;
-  unique_impressions?: number | null;
-  reactions?: number | null;
-  comments_count?: number | null;
-  reshares?: number | null;
-  engagement_rate?: number | null;
-}
-```
-
-### usePosts Hook Updates
-
-```text
-// Add to DbPost type
-type DbPost = {
-  // ... existing fields ...
-  impressions: number | null;
-  unique_impressions: number | null;
-  reactions: number | null;
-  comments_count: number | null;
-  reshares: number | null;
-  engagement_rate: number | null;
-  analytics_fetched_at: string | null;
-};
-
-// Update mapDbToPost
-function mapDbToPost(dbPost: DbPost): Post {
-  return {
-    // ... existing mappings ...
-    impressions: dbPost.impressions,
-    unique_impressions: dbPost.unique_impressions,
-    reactions: dbPost.reactions,
-    comments_count: dbPost.comments_count,
-    reshares: dbPost.reshares,
-    engagement_rate: dbPost.engagement_rate,
-  };
-}
-```
-
-### PostRow Updates
-
-```text
-// Change the condition from:
-{post.status === 'done' && post.publishMethod === 'linkedin_api' && (...)}
-
-// To:
-{post.status === 'done' && (...)}
-
-// And show all metrics (even zeros) with better formatting
-```
-
-### Posts.tsx Updates
-
-```text
-// Remove:
-import { LinkedInPostsPanel } from '@/components/LinkedInPostsPanel';
-
-// Remove lines 309-318:
-{currentDbPublisher && (
-  <div className="mb-8">
-    <LinkedInPostsPanel ... />
-  </div>
-)}
-```
-
-## Visual Result
-
-Each published post will now show inline analytics directly in the post card:
-
-```text
+PostRow.tsx - Add post type indicator
 +--------------------------------------------------+
 | [Avatar] Publisher Name                           |
+| [📝 TEXT] or [🖼️ IMAGE] or [🎬 VIDEO] or [🔗 LINK]  |
 |                                                   |
 | Post content here...                              |
-|                                                   |
-| [Published] Jan 15  [LinkedIn] View on LinkedIn   |
-|                                                   |
-| ─────────────────────────────────────────────────│
-| 👁 1,234  👤 892  ❤️ 45  💬 12  🔄 8  📈 3.2%     |
 +--------------------------------------------------+
 ```
 
-## Benefits
+**Database Changes:**
+```sql
+ALTER TABLE posts ADD COLUMN post_type TEXT; -- 'text', 'image', 'video', 'link', 'document'
+ALTER TABLE posts ADD COLUMN media_urns TEXT[]; -- Array of media asset URNs
+```
 
-1. **Cleaner UI**: No separate panel taking up space
-2. **Contextual Data**: Analytics shown where they're most relevant (with the post)
-3. **Consistent Experience**: All published posts show analytics, not just API-published ones
-4. **Better Scannability**: Users can quickly compare post performance while scrolling
+**Visual Design:**
+- Small badge next to publisher name showing post type
+- Icons: FileText (text), Image (image), Video (video), Link2 (link)
+- Color-coded: text=muted, image=blue, video=purple, link=green
+
+---
+
+### 2. Reaction Breakdown
+
+**What you can track:**
+- LIKE, CELEBRATE, SUPPORT, LOVE, INSIGHTFUL, CURIOUS counts
+- Who reacted (member URNs)
+
+**Where to display:**
+
+**Option A: PostRow.tsx - Hover tooltip on reactions count**
+```text
+Hover over [❤️ 45] shows:
++---------------------------+
+| 👍 LIKE        28 (62%)   |
+| 🎉 CELEBRATE   10 (22%)   |
+| 💡 INSIGHTFUL   4 (9%)    |
+| ❤️ LOVE         2 (4%)    |
+| 🤔 CURIOUS      1 (2%)    |
++---------------------------+
+```
+
+**Option B: PublisherAnalytics.tsx - New "Reaction Mix" card**
+```text
++--------------------------------------------------+
+| REACTION MIX                    [pie chart icon] |
+|                                                   |
+|  [=================] 👍 LIKE        62%          |
+|  [========]         🎉 CELEBRATE   22%          |
+|  [===]              💡 INSIGHTFUL   9%          |
+|  [==]               ❤️ LOVE         4%          |
+|  [=]                🤔 CURIOUS      2%          |
+|  [=]                🤝 SUPPORT      1%          |
++--------------------------------------------------+
+```
+
+**Database Changes:**
+```sql
+ALTER TABLE posts ADD COLUMN reaction_like INTEGER DEFAULT 0;
+ALTER TABLE posts ADD COLUMN reaction_celebrate INTEGER DEFAULT 0;
+ALTER TABLE posts ADD COLUMN reaction_support INTEGER DEFAULT 0;
+ALTER TABLE posts ADD COLUMN reaction_love INTEGER DEFAULT 0;
+ALTER TABLE posts ADD COLUMN reaction_insightful INTEGER DEFAULT 0;
+ALTER TABLE posts ADD COLUMN reaction_curious INTEGER DEFAULT 0;
+```
+
+**Edge Function Update:**
+Add API calls to fetch reaction breakdown per post using the LinkedIn reactions endpoint.
+
+---
+
+### 3. Comments & Conversation Data
+
+**What you can track:**
+- Comment count (already tracked)
+- Reply threading depth
+- Comment timestamps
+- Top commenters
+
+**Where to display:**
+
+**PostRow.tsx - Enhanced comment indicator**
+```text
+Current: [💬 12]
+Enhanced: [💬 12 (3 threads)]
+```
+
+**PublisherAnalytics.tsx - New "Conversation Depth" card**
+```text
++--------------------------------------------------+
+| CONVERSATION METRICS                              |
+|                                                   |
+|  💬 Total Comments     156                        |
+|  🧵 Avg Thread Depth   2.3 replies                |
+|  ⚡ Avg Reply Time     4.2 hours                  |
+|  🏆 Top Engager        @johndoe (8 comments)     |
++--------------------------------------------------+
+```
+
+**Database Changes:**
+```sql
+-- New table for detailed comment data
+CREATE TABLE post_comments (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  post_id UUID REFERENCES posts(id),
+  linkedin_comment_urn TEXT,
+  parent_comment_id UUID REFERENCES post_comments(id),
+  author_urn TEXT,
+  content TEXT,
+  commented_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Add to posts table
+ALTER TABLE posts ADD COLUMN avg_reply_depth NUMERIC;
+ALTER TABLE posts ADD COLUMN thread_count INTEGER DEFAULT 0;
+```
+
+---
+
+### 4. Link Click Analytics (Organization Posts Only)
+
+**What you can track:**
+- Click count
+- CTR (Click-through rate)
+
+**Where to display:**
+
+**PostRow.tsx - For link posts only**
+```text
++--------------------------------------------------+
+| [🔗 LINK] Publisher Name                          |
+|                                                   |
+| Check out our new product launch...              |
+|                                                   |
+| 👁 1,234  👤 892  ❤️ 45  🔗 89 clicks (7.2% CTR) |
++--------------------------------------------------+
+```
+
+**Database Changes:**
+```sql
+ALTER TABLE posts ADD COLUMN link_clicks INTEGER DEFAULT 0;
+ALTER TABLE posts ADD COLUMN click_through_rate NUMERIC;
+```
+
+**Note:** Only available for organization posts, so UI should gracefully hide this for member posts.
+
+---
+
+### 5. Video Analytics
+
+**What you can track:**
+- Video views
+- Unique viewers
+- Watch time
+- Completion rate
+- View milestones (25/50/75/100%)
+
+**Where to display:**
+
+**PostRow.tsx - Enhanced video post display**
+```text
++--------------------------------------------------+
+| [🎬 VIDEO] Publisher Name                         |
+|                                                   |
+| [Video thumbnail placeholder]                     |
+|                                                   |
+| 👁 1,234  ▶️ 892 views  ⏱️ 45% completion         |
++--------------------------------------------------+
+```
+
+**PublisherAnalytics.tsx - New "Video Performance" section**
+```text
++--------------------------------------------------+
+| VIDEO PERFORMANCE                                 |
+|                                                   |
+|  ▶️ Total Views        12,450                     |
+|  👤 Unique Viewers      8,920                     |
+|  ⏱️ Avg Watch Time     1:24                       |
+|  ✅ Completion Rate     34%                       |
+|                                                   |
+|  View Milestones:                                 |
+|  [████████████████████] 25%  92%                 |
+|  [██████████████]       50%  68%                 |
+|  [████████]             75%  41%                 |
+|  [█████]               100%  28%                 |
++--------------------------------------------------+
+```
+
+**Database Changes:**
+```sql
+ALTER TABLE posts ADD COLUMN video_views INTEGER DEFAULT 0;
+ALTER TABLE posts ADD COLUMN video_unique_viewers INTEGER DEFAULT 0;
+ALTER TABLE posts ADD COLUMN video_watch_time_seconds INTEGER DEFAULT 0;
+ALTER TABLE posts ADD COLUMN video_completion_rate NUMERIC;
+ALTER TABLE posts ADD COLUMN video_milestone_25 INTEGER DEFAULT 0;
+ALTER TABLE posts ADD COLUMN video_milestone_50 INTEGER DEFAULT 0;
+ALTER TABLE posts ADD COLUMN video_milestone_75 INTEGER DEFAULT 0;
+ALTER TABLE posts ADD COLUMN video_milestone_100 INTEGER DEFAULT 0;
+```
+
+---
+
+### 6. Time-Based Analytics (Trend Tracking)
+
+**What you can track:**
+- Lifetime totals (already implemented)
+- Daily aggregates
+- Velocity/momentum
+
+**Where to display:**
+
+**Analytics.tsx - Enhanced Performance Chart**
+```text
++--------------------------------------------------+
+| PERFORMANCE OVER TIME          [7D] [30D] [90D]  |
+|                                                   |
+|  [Multi-line chart showing:]                      |
+|  - Impressions (already shown)                    |
+|  - Reach (already shown)                          |
+|  - Reactions (already shown)                      |
+|  + Comments (NEW line)                            |
+|  + Reshares (NEW line)                            |
+|                                                   |
++--------------------------------------------------+
+```
+
+**PublisherAnalytics.tsx - New "Momentum Tracker" card**
+```text
++--------------------------------------------------+
+| MOMENTUM TRACKER                                  |
+|                                                   |
+|  This Week vs Last Week                           |
+|  📈 Impressions   +24%  ▲                         |
+|  👤 Reach         +18%  ▲                         |
+|  ❤️ Reactions     +45%  ▲▲                        |
+|  💬 Comments      -12%  ▼                         |
+|                                                   |
+|  Velocity: 🔥 HIGH (Peak engagement phase)       |
++--------------------------------------------------+
+```
+
+**Database Changes:**
+Create a new table for historical snapshots:
+```sql
+CREATE TABLE post_analytics_history (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  post_id UUID REFERENCES posts(id),
+  snapshot_date DATE NOT NULL,
+  impressions INTEGER DEFAULT 0,
+  unique_impressions INTEGER DEFAULT 0,
+  reactions INTEGER DEFAULT 0,
+  comments INTEGER DEFAULT 0,
+  reshares INTEGER DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(post_id, snapshot_date)
+);
+```
+
+---
+
+## Implementation Priority
+
+| Priority | Feature | Complexity | Value |
+|----------|---------|------------|-------|
+| **P1** | Reaction breakdown | Medium | High - engagement quality insights |
+| **P1** | Video analytics | Medium | High - rich data for video posts |
+| **P2** | Post type indicators | Low | Medium - visual clarity |
+| **P2** | Comments/conversation depth | Medium | Medium - engagement quality |
+| **P3** | Link click analytics | Low | Medium - only for org posts |
+| **P3** | Time-based snapshots | High | High - requires scheduled jobs |
+
+---
+
+## Files to Create/Modify
+
+| File | Changes |
+|------|---------|
+| **Database Migration** | Add new columns to `posts` table, create `post_comments` and `post_analytics_history` tables |
+| `src/types/post.ts` | Add new fields: postType, reactionBreakdown, videoMetrics, etc. |
+| `src/hooks/usePosts.tsx` | Map new fields from database |
+| `src/hooks/useAnalytics.tsx` | Add aggregation for new metrics |
+| `supabase/functions/fetch-linkedin-posts/index.ts` | Fetch additional metrics from LinkedIn API |
+| `src/components/PostRow.tsx` | Add post type badge, reaction tooltip, video metrics |
+| `src/components/ReactionBreakdown.tsx` | **NEW** - Reaction mix visualization |
+| `src/components/VideoMetrics.tsx` | **NEW** - Video performance display |
+| `src/components/ConversationMetrics.tsx` | **NEW** - Comment/thread analysis |
+| `src/components/MomentumTracker.tsx` | **NEW** - Week-over-week comparison |
+| `src/pages/Analytics.tsx` | Add reaction mix chart, video stats section |
+| `src/pages/PublisherAnalytics.tsx` | Add per-publisher reaction mix, video stats, momentum |
+
+---
+
+## Visual Design System
+
+### New Icons & Colors
+```text
+Post Types:
+📝 Text     → FileText    → text-muted-foreground
+🖼️ Image    → Image       → text-blue-400
+🎬 Video    → Video       → text-purple-400
+🔗 Link     → Link2       → text-green-400
+
+Reactions:
+👍 Like        → ThumbsUp    → text-blue-500
+🎉 Celebrate   → PartyPopper → text-orange-500
+🤝 Support     → Handshake   → text-green-500
+❤️ Love        → Heart       → text-red-500
+💡 Insightful  → Lightbulb   → text-yellow-500
+🤔 Curious     → HelpCircle  → text-purple-500
+
+Trends:
+▲ Positive   → TrendingUp   → text-success
+▼ Negative   → TrendingDown → text-destructive
+━ Neutral    → Minus        → text-muted-foreground
+```
+
+### Component Styling (Techy Theme)
+All new components should follow the existing CyberCard styling:
+- Monospace fonts for numbers (`font-mono tabular-nums`)
+- Glow effects on stat cards (`stat-glow`)
+- Animated count-up on numbers (`CountUp` component)
+- Border gradient effects on focus/hover
+
+---
+
+## Edge Function API Calls
+
+### Reaction Breakdown Endpoint
+```typescript
+// GET reactions by type
+const reactionsUrl = `https://api.linkedin.com/rest/reactions?q=entity&entity=${postUrn}&projection=(elements*(reactionType,count))`;
+```
+
+### Video Analytics Endpoint
+```typescript
+// GET video statistics
+const videoUrl = `https://api.linkedin.com/rest/videoAnalytics?q=entity&entity=${videoUrn}`;
+```
+
+### Comments Endpoint
+```typescript
+// GET comments with threading
+const commentsUrl = `https://api.linkedin.com/rest/socialActions/${postUrn}/comments?projection=(elements*(id,actor,message,parentComment,created))`;
+```
+
+---
+
+## Summary
+
+This plan extends your existing techy analytics UI with rich LinkedIn data while maintaining the current architecture. The highest-value additions are:
+
+1. **Reaction breakdown** - Understand what types of engagement you're getting
+2. **Video analytics** - Deep insights for video content
+3. **Conversation metrics** - Measure discussion quality
+4. **Momentum tracking** - See if posts are growing or decaying
+
+All new metrics fit naturally into your existing `PostRow`, `Analytics`, and `PublisherAnalytics` pages, using the same visual language (CyberCards, CountUp animations, monospace typography).
+
