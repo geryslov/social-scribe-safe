@@ -2,51 +2,54 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
-export interface LinkedInPost {
+export interface AppPublishedPost {
   id: string;
-  publisher_id: string;
-  linkedin_post_urn: string;
-  content: string | null;
+  publisher_name: string;
+  content: string;
   published_at: string | null;
-  impressions: number;
-  reactions: number;
-  comments: number;
-  reshares: number;
+  linkedin_post_url: string | null;
+  linkedin_post_urn: string | null;
+  impressions: number | null;
+  reactions: number | null;
+  comments_count: number | null;
+  reshares: number | null;
   engagement_rate: number | null;
-  fetched_at: string;
-  created_at: string;
+  analytics_fetched_at: string | null;
 }
 
-export function useLinkedInPosts(publisherId?: string) {
+export function useLinkedInPosts(publisherId?: string, publisherName?: string) {
   const queryClient = useQueryClient();
 
-  // Query to fetch posts from database
+  // Query to fetch app-published posts with analytics from posts table
   const { data: posts = [], isLoading, error } = useQuery({
-    queryKey: ['linkedin-posts', publisherId],
+    queryKey: ['app-published-posts', publisherName],
     queryFn: async () => {
-      if (!publisherId) return [];
+      if (!publisherName) return [];
       
       const { data, error } = await supabase
-        .from('linkedin_posts')
-        .select('*')
-        .eq('publisher_id', publisherId)
+        .from('posts')
+        .select('id, publisher_name, content, published_at, linkedin_post_url, linkedin_post_urn, impressions, reactions, comments_count, reshares, engagement_rate, analytics_fetched_at')
+        .eq('publisher_name', publisherName)
+        .eq('publish_method', 'linkedin_api')
+        .not('linkedin_post_urn', 'is', null)
         .order('published_at', { ascending: false });
       
       if (error) throw error;
-      return data as LinkedInPost[];
+      return data as AppPublishedPost[];
     },
-    enabled: !!publisherId,
+    enabled: !!publisherName,
   });
 
   // Get last synced time
   const lastSyncedAt = posts.length > 0 
     ? posts.reduce((latest, post) => {
-        const postFetchedAt = new Date(post.fetched_at);
+        if (!post.analytics_fetched_at) return latest;
+        const postFetchedAt = new Date(post.analytics_fetched_at);
         return postFetchedAt > latest ? postFetchedAt : latest;
       }, new Date(0))
     : null;
 
-  // Mutation to sync posts from LinkedIn
+  // Mutation to sync analytics from LinkedIn
   const syncPosts = useMutation({
     mutationFn: async () => {
       if (!publisherId) throw new Error('Publisher ID is required');
@@ -61,12 +64,12 @@ export function useLinkedInPosts(publisherId?: string) {
       return data;
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['linkedin-posts', publisherId] });
-      toast.success(`Synced ${data.syncedCount || 0} posts from LinkedIn`);
+      queryClient.invalidateQueries({ queryKey: ['app-published-posts', publisherName] });
+      toast.success(`Synced analytics for ${data.syncedCount || 0} posts`);
     },
     onError: (error) => {
-      console.error('Error syncing LinkedIn posts:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to sync LinkedIn posts');
+      console.error('Error syncing LinkedIn analytics:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to sync LinkedIn analytics');
     },
   });
 
@@ -75,7 +78,7 @@ export function useLinkedInPosts(publisherId?: string) {
     totalPosts: posts.length,
     totalImpressions: posts.reduce((sum, p) => sum + (p.impressions || 0), 0),
     totalReactions: posts.reduce((sum, p) => sum + (p.reactions || 0), 0),
-    totalComments: posts.reduce((sum, p) => sum + (p.comments || 0), 0),
+    totalComments: posts.reduce((sum, p) => sum + (p.comments_count || 0), 0),
     avgEngagementRate: posts.length > 0 
       ? posts.reduce((sum, p) => sum + (p.engagement_rate || 0), 0) / posts.length
       : 0,

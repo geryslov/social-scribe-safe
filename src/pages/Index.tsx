@@ -303,6 +303,7 @@ const Index = () => {
               <div className="mb-8">
                 <LinkedInPostsPanel 
                   publisherId={currentDbPublisher.id}
+                  publisherName={currentDbPublisher.name}
                   isLinkedInConnected={currentDbPublisher.linkedin_connected ?? false}
                 />
               </div>

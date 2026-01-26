@@ -276,52 +276,73 @@ export type Database = {
       }
       posts: {
         Row: {
+          analytics_fetched_at: string | null
+          comments_count: number | null
           content: string
           created_at: string
           created_by: string
           document_id: string | null
+          engagement_rate: number | null
           id: string
+          impressions: number | null
           labels: string[] | null
           linkedin_post_url: string | null
+          linkedin_post_urn: string | null
           linkedin_url: string | null
           publish_method: string | null
           published_at: string | null
           publisher_name: string
           publisher_role: string | null
+          reactions: number | null
+          reshares: number | null
           scheduled_date: string
           status: string
           updated_at: string
         }
         Insert: {
+          analytics_fetched_at?: string | null
+          comments_count?: number | null
           content: string
           created_at?: string
           created_by: string
           document_id?: string | null
+          engagement_rate?: number | null
           id?: string
+          impressions?: number | null
           labels?: string[] | null
           linkedin_post_url?: string | null
+          linkedin_post_urn?: string | null
           linkedin_url?: string | null
           publish_method?: string | null
           published_at?: string | null
           publisher_name: string
           publisher_role?: string | null
+          reactions?: number | null
+          reshares?: number | null
           scheduled_date?: string
           status?: string
           updated_at?: string
         }
         Update: {
+          analytics_fetched_at?: string | null
+          comments_count?: number | null
           content?: string
           created_at?: string
           created_by?: string
           document_id?: string | null
+          engagement_rate?: number | null
           id?: string
+          impressions?: number | null
           labels?: string[] | null
           linkedin_post_url?: string | null
+          linkedin_post_urn?: string | null
           linkedin_url?: string | null
           publish_method?: string | null
           published_at?: string | null
           publisher_name?: string
           publisher_role?: string | null
+          reactions?: number | null
+          reshares?: number | null
           scheduled_date?: string
           status?: string
           updated_at?: string
