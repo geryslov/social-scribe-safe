@@ -1,106 +1,111 @@
 
-# Plan: LinkedIn-Style Post Card UI
+
+# Plan: Pull Company Information During LinkedIn SSO
 
 ## Overview
 
-This plan creates a new component that displays posts exactly like they appear on LinkedIn - with the author's profile picture, name, role, published date, post content, and a familiar engagement bar showing likes, comments, shares, and impressions.
+This plan adds the ability to fetch and store the company/organization a user works at when they log in via LinkedIn SSO. The company name and logo will be displayed alongside the publisher profile throughout the app.
 
 ---
 
-## Visual Design
+## Technical Challenge
 
-```text
-+------------------------------------------------------------------------+
-|                                                                         |
-|  [PROFILE IMAGE]  Publisher Name                            • 3h ago   |
-|                   Role/Title                                            |
-|                   👤 1st · [LinkedIn icon]                              |
-|                                                                         |
-+------------------------------------------------------------------------+
-|                                                                         |
-|  Post content goes here. This is the main text of the post that        |
-|  can span multiple lines and include hashtags like #leadership          |
-|  and mentions. The text wraps naturally and shows the full content     |
-|  or truncates with "...more" for long posts.                           |
-|                                                                         |
-|                               ...more                                   |
-|                                                                         |
-+------------------------------------------------------------------------+
-|                                                                         |
-|  👍 💡 ❤️  156  ·  24 comments  ·  8 reposts                            |
-|                                                                         |
-+------------------------------------------------------------------------+
-|                                                                         |
-|  [👍 Like]     [💬 Comment]     [🔄 Repost]     [📤 Send]              |
-|                                                                         |
-+------------------------------------------------------------------------+
-|                                                                         |
-|  📊 ANALYTICS                                                           |
-|  ┌─────────────┬─────────────┬─────────────┬─────────────┐             |
-|  │ 👁 1,234    │ 👤 892      │ 📈 2.4%     │ 🔗 View     │             |
-|  │ Impressions │ Reach       │ Engagement  │ on LinkedIn │             |
-|  └─────────────┴─────────────┴─────────────┴─────────────┘             |
-|                                                                         |
-+------------------------------------------------------------------------+
-```
+The LinkedIn API has **two ways** to get company information, depending on your app's permissions:
+
+### Option A: User's Current Position (Lite Profile)
+Requires the `r_liteprofile` scope (part of Sign In with LinkedIn product). This lets you call the `/v2/me` endpoint with projections to get the user's current positions and company names.
+
+### Option B: Organizations User Manages (Marketing API)
+Requires `r_organization_admin` or `rw_organization_admin` scope. This returns organizations where the user is an administrator - more useful if your users are posting on behalf of their companies.
+
+**Current State:** Your app already has `openid`, `profile`, `email`, `w_member_social`, `r_member_postAnalytics`, `r_basicprofile` scopes. Getting company information will require adding **`r_liteprofile`** (for personal company info) or organizational scopes (for company pages they manage).
+
+---
+
+## Recommended Approach
+
+Since your app is for LinkedIn posting/analytics, I recommend fetching **both**:
+1. **User's Current Company** - Where they work (for display on profile)
+2. **Organizations They Manage** - Company pages they can post to (for future company page posting feature)
 
 ---
 
 ## Implementation Details
 
-### 1. New Component: LinkedInPostCard
+### 1. Database Changes
 
-Create a new reusable component that mimics LinkedIn's post format:
+Add new columns to the `publishers` table:
 
-**Key Features:**
-- Profile picture (circular, like LinkedIn)
-- Author name and role/headline
-- Time since published ("3h ago", "2d ago", etc.)
-- Full post content with "...more" expansion
-- Reaction icons row showing top reaction types
-- Engagement summary (likes, comments, reposts)
-- Action buttons row (matching LinkedIn's style)
-- Analytics panel below (your custom addition)
-
-**Location:** `src/components/LinkedInPostCard.tsx`
-
-### 2. Component Structure
-
-```typescript
-interface LinkedInPostCardProps {
-  post: Post;
-  showAnalytics?: boolean;  // Toggle analytics panel
-  variant?: 'feed' | 'detail';  // Feed = compact, Detail = expanded
-  onViewOnLinkedIn?: () => void;
-}
+```sql
+ALTER TABLE publishers ADD COLUMN company_name TEXT;
+ALTER TABLE publishers ADD COLUMN company_logo_url TEXT;
+ALTER TABLE publishers ADD COLUMN headline TEXT;  -- LinkedIn headline/title
+ALTER TABLE publishers ADD COLUMN managed_organizations JSONB;  -- Future: pages they can manage
 ```
 
-### 3. Sub-Components
+### 2. Update OAuth Scopes
 
-| Component | Purpose |
-|-----------|---------|
-| `PostHeader` | Avatar, name, role, timestamp, LinkedIn badge |
-| `PostContent` | Text with "...more" truncation |
-| `ReactionSummary` | 👍💡❤️ icons + count |
-| `EngagementBar` | Comments · Reposts counts |
-| `ActionButtons` | Like, Comment, Repost, Send buttons |
-| `AnalyticsPanel` | Impressions, Reach, Engagement rate |
+Modify the SSO flow to request additional scopes:
 
-### 4. Time Formatting
+```typescript
+const scopes = [
+  'openid',
+  'profile', 
+  'email',
+  'w_member_social',
+  'r_member_postAnalytics',
+  'r_basicprofile',
+  'r_liteprofile',  // NEW: Access to positions/company info
+];
+```
 
-LinkedIn-style relative time display:
-- Under 1 hour: "45m ago"
-- Under 24 hours: "3h ago"
-- Under 7 days: "2d ago"
-- Under 30 days: "2w ago"
-- Older: "Jan 15, 2026"
+### 3. Fetch Company Information
 
-### 5. Reaction Icons Display
+After getting the access token, call LinkedIn's profile API with projections to get position data:
 
-Show top 3 reaction types as small icons:
-- If mostly likes: 👍
-- Mix of reactions: 👍💡❤️
-- Uses data from `reactionBreakdown` field
+```typescript
+// Fetch detailed profile with positions
+const profileResponse = await fetch(
+  'https://api.linkedin.com/v2/me?projection=(id,firstName,lastName,headline,profilePicture(displayImage~:playableStreams),positions)',
+  {
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'X-Restli-Protocol-Version': '2.0.0',
+    },
+  }
+);
+
+const profile = await profileResponse.json();
+const headline = profile.headline?.localized?.['en_US'];
+const currentPosition = profile.positions?.elements?.[0];
+const companyName = currentPosition?.companyName?.localized?.['en_US'];
+```
+
+### 4. Store in Publisher Profile
+
+Update the publisher creation/update to include the new fields:
+
+```typescript
+// In linkedin-auth/index.ts callback-sso handler
+await supabase.from('publishers').upsert({
+  // existing fields...
+  headline: headline || null,
+  company_name: companyName || null,
+  company_logo_url: companyLogoUrl || null,
+});
+```
+
+### 5. Display in UI
+
+Update `LinkedInPostCard` and profile displays to show company info:
+
+```text
++----------------------------------------------------------+
+|  [AVATAR]  Publisher Name                    • 3h ago    |
+|            CMO at TechCorp Inc.                          |
+|            [TechCorp Logo] TechCorp Inc.                 |
++----------------------------------------------------------+
+```
 
 ---
 
@@ -108,100 +113,107 @@ Show top 3 reaction types as small icons:
 
 | File | Action | Description |
 |------|--------|-------------|
-| `src/components/LinkedInPostCard.tsx` | **NEW** | Main card component |
-| `src/components/LinkedInPostCard.css` | **NEW** | LinkedIn-specific styles |
-| `src/lib/timeUtils.ts` | **NEW** | Relative time formatting |
-| `src/pages/Analytics.tsx` | Modify | Option to show posts as cards |
-| `src/pages/Posts.tsx` | Modify | Add toggle between row/card view |
+| **Database Migration** | Create | Add `company_name`, `company_logo_url`, `headline` columns |
+| `supabase/functions/linkedin-auth/index.ts` | Modify | Add scope, fetch profile data with positions |
+| `src/components/LinkedInPostCard.tsx` | Modify | Display headline and company info |
+| `src/components/PublisherSidebar.tsx` | Modify | Show company in publisher list |
+| `src/hooks/usePublishers.tsx` | Modify | Include new fields in data fetching |
 
 ---
 
-## Styling Approach
+## LinkedIn API Details
 
-The component will blend LinkedIn's familiar design with your existing techy theme:
+### Profile Endpoint with Projections
 
-**LinkedIn-Authentic Elements:**
-- Circular profile photos
-- Standard LinkedIn font weights and spacing
-- Familiar action button layout
-- Reaction icon stacking
+The `/v2/me` endpoint supports projections to fetch nested data:
 
-**Your Techy Theme Additions:**
-- Glowing borders on hover
-- CyberCard styling for analytics panel
-- Monospace fonts for numbers
-- Animated CountUp for metrics
-
----
-
-## Usage Locations
-
-### Option A: New "Feed View" on Posts Page
-
-Add a toggle button to switch between:
-- **List View** (current PostRow)
-- **Feed View** (new LinkedInPostCard)
-
-```text
-[All Posts]                    [List ▼] [Feed ▣]
+```
+GET /v2/me?projection=(id,firstName,lastName,headline,profilePicture(displayImage~:playableStreams))
 ```
 
-### Option B: Replace TopPostsLeaderboard
+**Response includes:**
+- `headline` - User's LinkedIn headline (e.g., "CMO at TechCorp | Marketing Leader")
+- Profile picture in multiple resolutions
+- First/last name with localization
 
-Use LinkedInPostCard in the Analytics dashboard to show top performing posts in LinkedIn format instead of the current condensed list.
+### Positions Endpoint (if available)
 
-### Option C: New Dedicated Feed Page
+If `r_liteprofile` provides access:
 
-Create `/feed` route showing all published posts in LinkedIn card format with infinite scroll.
+```
+GET /v2/positions?q=member
+```
 
----
-
-## Technical Details
-
-### Relative Time Helper
-
-```typescript
-// src/lib/timeUtils.ts
-export function getRelativeTime(date: Date): string {
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffMins = Math.floor(diffMs / 60000);
-  const diffHours = Math.floor(diffMs / 3600000);
-  const diffDays = Math.floor(diffMs / 86400000);
-  const diffWeeks = Math.floor(diffDays / 7);
-  
-  if (diffMins < 60) return `${diffMins}m`;
-  if (diffHours < 24) return `${diffHours}h`;
-  if (diffDays < 7) return `${diffDays}d`;
-  if (diffWeeks < 4) return `${diffWeeks}w`;
-  return format(date, 'MMM d, yyyy');
+Returns array of positions with company details:
+```json
+{
+  "elements": [{
+    "company": "urn:li:organization:123456",
+    "companyName": { "localized": { "en_US": "TechCorp Inc." }},
+    "title": { "localized": { "en_US": "Chief Marketing Officer" }},
+    "current": true
+  }]
 }
 ```
 
-### Reaction Icons Stack
+---
 
-Display up to 3 reaction type icons based on which reactions the post received:
+## Important Considerations
+
+### LinkedIn App Permissions
+
+Your LinkedIn Developer app may need additional products enabled:
+
+1. **Sign In with LinkedIn using OpenID Connect** - Already have this (for SSO)
+2. **Share on LinkedIn** - Already have this (`w_member_social`)
+3. **Marketing Developer Platform** - May be needed for organization access
+
+To check/add permissions:
+1. Go to LinkedIn Developer Console
+2. Select your app
+3. Go to "Products" tab
+4. Request "Sign In with LinkedIn" if not already approved
+
+### Scope Availability
+
+If `r_liteprofile` isn't available for your app, we can fall back to parsing the headline text:
+- Headlines often contain company names: "CMO at TechCorp"
+- Use regex to extract: `/at\s+(.+?)(?:\||$)/`
+
+---
+
+## Alternative: Parse Headline
+
+If the profile positions API isn't accessible, we can extract company from the headline:
 
 ```typescript
-const getTopReactions = (breakdown: ReactionBreakdown) => {
-  return Object.entries(breakdown)
-    .filter(([_, count]) => count > 0)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 3)
-    .map(([type]) => type);
-};
+// Fallback: parse company from headline
+function extractCompanyFromHeadline(headline: string): string | null {
+  const patterns = [
+    /(?:at|@)\s+([^|•·]+)/i,           // "CMO at TechCorp | ..."
+    /,\s+([^|•·,]+)$/i,                 // "CMO, TechCorp"
+    /(?:^|\|)\s*([A-Z][^|•·]+)\s*$/i,  // "Marketing | TechCorp"
+  ];
+  
+  for (const pattern of patterns) {
+    const match = headline.match(pattern);
+    if (match) return match[1].trim();
+  }
+  return null;
+}
 ```
 
 ---
 
 ## Summary
 
-This implementation creates an authentic LinkedIn-style post card that:
+This implementation will:
 
-1. **Looks familiar** - Users immediately recognize the LinkedIn format
-2. **Shows rich data** - Profile photo, name, role, content, reactions
-3. **Adds value** - Includes analytics panel with impressions, reach, engagement
-4. **Fits your theme** - Blends LinkedIn's design with your techy aesthetic
-5. **Is flexible** - Can be used on Posts page, Analytics, or a new Feed page
+1. **Add database columns** for company info and headline
+2. **Expand OAuth scopes** to request profile/position data
+3. **Fetch company details** during SSO login
+4. **Store and display** company name in the UI
+5. **Fallback parsing** if API access is limited
 
-The component will make your analytics dashboard feel more connected to the actual LinkedIn experience while providing the detailed metrics that matter.
+The result: Every publisher profile will show their company affiliation, making the LinkedIn-style cards even more authentic and providing useful context about who's posting.
+
