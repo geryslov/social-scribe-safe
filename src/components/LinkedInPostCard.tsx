@@ -11,6 +11,8 @@ interface LinkedInPostCardProps {
   showAnalytics?: boolean;
   variant?: 'feed' | 'detail';
   className?: string;
+  publisherHeadline?: string | null;
+  publisherCompany?: string | null;
 }
 
 // Reaction type to emoji mapping
@@ -38,7 +40,9 @@ export function LinkedInPostCard({
   post, 
   showAnalytics = true, 
   variant = 'feed',
-  className 
+  className,
+  publisherHeadline,
+  publisherCompany,
 }: LinkedInPostCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   
@@ -58,6 +62,9 @@ export function LinkedInPostCard({
   
   const publishedDate = post.publishedAt || post.scheduledDate;
   const linkedInUrl = post.linkedinPostUrl || post.linkedinUrl;
+  
+  // Use publisher headline if available, otherwise fall back to role
+  const displaySubtitle = publisherHeadline || post.publisherRole;
 
   return (
     <div className={cn(
@@ -80,9 +87,15 @@ export function LinkedInPostCard({
                 <h3 className="font-semibold text-foreground leading-tight">
                   {post.publisherName}
                 </h3>
-                {post.publisherRole && (
+                {displaySubtitle && (
                   <p className="text-sm text-muted-foreground line-clamp-1">
-                    {post.publisherRole}
+                    {displaySubtitle}
+                  </p>
+                )}
+                {publisherCompany && !displaySubtitle?.toLowerCase().includes(publisherCompany.toLowerCase()) && (
+                  <p className="text-xs text-muted-foreground/70 line-clamp-1 flex items-center gap-1">
+                    <span className="w-1 h-1 rounded-full bg-muted-foreground/50" />
+                    {publisherCompany}
                   </p>
                 )}
               </div>

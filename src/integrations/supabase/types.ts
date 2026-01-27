@@ -518,7 +518,10 @@ export type Database = {
       publishers: {
         Row: {
           avatar_url: string | null
+          company_logo_url: string | null
+          company_name: string | null
           created_at: string
+          headline: string | null
           id: string
           linkedin_access_token: string | null
           linkedin_connected: boolean | null
@@ -526,6 +529,7 @@ export type Database = {
           linkedin_refresh_token: string | null
           linkedin_token_expires_at: string | null
           linkedin_url: string | null
+          managed_organizations: Json | null
           name: string
           role: string | null
           updated_at: string
@@ -533,7 +537,10 @@ export type Database = {
         }
         Insert: {
           avatar_url?: string | null
+          company_logo_url?: string | null
+          company_name?: string | null
           created_at?: string
+          headline?: string | null
           id?: string
           linkedin_access_token?: string | null
           linkedin_connected?: boolean | null
@@ -541,6 +548,7 @@ export type Database = {
           linkedin_refresh_token?: string | null
           linkedin_token_expires_at?: string | null
           linkedin_url?: string | null
+          managed_organizations?: Json | null
           name: string
           role?: string | null
           updated_at?: string
@@ -548,7 +556,10 @@ export type Database = {
         }
         Update: {
           avatar_url?: string | null
+          company_logo_url?: string | null
+          company_name?: string | null
           created_at?: string
+          headline?: string | null
           id?: string
           linkedin_access_token?: string | null
           linkedin_connected?: boolean | null
@@ -556,6 +567,7 @@ export type Database = {
           linkedin_refresh_token?: string | null
           linkedin_token_expires_at?: string | null
           linkedin_url?: string | null
+          managed_organizations?: Json | null
           name?: string
           role?: string | null
           updated_at?: string

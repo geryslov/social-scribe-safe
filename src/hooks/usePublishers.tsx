@@ -16,6 +16,11 @@ export interface Publisher {
   linkedin_connected: boolean | null;
   linkedin_member_id: string | null;
   linkedin_token_expires_at: string | null;
+  // Profile fields from LinkedIn
+  headline: string | null;
+  company_name: string | null;
+  company_logo_url: string | null;
+  managed_organizations: Record<string, unknown> | null;
 }
 
 export function usePublishers() {

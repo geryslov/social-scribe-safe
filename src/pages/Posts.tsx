@@ -364,14 +364,19 @@ const Posts = () => {
                 ))
               ) : (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                  {activePosts.map((post) => (
-                    <LinkedInPostCard
-                      key={post.id}
-                      post={post}
-                      showAnalytics={false}
-                      variant="feed"
-                    />
-                  ))}
+                  {activePosts.map((post) => {
+                    const publisher = dbPublishers.find(p => p.name === post.publisherName);
+                    return (
+                      <LinkedInPostCard
+                        key={post.id}
+                        post={post}
+                        showAnalytics={false}
+                        variant="feed"
+                        publisherHeadline={publisher?.headline}
+                        publisherCompany={publisher?.company_name}
+                      />
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -399,14 +404,19 @@ const Posts = () => {
                   ))
                 ) : (
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    {publishedPosts.map((post) => (
-                      <LinkedInPostCard
-                        key={post.id}
-                        post={post}
-                        showAnalytics={true}
-                        variant="feed"
-                      />
-                    ))}
+                    {publishedPosts.map((post) => {
+                      const publisher = dbPublishers.find(p => p.name === post.publisherName);
+                      return (
+                        <LinkedInPostCard
+                          key={post.id}
+                          post={post}
+                          showAnalytics={true}
+                          variant="feed"
+                          publisherHeadline={publisher?.headline}
+                          publisherCompany={publisher?.company_name}
+                        />
+                      );
+                    })}
                   </div>
                 )}
               </div>

@@ -12,6 +12,23 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Helper function to extract company name from LinkedIn headline
+function extractCompanyFromHeadline(headline: string): string | null {
+  const patterns = [
+    /(?:at|@)\s+([^|•·,]+)/i,           // "CMO at TechCorp | ..."
+    /,\s+([^|•·,]+)$/i,                 // "CMO, TechCorp"
+    /(?:^|\|)\s*([A-Z][^|•·]+)\s*$/i,   // "Marketing | TechCorp"
+  ];
+  
+  for (const pattern of patterns) {
+    const match = headline.match(pattern);
+    if (match) {
+      return match[1].trim();
+    }
+  }
+  return null;
+}
+
 const LINKEDIN_CLIENT_ID = Deno.env.get('LINKEDIN_CLIENT_ID')!;
 const LINKEDIN_CLIENT_SECRET = Deno.env.get('LINKEDIN_CLIENT_SECRET')!;
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -172,6 +189,37 @@ Deno.serve(async (req) => {
       const name = userInfo.name || userInfo.given_name || 'LinkedIn User';
       const avatarUrl = userInfo.picture;
 
+      // Fetch additional profile data (headline) from the /v2/me endpoint
+      let headline: string | null = null;
+      let companyName: string | null = null;
+      
+      try {
+        const profileResponse = await fetch('https://api.linkedin.com/v2/me?projection=(id,localizedFirstName,localizedLastName,localizedHeadline)', {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'X-Restli-Protocol-Version': '2.0.0',
+            'LinkedIn-Version': '202601',
+          },
+        });
+        
+        if (profileResponse.ok) {
+          const profileData = await profileResponse.json();
+          headline = profileData.localizedHeadline || null;
+          console.log('Profile data received:', { headline });
+          
+          // Try to extract company name from headline
+          if (headline) {
+            companyName = extractCompanyFromHeadline(headline);
+            console.log('Extracted company:', companyName);
+          }
+        } else {
+          console.log('Could not fetch extended profile data, continuing without headline');
+        }
+      } catch (profileError) {
+        console.log('Error fetching profile data:', profileError);
+        // Continue without headline - not critical
+      }
+
       if (!email) {
         console.error('No email in user info');
         return new Response(
@@ -282,6 +330,8 @@ Deno.serve(async (req) => {
             linkedin_member_id: linkedinMemberId,
             linkedin_connected: true,
             avatar_url: avatarUrl || undefined,
+            headline: headline || undefined,
+            company_name: companyName || undefined,
           })
           .eq('id', existingPublisher.id);
       } else {
@@ -298,6 +348,8 @@ Deno.serve(async (req) => {
             linkedin_member_id: linkedinMemberId,
             linkedin_connected: true,
             avatar_url: avatarUrl || null,
+            headline: headline || null,
+            company_name: companyName || null,
           });
 
         if (insertError) {
