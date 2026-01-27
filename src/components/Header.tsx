@@ -5,6 +5,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import wisorLogo from '@/assets/wisor-logo.svg';
 import { cn } from '@/lib/utils';
 import { useDocuments } from '@/hooks/useDocuments';
+import { WorkspaceSwitcher } from '@/components/WorkspaceSwitcher';
 
 export function Header() {
   const { user, isAdmin, signOut } = useAuth();
@@ -43,6 +44,9 @@ export function Header() {
                 className="h-8 w-auto"
               />
             </div>
+
+            {/* Workspace Switcher */}
+            {user && <WorkspaceSwitcher />}
 
             {/* Navigation */}
             <nav className="flex items-center gap-1">

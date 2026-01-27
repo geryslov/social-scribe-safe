@@ -65,9 +65,10 @@ Deno.serve(async (req) => {
     // GET /start-sso - Begin SSO OAuth flow (no publisher_id needed)
     if (req.method === 'GET' && path === 'start-sso') {
       const returnUrl = url.searchParams.get('return_url') || '/';
+      const inviteToken = url.searchParams.get('invite') || null;
       
-      // State includes return URL
-      const state = btoa(JSON.stringify({ type: 'sso', returnUrl }));
+      // State includes return URL and optional invite token
+      const state = btoa(JSON.stringify({ type: 'sso', returnUrl, inviteToken }));
       
       // Use only scopes that are authorized for this LinkedIn app
       // Note: r_member_social requires Community Management API product
@@ -87,6 +88,9 @@ Deno.serve(async (req) => {
       authUrl.searchParams.set('scope', scopes.join(' '));
 
       console.log('Starting SSO OAuth flow, redirect to:', authUrl.toString());
+      if (inviteToken) {
+        console.log('Invite token present:', inviteToken);
+      }
 
       return new Response(null, {
         status: 302,
@@ -123,7 +127,7 @@ Deno.serve(async (req) => {
         );
       }
 
-      let stateData: { type: string; returnUrl: string };
+      let stateData: { type: string; returnUrl: string; inviteToken?: string | null };
       try {
         stateData = JSON.parse(atob(state));
       } catch {
@@ -131,6 +135,34 @@ Deno.serve(async (req) => {
           `<html><body><script>window.opener?.postMessage({ type: 'linkedin-sso-error', error: 'Invalid state' }, '*'); window.close();</script></body></html>`,
           { headers: { 'Content-Type': 'text/html' } }
         );
+      }
+
+      // If invite token present, validate workspace
+      let workspaceId: string | null = null;
+      let workspaceSlug: string | null = null;
+      
+      if (stateData.inviteToken) {
+        console.log('Validating invite token:', stateData.inviteToken);
+        const supabaseForWorkspace = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+        
+        const { data: workspace, error: workspaceError } = await supabaseForWorkspace
+          .from('workspaces')
+          .select('id, name, slug, invite_enabled')
+          .eq('invite_token', stateData.inviteToken)
+          .eq('invite_enabled', true)
+          .maybeSingle();
+        
+        if (workspaceError || !workspace) {
+          console.error('Invalid invite token:', workspaceError);
+          return new Response(
+            `<html><body><script>window.opener?.postMessage({ type: 'linkedin-sso-error', error: 'Invalid or expired invite link' }, '*'); window.close();</script></body></html>`,
+            { headers: { 'Content-Type': 'text/html' } }
+          );
+        }
+        
+        workspaceId = workspace.id;
+        workspaceSlug = workspace.slug;
+        console.log('Valid workspace found:', workspace.name);
       }
 
       // Exchange code for access token
@@ -321,19 +353,38 @@ Deno.serve(async (req) => {
       if (existingPublisher) {
         // Update existing publisher
         console.log('Updating existing publisher:', existingPublisher.id);
+        const updateData: Record<string, unknown> = {
+          linkedin_access_token: accessToken,
+          linkedin_refresh_token: refreshToken || null,
+          linkedin_token_expires_at: expiresAt,
+          linkedin_member_id: linkedinMemberId,
+          linkedin_connected: true,
+          avatar_url: avatarUrl || undefined,
+          headline: headline || undefined,
+          company_name: companyName || undefined,
+        };
+        
+        // Assign to workspace if invite token was used and publisher not already in a workspace
+        if (workspaceId) {
+          updateData.workspace_id = workspaceId;
+        }
+        
         await supabase
           .from('publishers')
-          .update({
-            linkedin_access_token: accessToken,
-            linkedin_refresh_token: refreshToken || null,
-            linkedin_token_expires_at: expiresAt,
-            linkedin_member_id: linkedinMemberId,
-            linkedin_connected: true,
-            avatar_url: avatarUrl || undefined,
-            headline: headline || undefined,
-            company_name: companyName || undefined,
-          })
+          .update(updateData)
           .eq('id', existingPublisher.id);
+          
+        // Add to workspace_members if invite token was used
+        if (workspaceId) {
+          await supabase
+            .from('workspace_members')
+            .upsert({
+              workspace_id: workspaceId,
+              user_id: userId,
+              role: 'member',
+              joined_via: 'invite_link',
+            }, { onConflict: 'workspace_id,user_id' });
+        }
       } else {
         // Create new publisher
         console.log('Creating new publisher for user:', userId);
@@ -350,11 +401,24 @@ Deno.serve(async (req) => {
             avatar_url: avatarUrl || null,
             headline: headline || null,
             company_name: companyName || null,
+            workspace_id: workspaceId,
           });
 
         if (insertError) {
           console.error('Failed to create publisher:', insertError);
           // Don't fail the SSO - user is still created
+        }
+        
+        // Add to workspace_members if invite token was used
+        if (workspaceId) {
+          await supabase
+            .from('workspace_members')
+            .upsert({
+              workspace_id: workspaceId,
+              user_id: userId,
+              role: 'member',
+              joined_via: 'invite_link',
+            }, { onConflict: 'workspace_id,user_id' });
         }
       }
 
