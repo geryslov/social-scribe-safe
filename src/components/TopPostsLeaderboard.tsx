@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { TopPost } from '@/hooks/useAnalytics';
 import { LinkedInPostCard } from '@/components/LinkedInPostCard';
 import { Post } from '@/types/post';
+import { usePublishers } from '@/hooks/usePublishers';
 
 interface TopPostsLeaderboardProps {
   posts: TopPost[];
@@ -29,6 +30,11 @@ function topPostToPost(topPost: TopPost): Post {
 }
 
 export function TopPostsLeaderboard({ posts, isLoading }: TopPostsLeaderboardProps) {
+  const { publishers } = usePublishers();
+  
+  const getPublisherData = (publisherName: string) => {
+    return publishers.find(p => p.name === publisherName);
+  };
   if (isLoading) {
     return (
       <Card>
@@ -83,11 +89,18 @@ export function TopPostsLeaderboard({ posts, isLoading }: TopPostsLeaderboardPro
             <div className="absolute -left-2 -top-2 z-10 w-6 h-6 rounded-full bg-warning text-warning-foreground flex items-center justify-center text-xs font-bold shadow-lg">
               {index + 1}
             </div>
-            <LinkedInPostCard 
-              post={topPostToPost(post)} 
-              variant="feed"
-              showAnalytics={true}
-            />
+            {(() => {
+              const publisher = getPublisherData(post.publisherName);
+              return (
+                <LinkedInPostCard 
+                  post={topPostToPost(post)} 
+                  variant="feed"
+                  showAnalytics={true}
+                  publisherHeadline={publisher?.headline}
+                  publisherCompany={publisher?.company_name}
+                />
+              );
+            })()}
           </div>
         ))}
       </CardContent>

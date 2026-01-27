@@ -179,6 +179,15 @@ export function PublisherSidebar({ publishers, selectedPublisher, onSelectPublis
                     />
                     <div className="flex-1 min-w-0 text-left">
                       <p className="font-semibold text-sm truncate text-white group-hover:text-white transition-colors">{publisher.name}</p>
+                      {(() => {
+                        const dbPub = getPublisherByName(publisher.name);
+                        if (dbPub?.headline) {
+                          return (
+                            <p className="text-xs text-[#A5A7C8] truncate">{dbPub.headline}</p>
+                          );
+                        }
+                        return null;
+                      })()}
                       <div className="flex items-center gap-2 text-xs text-[#A5A7C8]">
                         <span>{publisher.posts.length} posts</span>
                         {doneCount > 0 && (
