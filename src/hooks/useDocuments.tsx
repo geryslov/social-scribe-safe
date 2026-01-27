@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Document, DocumentComment, DocumentStatus } from '@/types/document';
 import { toast } from 'sonner';
 import { useAuth } from './useAuth';
+import { useWorkspace } from './useWorkspace';
 
 interface DbDocument {
   id: string;
@@ -18,6 +19,7 @@ interface DbDocument {
   approved_by: string | null;
   approved_at: string | null;
   notes: string | null;
+  workspace_id: string | null;
 }
 
 interface DbComment {
@@ -57,18 +59,30 @@ const mapDbToComment = (db: DbComment): DocumentComment => ({
 export function useDocuments() {
   const queryClient = useQueryClient();
   const { user, isAdmin } = useAuth();
+  const { currentWorkspace } = useWorkspace();
 
   const { data: documents = [], isLoading } = useQuery({
-    queryKey: ['documents'],
+    queryKey: ['documents', currentWorkspace?.id],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('documents')
         .select('*')
         .order('created_at', { ascending: false });
       
+      // Filter by current workspace
+      if (currentWorkspace) {
+        query = query.eq('workspace_id', currentWorkspace.id);
+      } else {
+        // If no workspace selected, show nothing (empty state)
+        return [];
+      }
+      
+      const { data, error } = await query;
+      
       if (error) throw error;
       return (data as DbDocument[]).map(mapDbToDocument);
     },
+    enabled: !!currentWorkspace,
   });
 
   const createDocument = useMutation({
@@ -79,6 +93,7 @@ export function useDocuments() {
       fileUrl?: string;
     }) => {
       if (!user) throw new Error('Not authenticated');
+      if (!currentWorkspace) throw new Error('No workspace selected');
       
       const { data: result, error } = await supabase
         .from('documents')
@@ -90,6 +105,7 @@ export function useDocuments() {
           file_url: data.fileUrl || null,
           created_by: user.id,
           status: 'draft',
+          workspace_id: currentWorkspace.id,
         })
         .select()
         .single();

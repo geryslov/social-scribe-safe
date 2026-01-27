@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Post } from '@/types/post';
 import { useAuth } from './useAuth';
+import { useWorkspace } from './useWorkspace';
 import { toast } from 'sonner';
 
 type DbPost = {
@@ -17,6 +18,7 @@ type DbPost = {
   created_at: string;
   updated_at: string;
   document_id: string | null;
+  workspace_id: string | null;
   // LinkedIn publishing tracking
   published_at: string | null;
   linkedin_post_url: string | null;
@@ -123,24 +125,37 @@ function mapDbToPost(dbPost: DbPost): Post {
 
 export function usePosts() {
   const { user, isAdmin } = useAuth();
+  const { currentWorkspace } = useWorkspace();
   const queryClient = useQueryClient();
 
   const { data: posts = [], isLoading } = useQuery({
-    queryKey: ['posts'],
+    queryKey: ['posts', currentWorkspace?.id],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('posts')
         .select('*')
         .order('scheduled_date', { ascending: false });
       
+      // Filter by current workspace
+      if (currentWorkspace) {
+        query = query.eq('workspace_id', currentWorkspace.id);
+      } else {
+        // If no workspace selected, show nothing (empty state)
+        return [];
+      }
+      
+      const { data, error } = await query;
+      
       if (error) throw error;
       return (data as DbPost[]).map(mapDbToPost);
     },
+    enabled: !!currentWorkspace,
   });
 
   const createPost = useMutation({
     mutationFn: async (post: Omit<Post, 'id'>) => {
       if (!user) throw new Error('Must be logged in');
+      if (!currentWorkspace) throw new Error('No workspace selected');
       
       const { data, error } = await supabase
         .from('posts')
@@ -153,6 +168,7 @@ export function usePosts() {
           linkedin_url: post.linkedinUrl || null,
           created_by: user.id,
           document_id: post.documentId || null,
+          workspace_id: currentWorkspace.id,
         })
         .select()
         .single();
@@ -268,7 +284,7 @@ export function usePosts() {
       if (status === 'done' && publisherName) {
         supabase.functions.invoke('notify-slack', {
           body: {
-            workspaceName: 'Wisor',
+            workspaceName: currentWorkspace?.name || 'Wisor',
             publisherName,
             publishedAt: new Date().toISOString(),
             workspaceUrl: window.location.origin,
