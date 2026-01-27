@@ -9,10 +9,12 @@ import { Header } from '@/components/Header';
 import { PublisherSidebar } from '@/components/PublisherSidebar';
 import { PostRow } from '@/components/PostRow';
 import { PostModal } from '@/components/PostModal';
+import { LinkedInPostCard } from '@/components/LinkedInPostCard';
 import { BulkUploadModal } from '@/components/BulkUploadModal';
 
 import { Button } from '@/components/ui/button';
-import { Plus, Inbox, ExternalLink, Loader2, Upload, Users, Eye, Heart, TrendingUp } from 'lucide-react';
+import { Plus, Inbox, ExternalLink, Loader2, Upload, Users, Eye, Heart, TrendingUp, LayoutList, LayoutGrid } from 'lucide-react';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useAnalytics } from '@/hooks/useAnalytics';
 import { CountUp } from '@/components/CountUp';
 import { Card, CardContent } from '@/components/ui/card';
@@ -33,6 +35,7 @@ const Posts = () => {
   const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false);
   const [editingPost, setEditingPost] = useState<Post | null>(null);
   const [preselectedPublisher, setPreselectedPublisher] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<'list' | 'feed'>('list');
 
   // Redirect to auth if not logged in
   useEffect(() => {
@@ -309,10 +312,24 @@ const Posts = () => {
             
             {/* Active Posts Section */}
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-foreground">
-                {selectedPublisher ? 'Upcoming Posts' : 'All Active Posts'}
-                <span className="ml-2 text-sm font-normal text-muted-foreground">({activePosts.length})</span>
-              </h3>
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-foreground">
+                  {selectedPublisher ? 'Upcoming Posts' : 'All Active Posts'}
+                  <span className="ml-2 text-sm font-normal text-muted-foreground">({activePosts.length})</span>
+                </h3>
+                
+                {/* View Toggle */}
+                <ToggleGroup type="single" value={viewMode} onValueChange={(v) => v && setViewMode(v as 'list' | 'feed')}>
+                  <ToggleGroupItem value="list" aria-label="List view" className="gap-1.5">
+                    <LayoutList className="h-4 w-4" />
+                    <span className="hidden sm:inline text-xs">List</span>
+                  </ToggleGroupItem>
+                  <ToggleGroupItem value="feed" aria-label="Feed view" className="gap-1.5">
+                    <LayoutGrid className="h-4 w-4" />
+                    <span className="hidden sm:inline text-xs">Feed</span>
+                  </ToggleGroupItem>
+                </ToggleGroup>
+              </div>
               
               {activePosts.length === 0 ? (
                 <div className="text-center py-16 card-elevated animate-fade-in">
@@ -332,7 +349,7 @@ const Posts = () => {
                     </Button>
                   )}
                 </div>
-              ) : (
+              ) : viewMode === 'list' ? (
                 activePosts.map((post, index) => (
                   <PostRow
                     key={post.id}
@@ -345,6 +362,17 @@ const Posts = () => {
                     isAdmin={isAdmin}
                   />
                 ))
+              ) : (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  {activePosts.map((post) => (
+                    <LinkedInPostCard
+                      key={post.id}
+                      post={post}
+                      showAnalytics={false}
+                      variant="feed"
+                    />
+                  ))}
+                </div>
               )}
             </div>
 
@@ -356,18 +384,31 @@ const Posts = () => {
                   <span className="ml-2 text-sm font-normal text-muted-foreground">({publishedPosts.length})</span>
                 </h3>
                 
-                {publishedPosts.map((post, index) => (
-                  <PostRow
-                    key={post.id}
-                    post={post}
-                    onEdit={handleEdit}
-                    onDelete={handleDelete}
-                    onStatusChange={handleStatusChange}
-                    showPublisher={selectedPublisher === null}
-                    index={index}
-                    isAdmin={isAdmin}
-                  />
-                ))}
+                {viewMode === 'list' ? (
+                  publishedPosts.map((post, index) => (
+                    <PostRow
+                      key={post.id}
+                      post={post}
+                      onEdit={handleEdit}
+                      onDelete={handleDelete}
+                      onStatusChange={handleStatusChange}
+                      showPublisher={selectedPublisher === null}
+                      index={index}
+                      isAdmin={isAdmin}
+                    />
+                  ))
+                ) : (
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    {publishedPosts.map((post) => (
+                      <LinkedInPostCard
+                        key={post.id}
+                        post={post}
+                        showAnalytics={true}
+                        variant="feed"
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>
