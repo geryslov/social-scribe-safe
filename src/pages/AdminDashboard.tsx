@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Header } from '@/components/Header';
 import { useWorkspaces } from '@/hooks/useWorkspaces';
 import { useAuth } from '@/hooks/useAuth';
+import { useWorkspace } from '@/hooks/useWorkspace';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { 
@@ -14,16 +15,21 @@ import {
   ExternalLink,
   FlaskConical,
   Check,
-  Loader2
+  Loader2,
+  Settings
 } from 'lucide-react';
 import { CreateWorkspaceModal } from '@/components/CreateWorkspaceModal';
+import { WorkspaceEditModal } from '@/components/WorkspaceEditModal';
+import { Workspace } from '@/types/workspace';
 import { toast } from 'sonner';
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const { isAdmin, isLoading: authLoading } = useAuth();
   const { workspaces, isLoading } = useWorkspaces();
+  const { switchWorkspace } = useWorkspace();
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [editingWorkspace, setEditingWorkspace] = useState<Workspace | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const copyInviteLink = async (workspace: { id: string; inviteToken: string }) => {
@@ -146,7 +152,10 @@ export default function AdminDashboard() {
                       variant="outline"
                       size="sm"
                       className="flex-1 gap-2"
-                      onClick={() => navigate(`/`)}
+                      onClick={() => {
+                        switchWorkspace(workspace.id);
+                        navigate('/');
+                      }}
                     >
                       <ExternalLink className="h-4 w-4" />
                       Enter
@@ -154,7 +163,13 @@ export default function AdminDashboard() {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="gap-2"
+                      onClick={() => setEditingWorkspace(workspace)}
+                    >
+                      <Settings className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
                       onClick={() => copyInviteLink(workspace)}
                       disabled={!workspace.inviteEnabled}
                     >
@@ -163,7 +178,6 @@ export default function AdminDashboard() {
                       ) : (
                         <Copy className="h-4 w-4" />
                       )}
-                      {copiedId === workspace.id ? 'Copied!' : 'Copy Link'}
                     </Button>
                   </div>
                 </CardContent>
@@ -177,6 +191,14 @@ export default function AdminDashboard() {
         open={showCreateModal} 
         onOpenChange={setShowCreateModal} 
       />
+
+      {editingWorkspace && (
+        <WorkspaceEditModal
+          workspace={editingWorkspace}
+          open={!!editingWorkspace}
+          onOpenChange={(open) => !open && setEditingWorkspace(null)}
+        />
+      )}
     </div>
   );
 }
