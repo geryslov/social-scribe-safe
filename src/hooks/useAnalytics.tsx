@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { format, subDays, parseISO, startOfDay } from 'date-fns';
+import { useWorkspace } from './useWorkspace';
 
 interface PostWithAnalytics {
   id: string;
@@ -58,16 +59,20 @@ export interface PublisherRanking {
 }
 
 export function useAnalytics(publisherName?: string | null, timeRange: '7d' | '30d' | '90d' = '30d') {
+  const { currentWorkspace } = useWorkspace();
   const daysAgo = timeRange === '7d' ? 7 : timeRange === '30d' ? 30 : 90;
   const startDate = subDays(new Date(), daysAgo);
 
   const { data: posts = [], isLoading } = useQuery({
-    queryKey: ['analytics-posts', publisherName, timeRange],
+    queryKey: ['analytics-posts', publisherName, timeRange, currentWorkspace?.id],
     queryFn: async () => {
+      if (!currentWorkspace) return [];
+      
       let query = supabase
         .from('posts')
         .select('id, content, publisher_name, published_at, impressions, unique_impressions, reactions, comments_count, reshares, engagement_rate, linkedin_post_url, status')
         .eq('status', 'done')
+        .eq('workspace_id', currentWorkspace.id)
         .not('published_at', 'is', null);
 
       if (publisherName) {
@@ -79,6 +84,7 @@ export function useAnalytics(publisherName?: string | null, timeRange: '7d' | '3
       if (error) throw error;
       return data as PostWithAnalytics[];
     },
+    enabled: !!currentWorkspace,
   });
 
   // Aggregate stats

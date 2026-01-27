@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { scrapeLinkedInProfile } from '@/lib/linkedin';
+import { useWorkspace } from './useWorkspace';
 
 export interface Publisher {
   id: string;
@@ -12,6 +13,7 @@ export interface Publisher {
   created_at: string;
   updated_at: string;
   user_id: string | null;
+  workspace_id: string | null;
   // LinkedIn OAuth fields
   linkedin_connected: boolean | null;
   linkedin_member_id: string | null;
@@ -25,18 +27,30 @@ export interface Publisher {
 
 export function usePublishers() {
   const queryClient = useQueryClient();
+  const { currentWorkspace } = useWorkspace();
 
   const { data: publishers = [], isLoading } = useQuery({
-    queryKey: ['publishers'],
+    queryKey: ['publishers', currentWorkspace?.id],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('publishers')
         .select('*')
         .order('name');
       
+      // Filter by current workspace
+      if (currentWorkspace) {
+        query = query.eq('workspace_id', currentWorkspace.id);
+      } else {
+        // If no workspace selected, show nothing (empty state)
+        return [];
+      }
+      
+      const { data, error } = await query;
+      
       if (error) throw error;
       return data as Publisher[];
     },
+    enabled: !!currentWorkspace,
   });
 
   const upsertPublisher = useMutation({
@@ -49,6 +63,7 @@ export function usePublishers() {
             role: publisher.role || null,
             linkedin_url: publisher.linkedin_url || null,
             avatar_url: publisher.avatar_url || null,
+            workspace_id: currentWorkspace?.id || null,
           },
           { onConflict: 'name' }
         )
