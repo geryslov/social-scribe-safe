@@ -84,41 +84,42 @@ export function Header() {
             {user && <WorkspaceSwitcher />}
 
             {/* Navigation */}
-            <nav className="flex items-center gap-1">
+            <nav className="flex items-center gap-2 bg-secondary/50 p-1.5 rounded-xl">
               {navItems.map(item => {
                 const Icon = item.icon;
                 const isActive = location.pathname === item.path || 
                                  (item.path !== '/' && location.pathname.startsWith(item.path));
                 const hasNotification = item.badge > 0;
                 return (
-                  <Button
+                  <button
                     key={item.path}
-                    variant="ghost"
-                    size="sm"
                     onClick={() => navigate(item.path)}
                     className={cn(
-                      "gap-2 transition-all relative",
+                      "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 relative",
                       isActive 
-                        ? "text-white font-semibold shadow-md" 
-                        : "text-muted-foreground hover:text-foreground hover:bg-secondary",
+                        ? "text-white shadow-lg scale-[1.02]" 
+                        : "text-muted-foreground hover:text-foreground hover:bg-white/60",
                       hasNotification && !isActive && "text-primary"
                     )}
                     style={isActive ? { 
-                      background: `linear-gradient(135deg, ${primaryColor}, ${primaryColor}dd)`,
-                      boxShadow: `0 4px 12px ${primaryColor}40`,
+                      background: `linear-gradient(135deg, ${primaryColor}, ${primaryColor}cc)`,
+                      boxShadow: `0 4px 20px ${primaryColor}50, 0 2px 8px ${primaryColor}30`,
                     } : undefined}
                   >
-                    <Icon className="h-4 w-4" />
-                    {item.label}
+                    <Icon className={cn("h-4 w-4", isActive && "drop-shadow-sm")} />
+                    <span>{item.label}</span>
                     {hasNotification && (
                       <span 
-                        className="absolute -top-1 -right-1 h-5 w-5 text-white text-xs font-bold rounded-full flex items-center justify-center animate-pulse"
-                        style={{ backgroundColor: '#10B981' }}
+                        className="absolute -top-1.5 -right-1.5 h-5 w-5 text-white text-xs font-bold rounded-full flex items-center justify-center animate-pulse shadow-md"
+                        style={{ 
+                          backgroundColor: '#10B981',
+                          boxShadow: '0 2px 8px rgba(16, 185, 129, 0.5)'
+                        }}
                       >
                         {item.badge}
                       </span>
                     )}
-                  </Button>
+                  </button>
                 );
               })}
             </nav>

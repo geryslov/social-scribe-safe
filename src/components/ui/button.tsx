@@ -9,13 +9,13 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 hover:shadow-md hover:-translate-y-0.5",
-        destructive: "bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90",
-        outline: "border border-border bg-background hover:bg-secondary hover:text-foreground hover:border-primary/30",
-        secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
+        default: "bg-primary text-primary-foreground shadow-[0_4px_16px_hsl(var(--primary)/0.35)] hover:shadow-[0_8px_28px_hsl(var(--primary)/0.45)] hover:-translate-y-1 hover:scale-[1.02]",
+        destructive: "bg-destructive text-destructive-foreground shadow-md hover:bg-destructive/90 hover:shadow-lg",
+        outline: "border-2 border-primary/30 bg-background text-primary hover:bg-primary hover:text-white hover:border-primary hover:shadow-[0_4px_20px_hsl(var(--primary)/0.3)]",
+        secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80 hover:shadow-md",
         ghost: "hover:bg-secondary hover:text-foreground",
         link: "text-primary underline-offset-4 hover:underline",
-        glow: "bg-primary text-primary-foreground shadow-[0_4px_16px_hsl(var(--primary)/0.3)] hover:shadow-[0_8px_24px_hsl(var(--primary)/0.4)] hover:-translate-y-0.5",
+        glow: "bg-primary text-primary-foreground shadow-[0_4px_20px_hsl(var(--primary)/0.4),0_8px_32px_hsl(var(--primary)/0.25)] hover:shadow-[0_8px_32px_hsl(var(--primary)/0.5),0_16px_48px_hsl(var(--primary)/0.3)] hover:-translate-y-1 hover:scale-[1.02]",
       },
       size: {
         default: "h-10 px-5 py-2",
