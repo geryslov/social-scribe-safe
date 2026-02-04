@@ -1,8 +1,7 @@
-import { Flame, LogOut, LogIn, User, FileText, LayoutDashboard, BarChart3 } from 'lucide-react';
+import { Flame, LogOut, LogIn, User, FileText, LayoutDashboard, BarChart3, Building2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { useNavigate, useLocation } from 'react-router-dom';
-import wisorLogo from '@/assets/wisor-logo.svg';
 import { cn } from '@/lib/utils';
 import { useDocuments } from '@/hooks/useDocuments';
 import { WorkspaceSwitcher } from '@/components/WorkspaceSwitcher';
@@ -49,11 +48,18 @@ export function Header() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-8">
             <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate('/')}>
-              <img 
-                src={wisorLogo} 
-                alt="Wisor" 
-                className="h-8 w-auto"
-              />
+              {currentWorkspace?.logoUrl ? (
+                <img 
+                  src={currentWorkspace.logoUrl} 
+                  alt={currentWorkspace.name || 'Workspace'} 
+                  className="h-8 w-auto max-w-[120px] object-contain"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                  }}
+                />
+              ) : (
+                <Building2 className="h-8 w-8 text-white" />
+              )}
             </div>
 
             {/* Workspace Switcher */}
