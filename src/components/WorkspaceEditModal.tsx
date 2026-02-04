@@ -107,56 +107,6 @@ export function WorkspaceEditModal({ workspace, open, onOpenChange }: WorkspaceE
           </TabsList>
 
           <TabsContent value="general" className="space-y-4 mt-4">
-            {/* Logo */}
-            <div className="space-y-2">
-              <Label>Logo</Label>
-              <div className="flex items-center gap-4">
-                <div 
-                  className="h-16 w-16 rounded-lg border-2 border-dashed border-muted-foreground/25 flex items-center justify-center overflow-hidden cursor-pointer hover:border-primary/50 transition-colors"
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  {logoUrl ? (
-                    <img src={logoUrl} alt="Logo" className="h-full w-full object-cover" />
-                  ) : (
-                    <Building2 className="h-6 w-6 text-muted-foreground" />
-                  )}
-                </div>
-                <div className="flex-1">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={isUploading}
-                    className="gap-2"
-                  >
-                    {isUploading ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Upload className="h-4 w-4" />
-                    )}
-                    Upload Logo
-                  </Button>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={handleLogoUpload}
-                  />
-                  {logoUrl && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="ml-2 text-destructive hover:text-destructive"
-                      onClick={() => setLogoUrl('')}
-                    >
-                      Remove
-                    </Button>
-                  )}
-                </div>
-              </div>
-            </div>
-
             {/* Name */}
             <div className="space-y-2">
               <Label htmlFor="name">Workspace Name *</Label>
@@ -207,6 +157,57 @@ export function WorkspaceEditModal({ workspace, open, onOpenChange }: WorkspaceE
           </TabsContent>
 
           <TabsContent value="branding" className="space-y-4 mt-4">
+            {/* Logo */}
+            <div className="space-y-2">
+              <Label>Workspace Logo</Label>
+              <div className="flex items-center gap-4">
+                <div 
+                  className="h-16 w-16 rounded-lg border-2 border-dashed border-muted-foreground/25 flex items-center justify-center overflow-hidden cursor-pointer hover:border-primary/50 transition-colors"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  {logoUrl ? (
+                    <img src={logoUrl} alt="Logo" className="h-full w-full object-cover" />
+                  ) : (
+                    <Building2 className="h-6 w-6 text-muted-foreground" />
+                  )}
+                </div>
+                <div className="flex-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploading}
+                    className="gap-2"
+                  >
+                    {isUploading ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Upload className="h-4 w-4" />
+                    )}
+                    Upload Logo
+                  </Button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleLogoUpload}
+                  />
+                  {logoUrl && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="ml-2 text-destructive hover:text-destructive"
+                      onClick={() => setLogoUrl('')}
+                    >
+                      Remove
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Theme Colors */}
             <WorkspaceThemeEditor theme={theme} onChange={setTheme} />
           </TabsContent>
         </Tabs>
