@@ -81,20 +81,20 @@ export function WorkspaceThemeProvider({ children }: { children: React.ReactNode
       // Update scrollbar and glow effects via CSS
       root.style.setProperty('--glow-color', theme.primaryColor);
     } else {
-      // Reset to default Electric Violet
-      root.style.setProperty('--workspace-primary', '#8B5CF6');
-      root.style.setProperty('--workspace-primary-hsl', '262 83% 66%');
-      root.style.setProperty('--workspace-primary-light', '262 83% 81%');
-      root.style.setProperty('--workspace-primary-dark', '262 83% 51%');
-      root.style.setProperty('--workspace-primary-muted', '262 50% 66%');
-      root.style.setProperty('--primary', '262 83% 66%');
-      root.style.setProperty('--accent', '262 83% 66%');
-      root.style.setProperty('--ring', '262 83% 66%');
-      root.style.setProperty('--sidebar-primary', '262 83% 66%');
-      root.style.setProperty('--sidebar-ring', '262 83% 66%');
-      root.style.setProperty('--card-accent', '262 83% 21%');
-      root.style.setProperty('--border-accent', '262 42% 71%');
-      root.style.setProperty('--glow-color', '#8B5CF6');
+      // Reset to default Sellence Orange
+      root.style.setProperty('--workspace-primary', '#FF6B35');
+      root.style.setProperty('--workspace-primary-hsl', '18 100% 60%');
+      root.style.setProperty('--workspace-primary-light', '18 100% 75%');
+      root.style.setProperty('--workspace-primary-dark', '18 100% 45%');
+      root.style.setProperty('--workspace-primary-muted', '18 60% 60%');
+      root.style.setProperty('--primary', '18 100% 60%');
+      root.style.setProperty('--accent', '18 100% 60%');
+      root.style.setProperty('--ring', '18 100% 60%');
+      root.style.setProperty('--sidebar-primary', '18 100% 60%');
+      root.style.setProperty('--sidebar-ring', '18 100% 60%');
+      root.style.setProperty('--card-accent', '18 100% 20%');
+      root.style.setProperty('--border-accent', '18 60% 65%');
+      root.style.setProperty('--glow-color', '#FF6B35');
     }
 
     if (theme?.accentColor) {
@@ -103,10 +103,10 @@ export function WorkspaceThemeProvider({ children }: { children: React.ReactNode
       root.style.setProperty('--workspace-accent-hsl', accentHSL);
       root.style.setProperty('--info', accentHSL);
     } else {
-      // Reset to default Cool Blue
-      root.style.setProperty('--workspace-accent', '#5DA9FF');
-      root.style.setProperty('--workspace-accent-hsl', '212 100% 68%');
-      root.style.setProperty('--info', '212 100% 68%');
+      // Reset to default Deep Orange
+      root.style.setProperty('--workspace-accent', '#E85D04');
+      root.style.setProperty('--workspace-accent-hsl', '24 97% 46%');
+      root.style.setProperty('--info', '24 97% 46%');
     }
   }, [currentWorkspace]);
 
