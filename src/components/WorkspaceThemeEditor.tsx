@@ -30,21 +30,37 @@ export function WorkspaceThemeEditor({ theme, onChange }: WorkspaceThemeEditorPr
     onChange({ ...theme, accentColor: color });
   };
 
+  const isValidHex = (color: string) => /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(color);
+
+  const handleHexInput = (value: string, setter: (color: string) => void) => {
+    // Auto-add # if missing
+    let hex = value.trim();
+    if (hex && !hex.startsWith('#')) {
+      hex = '#' + hex;
+    }
+    if (isValidHex(hex) || hex === '' || hex === '#') {
+      setter(hex);
+    }
+  };
+
   return (
     <div className="space-y-4">
       {/* Primary Color */}
       <div className="space-y-2">
         <Label>Primary Color</Label>
         <div className="flex items-center gap-2">
-          <div 
-            className="h-10 w-10 rounded-md border border-border shadow-sm"
-            style={{ backgroundColor: theme.primaryColor || '#8B5CF6' }}
-          />
           <Input
             type="color"
             value={theme.primaryColor || '#8B5CF6'}
             onChange={(e) => handlePrimaryChange(e.target.value)}
-            className="h-10 w-14 p-1 cursor-pointer"
+            className="h-10 w-10 p-1 cursor-pointer border-0"
+          />
+          <Input
+            type="text"
+            value={theme.primaryColor || '#8B5CF6'}
+            onChange={(e) => handleHexInput(e.target.value, handlePrimaryChange)}
+            placeholder="#8B5CF6"
+            className="w-24 font-mono text-sm"
           />
           <div className="flex gap-1 flex-wrap flex-1">
             {colorPresets.map((preset) => (
@@ -65,15 +81,18 @@ export function WorkspaceThemeEditor({ theme, onChange }: WorkspaceThemeEditorPr
       <div className="space-y-2">
         <Label>Accent Color</Label>
         <div className="flex items-center gap-2">
-          <div 
-            className="h-10 w-10 rounded-md border border-border shadow-sm"
-            style={{ backgroundColor: theme.accentColor || '#5DA9FF' }}
-          />
           <Input
             type="color"
             value={theme.accentColor || '#5DA9FF'}
             onChange={(e) => handleAccentChange(e.target.value)}
-            className="h-10 w-14 p-1 cursor-pointer"
+            className="h-10 w-10 p-1 cursor-pointer border-0"
+          />
+          <Input
+            type="text"
+            value={theme.accentColor || '#5DA9FF'}
+            onChange={(e) => handleHexInput(e.target.value, handleAccentChange)}
+            placeholder="#5DA9FF"
+            className="w-24 font-mono text-sm"
           />
           <div className="flex gap-1 flex-wrap flex-1">
             {colorPresets.map((preset) => (
