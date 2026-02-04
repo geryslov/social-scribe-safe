@@ -97,21 +97,23 @@ export function Header() {
                     size="sm"
                     onClick={() => navigate(item.path)}
                     className={cn(
-                      "gap-2 transition-all relative text-muted-foreground hover:text-foreground hover:bg-secondary",
+                      "gap-2 transition-all relative",
+                      isActive 
+                        ? "text-white font-semibold shadow-md" 
+                        : "text-muted-foreground hover:text-foreground hover:bg-secondary",
                       hasNotification && !isActive && "text-primary"
                     )}
                     style={isActive ? { 
-                      color: primaryColor,
-                      backgroundColor: `${primaryColor}15`,
-                      fontWeight: 500,
+                      background: `linear-gradient(135deg, ${primaryColor}, ${primaryColor}dd)`,
+                      boxShadow: `0 4px 12px ${primaryColor}40`,
                     } : undefined}
                   >
                     <Icon className="h-4 w-4" />
                     {item.label}
                     {hasNotification && (
                       <span 
-                        className="absolute -top-1 -right-1 h-5 w-5 text-white text-xs font-bold rounded-full flex items-center justify-center"
-                        style={{ backgroundColor: primaryColor }}
+                        className="absolute -top-1 -right-1 h-5 w-5 text-white text-xs font-bold rounded-full flex items-center justify-center animate-pulse"
+                        style={{ backgroundColor: '#10B981' }}
                       >
                         {item.badge}
                       </span>
