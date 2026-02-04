@@ -6,12 +6,22 @@ import wisorLogo from '@/assets/wisor-logo.svg';
 import { cn } from '@/lib/utils';
 import { useDocuments } from '@/hooks/useDocuments';
 import { WorkspaceSwitcher } from '@/components/WorkspaceSwitcher';
+import { useWorkspace } from '@/hooks/useWorkspace';
+
+interface WorkspaceTheme {
+  primaryColor?: string;
+  accentColor?: string;
+}
 
 export function Header() {
   const { user, isAdmin, signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const { documents } = useDocuments();
+  const { currentWorkspace } = useWorkspace();
+
+  const theme = currentWorkspace?.theme as WorkspaceTheme | undefined;
+  const primaryColor = theme?.primaryColor || '#8B5CF6';
 
   const documentsInReview = documents?.filter(doc => doc.status === 'in_review').length || 0;
 
@@ -64,9 +74,12 @@ export function Header() {
                     onClick={() => navigate(item.path)}
                     className={cn(
                       "gap-2 transition-all relative text-[#C7C9E3] hover:text-white hover:bg-white/10",
-                      isActive && "bg-primary/20 text-white",
+                      isActive && "text-white",
                       hasNotification && !isActive && "text-[#6EE7B7]"
                     )}
+                    style={isActive ? { 
+                      backgroundColor: `${primaryColor}33`,
+                    } : undefined}
                   >
                     <Icon className="h-4 w-4" />
                     {item.label}
@@ -86,11 +99,11 @@ export function Header() {
               <div 
                 className="flex items-center gap-2 text-xs px-3 py-1.5 rounded-full"
                 style={{
-                  background: 'rgba(139, 92, 246, 0.15)',
-                  border: '1px solid rgba(139, 92, 246, 0.3)'
+                  background: `${primaryColor}26`,
+                  border: `1px solid ${primaryColor}4D`
                 }}
               >
-                <Flame className="h-3.5 w-3.5 text-primary" />
+                <Flame className="h-3.5 w-3.5" style={{ color: primaryColor }} />
                 <span className="font-medium text-white">Admin</span>
               </div>
             )}
