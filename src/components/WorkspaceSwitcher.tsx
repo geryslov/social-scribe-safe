@@ -28,15 +28,7 @@ export function WorkspaceSwitcher() {
           size="sm"
           className="gap-2 text-[#C7C9E3] hover:text-white hover:bg-white/10"
         >
-          {currentWorkspace?.logoUrl ? (
-            <img 
-              src={currentWorkspace.logoUrl} 
-              alt={currentWorkspace.name}
-              className="h-5 w-5 rounded object-cover"
-            />
-          ) : (
-            <Building2 className="h-4 w-4" />
-          )}
+          <Building2 className="h-4 w-4" />
           <span className="max-w-32 truncate">{currentWorkspace?.name || 'Select Workspace'}</span>
           <ChevronDown className="h-3 w-3 opacity-50" />
         </Button>
@@ -55,13 +47,7 @@ export function WorkspaceSwitcher() {
             onClick={() => switchWorkspace(workspace.id)}
             className="gap-2 text-[#C7C9E3] hover:text-white hover:bg-white/10 cursor-pointer"
           >
-            {workspace.logoUrl ? (
-              <img 
-                src={workspace.logoUrl} 
-                alt={workspace.name}
-                className="h-5 w-5 rounded object-cover"
-              />
-            ) : workspace.isTestWorkspace ? (
+            {workspace.isTestWorkspace ? (
               <FlaskConical className="h-4 w-4 text-yellow-400" />
             ) : (
               <Building2 className="h-4 w-4" />

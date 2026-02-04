@@ -100,14 +100,14 @@
 
 @layer components {
   .gradient-text {
-    background: linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%);
+    background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary) / 0.8) 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
   
   .gradient-bg {
-    background: linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%);
+    background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary) / 0.8) 100%);
   }
   
   /* Glass Card - Standard */
@@ -118,29 +118,29 @@
     backdrop-filter: blur(12px);
   }
   
-  /* Elevated Card - For KPIs */
+  /* Elevated Card - For KPIs - uses workspace primary */
   .card-elevated {
-    background: rgba(139, 92, 246, 0.08);
-    border: 1px solid rgba(139, 92, 246, 0.25);
+    background: hsl(var(--primary) / 0.08);
+    border: 1px solid hsl(var(--primary) / 0.25);
     border-radius: 0.75rem;
     backdrop-filter: blur(12px);
   }
   
   .card-elevated:hover {
-    background: rgba(139, 92, 246, 0.12);
-    border-color: rgba(139, 92, 246, 0.35);
+    background: hsl(var(--primary) / 0.12);
+    border-color: hsl(var(--primary) / 0.35);
     transform: translateY(-2px);
   }
   
-  /* Primary Button Glow */
+  /* Primary Button Glow - uses workspace primary */
   .btn-primary-glow {
-    background: linear-gradient(135deg, #8B5CF6, #7C3AED);
+    background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary) / 0.8));
     color: #FFFFFF;
-    box-shadow: 0 0 20px rgba(139, 92, 246, 0.45);
+    box-shadow: 0 0 20px hsl(var(--primary) / 0.45);
   }
   
   .btn-primary-glow:hover {
-    box-shadow: 0 0 30px rgba(139, 92, 246, 0.6);
+    box-shadow: 0 0 30px hsl(var(--primary) / 0.6);
   }
   
   /* Secondary Button */
@@ -156,8 +156,8 @@
   }
   
   .glow-primary {
-    box-shadow: 0 0 30px rgba(139, 92, 246, 0.35), 
-                0 0 60px rgba(139, 92, 246, 0.15);
+    box-shadow: 0 0 30px hsl(var(--primary) / 0.35), 
+                0 0 60px hsl(var(--primary) / 0.15);
   }
   
   .hover-lift {
@@ -166,11 +166,11 @@
   
   .hover-lift:hover {
     transform: translateY(-4px);
-    box-shadow: 0 12px 40px rgba(139, 92, 246, 0.2);
+    box-shadow: 0 12px 40px hsl(var(--primary) / 0.2);
   }
   
   .dot-pattern {
-    background-image: radial-gradient(rgba(139, 92, 246, 0.15) 1px, transparent 1px);
+    background-image: radial-gradient(hsl(var(--primary) / 0.15) 1px, transparent 1px);
     background-size: 24px 24px;
   }
   
@@ -224,25 +224,25 @@
     border-top: none;
   }
   
-  /* Animated glow pulse on stat cards */
+  /* Animated glow pulse on stat cards - uses workspace primary */
   .stat-glow {
     animation: glowPulse 3s ease-in-out infinite;
   }
   
   @keyframes glowPulse {
     0%, 100% {
-      box-shadow: 0 0 20px rgba(139, 92, 246, 0.15);
+      box-shadow: 0 0 20px hsl(var(--primary) / 0.15);
     }
     50% {
-      box-shadow: 0 0 40px rgba(139, 92, 246, 0.3);
+      box-shadow: 0 0 40px hsl(var(--primary) / 0.3);
     }
   }
   
   /* Grid overlay for tech look */
   .grid-overlay {
     background-image: 
-      linear-gradient(rgba(139, 92, 246, 0.03) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(139, 92, 246, 0.03) 1px, transparent 1px);
+      linear-gradient(hsl(var(--primary) / 0.03) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(var(--primary) / 0.03) 1px, transparent 1px);
     background-size: 20px 20px;
   }
   
@@ -291,11 +291,11 @@
     }
   }
   
-  /* Data value text styling */
+  /* Data value text styling - uses workspace primary */
   .data-value {
     font-family: 'IBM Plex Mono', monospace;
     font-feature-settings: 'tnum';
-    text-shadow: 0 0 10px rgba(139, 92, 246, 0.3);
+    text-shadow: 0 0 10px hsl(var(--primary) / 0.3);
   }
 }
 
@@ -347,7 +347,7 @@
   to { opacity: 1; transform: scale(1); }
 }
 
-/* Scrollbar */
+/* Scrollbar - uses workspace primary */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -359,10 +359,10 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(139, 92, 246, 0.3);
+  background: hsl(var(--primary) / 0.3);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(139, 92, 246, 0.5);
+  background: hsl(var(--primary) / 0.5);
 }
