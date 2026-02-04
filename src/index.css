@@ -6,9 +6,9 @@
 
 @layer base {
   :root {
-    /* Sellence SaaS Theme - Clean White with Neon Accents */
-    /* Primary: Electric Blue-Violet Neon */
-    /* Accent: Vibrant Cyan */
+    /* Sellence SaaS Theme - Clean White with Orange Accents */
+    /* Primary: Warm Orange (#FF6B35) */
+    /* Accent: Deep Orange/Red (#E85D04) */
     
     --background: 220 20% 98%;
     --foreground: 222 47% 11%;
@@ -20,8 +20,8 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222 47% 11%;
 
-    /* Primary: Electric Violet Neon (#7C3AED) */
-    --primary: 263 70% 58%;
+    /* Primary: Sellence Orange (#FF6B35) */
+    --primary: 16 100% 60%;
     --primary-foreground: 0 0% 100%;
 
     /* Secondary: Light gray */
@@ -32,8 +32,8 @@
     --muted: 220 14% 96%;
     --muted-foreground: 220 9% 46%;
 
-    /* Accent: Cyan Neon (#06B6D4) */
-    --accent: 189 94% 43%;
+    /* Accent: Deep Orange/Red (#E85D04) */
+    --accent: 24 97% 46%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84% 60%;
@@ -42,7 +42,7 @@
     /* Border: Soft gray */
     --border: 220 13% 91%;
     --input: 220 13% 91%;
-    --ring: 263 70% 58%;
+    --ring: 16 100% 60%;
 
     --radius: 0.75rem;
 
@@ -53,25 +53,25 @@
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 100%;
     
-    /* Info: Cyan */
-    --info: 189 94% 43%;
+    /* Info: Orange */
+    --info: 24 97% 46%;
     --info-foreground: 0 0% 100%;
 
     /* Sidebar: Clean white with subtle accent */
     --sidebar-background: 0 0% 100%;
     --sidebar-foreground: 222 47% 11%;
-    --sidebar-primary: 263 70% 58%;
+    --sidebar-primary: 16 100% 60%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 220 14% 96%;
     --sidebar-accent-foreground: 222 47% 11%;
     --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 263 70% 58%;
+    --sidebar-ring: 16 100% 60%;
     
-    /* Neon glow variables */
-    --glow-color: #7C3AED;
-    --glow-secondary: #06B6D4;
-    --neon-violet: 263 70% 58%;
-    --neon-cyan: 189 94% 43%;
+    /* Glow variables */
+    --glow-color: #FF6B35;
+    --glow-secondary: #E85D04;
+    --neon-orange: 16 100% 60%;
+    --neon-red: 24 97% 46%;
     --neon-pink: 330 81% 60%;
   }
 }
