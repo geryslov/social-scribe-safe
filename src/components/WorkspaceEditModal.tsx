@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -33,6 +33,16 @@ export function WorkspaceEditModal({ workspace, open, onOpenChange }: WorkspaceE
   const [isUploading, setIsUploading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Sync state when workspace prop changes (switching workspaces)
+  useEffect(() => {
+    setName(workspace.name);
+    setCompanyName(workspace.companyName || '');
+    setDescription(workspace.description || '');
+    setInviteEnabled(workspace.inviteEnabled);
+    setLogoUrl(workspace.logoUrl || '');
+    setTheme((workspace.theme as WorkspaceTheme) || {});
+  }, [workspace.id]);
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
