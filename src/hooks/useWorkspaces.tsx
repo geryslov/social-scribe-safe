@@ -81,6 +81,7 @@ export function useWorkspaces() {
       description?: string;
       inviteEnabled?: boolean;
       logoUrl?: string;
+      theme?: Record<string, unknown>;
     }) => {
       const updates: Record<string, unknown> = {};
       if (data.name !== undefined) updates.name = data.name;
@@ -88,6 +89,7 @@ export function useWorkspaces() {
       if (data.description !== undefined) updates.description = data.description;
       if (data.inviteEnabled !== undefined) updates.invite_enabled = data.inviteEnabled;
       if (data.logoUrl !== undefined) updates.logo_url = data.logoUrl;
+      if (data.theme !== undefined) updates.theme = data.theme;
       
       const { error } = await supabase
         .from('workspaces')
