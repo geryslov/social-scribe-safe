@@ -101,34 +101,41 @@ export function PublisherSidebar({ publishers, selectedPublisher, onSelectPublis
           </div>
           
           <div className="space-y-1">
-            {/* All Publishers */}
+            {/* All Publishers - Featured Card */}
             <button
               onClick={() => onSelectPublisher(null)}
               className={cn(
-                "w-full flex items-center gap-3 px-3 py-3 rounded-lg text-left transition-all duration-200 group",
+                "w-full flex items-center gap-3 px-4 py-4 rounded-xl text-left transition-all duration-200 group",
                 selectedPublisher === null
-                  ? "bg-primary/10 border border-primary/20"
-                  : "hover:bg-secondary border border-transparent"
-              )}
-            >
-              <div className={cn(
-                "w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-200",
-                selectedPublisher === null
-                  ? "bg-primary text-white shadow-md"
-                  : "bg-secondary text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary"
+                  ? "text-white shadow-lg"
+                  : "bg-secondary/50 hover:bg-secondary border border-transparent"
               )}
               style={selectedPublisher === null ? {
-                boxShadow: '0 4px 12px hsl(var(--primary) / 0.3)'
-              } : {}}>
+                background: 'linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)))',
+                boxShadow: '0 8px 24px hsl(var(--primary) / 0.35)'
+              } : {}}
+            >
+              <div className={cn(
+                "w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-200",
+                selectedPublisher === null
+                  ? "bg-white/20 backdrop-blur-sm"
+                  : "bg-card text-muted-foreground group-hover:text-primary"
+              )}>
                 <Users className="h-5 w-5" />
               </div>
               <div className="flex-1">
                 <p className={cn(
-                  "font-medium text-sm",
-                  selectedPublisher === null ? "text-primary" : "text-foreground"
+                  "font-semibold text-sm",
+                  selectedPublisher === null ? "text-white" : "text-foreground"
                 )}>All Publishers</p>
-                <p className="text-xs text-muted-foreground">{totalPosts} posts total</p>
+                <p className={cn(
+                  "text-xs",
+                  selectedPublisher === null ? "text-white/70" : "text-muted-foreground"
+                )}>{totalPosts} posts total</p>
               </div>
+              {selectedPublisher === null && (
+                <div className="w-2 h-2 rounded-full bg-white animate-pulse" />
+              )}
             </button>
             
             {/* Publisher List */}
@@ -143,9 +150,12 @@ export function PublisherSidebar({ publishers, selectedPublisher, onSelectPublis
                   className={cn(
                     "w-full flex items-center gap-3 px-3 py-3 rounded-lg text-left transition-all duration-200 animate-fade-in group relative",
                     isSelected
-                      ? "bg-primary/10 border border-primary/20"
-                      : "hover:bg-secondary border border-transparent"
+                      ? "bg-primary/10 border-l-4 border-l-primary border-y border-r border-primary/20"
+                      : "hover:bg-secondary border-l-4 border-l-transparent border border-transparent"
                   )}
+                  style={isSelected ? {
+                    boxShadow: '0 2px 8px hsl(var(--primary) / 0.1)'
+                  } : {}}
                 >
                   <button
                     onClick={() => onSelectPublisher(publisher.name)}
@@ -157,7 +167,7 @@ export function PublisherSidebar({ publishers, selectedPublisher, onSelectPublis
                       editable={true}
                       className={cn(
                         "w-10 h-10 transition-all duration-200",
-                        isSelected && "ring-2 ring-primary/30"
+                        isSelected && "ring-2 ring-primary ring-offset-2 ring-offset-card"
                       )}
                     />
                     <div className="flex-1 min-w-0 text-left">
