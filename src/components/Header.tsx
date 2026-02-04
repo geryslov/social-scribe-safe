@@ -42,7 +42,7 @@ export function Header() {
       className="sticky top-0 z-50 backdrop-blur-xl"
       style={{
         background: 'rgba(27, 23, 96, 0.85)',
-        borderBottom: '1px solid rgba(255, 255, 255, 0.06)'
+        borderBottom: `2px solid ${primaryColor}40`
       }}
     >
       <div className="px-8 py-4">

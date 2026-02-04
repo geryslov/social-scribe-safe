@@ -52,12 +52,15 @@ export function WorkspaceThemeProvider({ children }: { children: React.ReactNode
       const primaryHSL = hexToHSL(theme.primaryColor);
       root.style.setProperty('--workspace-primary', theme.primaryColor);
       root.style.setProperty('--workspace-primary-hsl', primaryHSL);
-      // Also update the main primary for full theme integration
+      // Update all primary-related CSS variables
       root.style.setProperty('--primary', primaryHSL);
       root.style.setProperty('--accent', primaryHSL);
       root.style.setProperty('--ring', primaryHSL);
       root.style.setProperty('--sidebar-primary', primaryHSL);
       root.style.setProperty('--sidebar-ring', primaryHSL);
+      
+      // Update scrollbar and glow effects via CSS
+      root.style.setProperty('--glow-color', theme.primaryColor);
     } else {
       // Reset to default
       root.style.setProperty('--workspace-primary', '#8B5CF6');
@@ -67,6 +70,7 @@ export function WorkspaceThemeProvider({ children }: { children: React.ReactNode
       root.style.setProperty('--ring', '262 83% 66%');
       root.style.setProperty('--sidebar-primary', '262 83% 66%');
       root.style.setProperty('--sidebar-ring', '262 83% 66%');
+      root.style.setProperty('--glow-color', '#8B5CF6');
     }
 
     if (theme?.accentColor) {
