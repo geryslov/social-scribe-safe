@@ -84,63 +84,50 @@ export function PublisherSidebar({ publishers, selectedPublisher, onSelectPublis
 
   return (
     <>
-      <div 
-        className="w-72 flex-shrink-0 h-[calc(100vh-73px)] overflow-y-auto"
-        style={{
-          background: '#0A0824',
-          borderRight: '1px solid rgba(255, 255, 255, 0.06)'
-        }}
-      >
+      <div className="w-72 flex-shrink-0 h-[calc(100vh-73px)] overflow-y-auto bg-card border-r border-border">
         <div className="p-5">
           <div className="flex items-center justify-between mb-4 px-1">
-            <h2 className="text-[10px] font-bold text-[#A5A7C8] uppercase tracking-[0.2em] flex items-center gap-2">
-              <span className="w-6 h-px bg-gradient-to-r from-transparent via-[#A5A7C8]/30 to-transparent" />
+            <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
               Publishers
             </h2>
             <Button
               variant="ghost"
               size="icon"
-              className="h-6 w-6 text-[#A5A7C8] hover:text-white hover:bg-white/10"
+              className="h-7 w-7 text-muted-foreground hover:text-primary hover:bg-primary/10"
               onClick={handleAddPublisher}
             >
               <Plus className="h-4 w-4" />
             </Button>
           </div>
           
-          <div className="space-y-2">
+          <div className="space-y-1">
             {/* All Publishers */}
             <button
               onClick={() => onSelectPublisher(null)}
               className={cn(
-                "w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-left transition-all duration-300 group",
+                "w-full flex items-center gap-3 px-3 py-3 rounded-lg text-left transition-all duration-200 group",
                 selectedPublisher === null
-                  ? "shadow-lg"
-                  : "hover:bg-[#15114A]"
+                  ? "bg-primary/10 border border-primary/20"
+                  : "hover:bg-secondary border border-transparent"
               )}
-              style={selectedPublisher === null ? {
-                background: 'rgba(139, 92, 246, 0.15)',
-                border: '1px solid rgba(139, 92, 246, 0.3)'
-              } : {
-                border: '1px solid transparent'
-              }}
             >
               <div className={cn(
-                "w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-300 shadow-md",
+                "w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-200",
                 selectedPublisher === null
-                  ? "bg-gradient-to-br from-[#8B5CF6] to-[#7C3AED] shadow-lg"
-                  : "bg-[#15114A] group-hover:bg-[#1B1760]"
+                  ? "bg-primary text-white shadow-md"
+                  : "bg-secondary text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary"
               )}
               style={selectedPublisher === null ? {
-                boxShadow: '0 0 20px rgba(139, 92, 246, 0.4)'
+                boxShadow: '0 4px 12px hsl(var(--primary) / 0.3)'
               } : {}}>
-                <Users className={cn(
-                  "h-5 w-5 transition-transform duration-300 group-hover:scale-110",
-                  selectedPublisher === null ? "text-white" : "text-[#A5A7C8]"
-                )} />
+                <Users className="h-5 w-5" />
               </div>
               <div className="flex-1">
-                <p className="font-semibold text-sm text-white">All Publishers</p>
-                <p className="text-xs text-[#A5A7C8]">{totalPosts} posts total</p>
+                <p className={cn(
+                  "font-medium text-sm",
+                  selectedPublisher === null ? "text-primary" : "text-foreground"
+                )}>All Publishers</p>
+                <p className="text-xs text-muted-foreground">{totalPosts} posts total</p>
               </div>
             </button>
             
@@ -154,15 +141,11 @@ export function PublisherSidebar({ publishers, selectedPublisher, onSelectPublis
                 <div
                   key={publisher.name}
                   className={cn(
-                    "w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-left transition-all duration-300 animate-fade-in group relative",
-                    !isSelected && "hover:bg-[#15114A]"
+                    "w-full flex items-center gap-3 px-3 py-3 rounded-lg text-left transition-all duration-200 animate-fade-in group relative",
+                    isSelected
+                      ? "bg-primary/10 border border-primary/20"
+                      : "hover:bg-secondary border border-transparent"
                   )}
-                  style={isSelected ? {
-                    background: 'rgba(139, 92, 246, 0.15)',
-                    border: '1px solid rgba(139, 92, 246, 0.3)'
-                  } : {
-                    border: '1px solid transparent'
-                  }}
                 >
                   <button
                     onClick={() => onSelectPublisher(publisher.name)}
@@ -173,32 +156,35 @@ export function PublisherSidebar({ publishers, selectedPublisher, onSelectPublis
                       size="md" 
                       editable={true}
                       className={cn(
-                        "w-11 h-11 transition-all duration-300 shadow-md",
-                        isSelected && "shadow-lg shadow-primary/30"
+                        "w-10 h-10 transition-all duration-200",
+                        isSelected && "ring-2 ring-primary/30"
                       )}
                     />
                     <div className="flex-1 min-w-0 text-left">
-                      <p className="font-semibold text-sm truncate text-white group-hover:text-white transition-colors">{publisher.name}</p>
+                      <p className={cn(
+                        "font-medium text-sm truncate transition-colors",
+                        isSelected ? "text-primary" : "text-foreground"
+                      )}>{publisher.name}</p>
                       {(() => {
                         const dbPub = getPublisherByName(publisher.name);
                         if (dbPub?.headline) {
                           return (
-                            <p className="text-xs text-[#A5A7C8] truncate">{dbPub.headline}</p>
+                            <p className="text-xs text-muted-foreground truncate">{dbPub.headline}</p>
                           );
                         }
                         return null;
                       })()}
-                      <div className="flex items-center gap-2 text-xs text-[#A5A7C8]">
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
                         <span>{publisher.posts.length} posts</span>
                         {doneCount > 0 && (
-                          <span className="flex items-center gap-1 text-[#6EE7B7]">
-                            <span className="w-1.5 h-1.5 rounded-full bg-[#6EE7B7] animate-pulse" />
+                          <span className="flex items-center gap-1 text-success">
+                            <span className="w-1.5 h-1.5 rounded-full bg-success" />
                             {doneCount}
                           </span>
                         )}
                         {scheduledCount > 0 && (
-                          <span className="flex items-center gap-1 text-[#5DA9FF]">
-                            <span className="w-1.5 h-1.5 rounded-full bg-[#5DA9FF]" />
+                          <span className="flex items-center gap-1 text-info">
+                            <span className="w-1.5 h-1.5 rounded-full bg-info" />
                             {scheduledCount}
                           </span>
                         )}
@@ -212,7 +198,7 @@ export function PublisherSidebar({ publishers, selectedPublisher, onSelectPublis
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-[#A5A7C8] hover:text-white hover:bg-white/10"
+                        className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground hover:bg-secondary"
                         onClick={(e) => e.stopPropagation()}
                       >
                         <ChevronRight className="h-4 w-4" />
@@ -244,14 +230,6 @@ export function PublisherSidebar({ publishers, selectedPublisher, onSelectPublis
             })}
           </div>
         </div>
-        
-        {/* Bottom gradient fade */}
-        <div 
-          className="pointer-events-none absolute bottom-0 left-0 w-72 h-20"
-          style={{
-            background: 'linear-gradient(to top, #0A0824 0%, transparent 100%)'
-          }}
-        />
       </div>
 
       <PublisherModal

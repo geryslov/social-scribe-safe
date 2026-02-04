@@ -98,11 +98,12 @@ export function Header() {
                     onClick={() => navigate(item.path)}
                     className={cn(
                       "gap-2 transition-all relative text-muted-foreground hover:text-foreground hover:bg-secondary",
-                      isActive && "text-foreground bg-secondary font-medium",
                       hasNotification && !isActive && "text-primary"
                     )}
                     style={isActive ? { 
                       color: primaryColor,
+                      backgroundColor: `${primaryColor}15`,
+                      fontWeight: 500,
                     } : undefined}
                   >
                     <Icon className="h-4 w-4" />
