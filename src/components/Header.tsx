@@ -96,6 +96,7 @@ export function Header() {
                     onClick={() => navigate(item.path)}
                     className={cn(
                       "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 relative",
+                      "active:scale-[0.95] active:bg-[#FF6B35] active:text-white active:shadow-[0_0_20px_rgba(255,107,53,0.6)]",
                       isActive 
                         ? "text-white shadow-lg scale-[1.02]" 
                         : "text-muted-foreground hover:text-foreground hover:bg-white/60",
