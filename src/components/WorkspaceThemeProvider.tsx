@@ -59,14 +59,14 @@ export function WorkspaceThemeProvider({ children }: { children: React.ReactNode
       root.style.setProperty('--sidebar-ring', primaryHSL);
       root.style.setProperty('--glow-color', theme.primaryColor);
     } else {
-      // Reset to default Sellence Orange
-      root.style.setProperty('--workspace-primary', '#FF6B35');
-      root.style.setProperty('--workspace-primary-hsl', '16 100% 60%');
-      root.style.setProperty('--primary', '16 100% 60%');
-      root.style.setProperty('--ring', '16 100% 60%');
-      root.style.setProperty('--sidebar-primary', '16 100% 60%');
-      root.style.setProperty('--sidebar-ring', '16 100% 60%');
-      root.style.setProperty('--glow-color', '#FF6B35');
+      // Reset to default SaaS Violet
+      root.style.setProperty('--workspace-primary', '#7C3AED');
+      root.style.setProperty('--workspace-primary-hsl', '263 70% 58%');
+      root.style.setProperty('--primary', '263 70% 58%');
+      root.style.setProperty('--ring', '263 70% 58%');
+      root.style.setProperty('--sidebar-primary', '263 70% 58%');
+      root.style.setProperty('--sidebar-ring', '263 70% 58%');
+      root.style.setProperty('--glow-color', '#7C3AED');
     }
 
     if (theme?.accentColor) {
@@ -76,11 +76,11 @@ export function WorkspaceThemeProvider({ children }: { children: React.ReactNode
       root.style.setProperty('--accent', accentHSL);
       root.style.setProperty('--info', accentHSL);
     } else {
-      // Reset to default Sellence Red/Orange accent
-      root.style.setProperty('--workspace-accent', '#E85D04');
-      root.style.setProperty('--workspace-accent-hsl', '24 97% 46%');
-      root.style.setProperty('--accent', '24 97% 46%');
-      root.style.setProperty('--info', '24 97% 46%');
+      // Reset to default Cyan
+      root.style.setProperty('--workspace-accent', '#06B6D4');
+      root.style.setProperty('--workspace-accent-hsl', '189 94% 43%');
+      root.style.setProperty('--accent', '189 94% 43%');
+      root.style.setProperty('--info', '189 94% 43%');
     }
   }, [currentWorkspace]);
 
