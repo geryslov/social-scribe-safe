@@ -20,7 +20,7 @@ export function Header() {
   const { currentWorkspace } = useWorkspace();
 
   const theme = currentWorkspace?.theme as WorkspaceTheme | undefined;
-  const primaryColor = theme?.primaryColor || '#8B5CF6';
+  const primaryColor = theme?.primaryColor || '#7C3AED';
 
   const documentsInReview = documents?.filter(doc => doc.status === 'in_review').length || 0;
 
@@ -38,13 +38,19 @@ export function Header() {
 
   return (
     <header 
-      className="sticky top-0 z-50 backdrop-blur-xl"
+      className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-border"
       style={{
-        background: `linear-gradient(135deg, rgba(14, 11, 44, 0.95) 0%, ${primaryColor}15 100%)`,
-        borderBottom: `3px solid ${primaryColor}`,
-        boxShadow: `0 4px 30px ${primaryColor}25`
+        boxShadow: `0 1px 3px rgba(0, 0, 0, 0.04), 0 4px 12px rgba(0, 0, 0, 0.02)`
       }}
     >
+      {/* Neon accent bar */}
+      <div 
+        className="h-1 w-full"
+        style={{
+          background: `linear-gradient(90deg, ${primaryColor}, #06B6D4)`
+        }}
+      />
+      
       <div className="px-8 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-8">
@@ -63,13 +69,13 @@ export function Header() {
                 />
               ) : (
                 <div 
-                  className="h-10 w-10 rounded-lg flex items-center justify-center transition-transform group-hover:scale-105"
+                  className="h-10 w-10 rounded-xl flex items-center justify-center transition-all group-hover:scale-105"
                   style={{ 
-                    background: `linear-gradient(135deg, ${primaryColor} 0%, ${primaryColor}80 100%)`,
-                    boxShadow: `0 0 20px ${primaryColor}40`
+                    background: `linear-gradient(135deg, ${primaryColor} 0%, #06B6D4 100%)`,
+                    boxShadow: `0 4px 16px ${primaryColor}40`
                   }}
                 >
-                  <Building2 className="h-6 w-6 text-white" />
+                  <Building2 className="h-5 w-5 text-white" />
                 </div>
               )}
             </div>
@@ -91,18 +97,21 @@ export function Header() {
                     size="sm"
                     onClick={() => navigate(item.path)}
                     className={cn(
-                      "gap-2 transition-all relative text-[#C7C9E3] hover:text-white hover:bg-white/10",
-                      isActive && "text-white",
-                      hasNotification && !isActive && "text-[#6EE7B7]"
+                      "gap-2 transition-all relative text-muted-foreground hover:text-foreground hover:bg-secondary",
+                      isActive && "text-foreground bg-secondary font-medium",
+                      hasNotification && !isActive && "text-primary"
                     )}
                     style={isActive ? { 
-                      backgroundColor: `${primaryColor}33`,
+                      color: primaryColor,
                     } : undefined}
                   >
                     <Icon className="h-4 w-4" />
                     {item.label}
                     {hasNotification && (
-                      <span className="absolute -top-1 -right-1 h-5 w-5 bg-[#6EE7B7] text-[#0E0B2C] text-xs font-bold rounded-full flex items-center justify-center animate-pulse">
+                      <span 
+                        className="absolute -top-1 -right-1 h-5 w-5 text-white text-xs font-bold rounded-full flex items-center justify-center"
+                        style={{ backgroundColor: primaryColor }}
+                      >
                         {item.badge}
                       </span>
                     )}
@@ -117,18 +126,18 @@ export function Header() {
               <div 
                 className="flex items-center gap-2 text-xs px-3 py-1.5 rounded-full"
                 style={{
-                  background: `${primaryColor}26`,
-                  border: `1px solid ${primaryColor}4D`
+                  background: `${primaryColor}15`,
+                  color: primaryColor
                 }}
               >
-                <Flame className="h-3.5 w-3.5" style={{ color: primaryColor }} />
-                <span className="font-medium text-white">Admin</span>
+                <Flame className="h-3.5 w-3.5" />
+                <span className="font-medium">Admin</span>
               </div>
             )}
             
             {user ? (
               <div className="flex items-center gap-2">
-                <div className="flex items-center gap-2 text-xs text-[#C7C9E3]">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   <User className="h-3.5 w-3.5" />
                   <span className="max-w-32 truncate">{user.email}</span>
                 </div>
@@ -136,7 +145,7 @@ export function Header() {
                   variant="ghost"
                   size="icon"
                   onClick={handleSignOut}
-                  className="h-8 w-8 text-[#C7C9E3] hover:text-white hover:bg-white/10"
+                  className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-secondary"
                 >
                   <LogOut className="h-4 w-4" />
                 </Button>
@@ -146,7 +155,7 @@ export function Header() {
                 variant="ghost"
                 size="sm"
                 onClick={() => navigate('/auth')}
-                className="gap-2 text-[#C7C9E3] hover:text-white hover:bg-white/10"
+                className="gap-2 text-muted-foreground hover:text-foreground hover:bg-secondary"
               >
                 <LogIn className="h-4 w-4" />
                 Admin Login
