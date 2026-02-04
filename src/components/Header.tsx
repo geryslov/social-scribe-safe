@@ -40,25 +40,37 @@ export function Header() {
     <header 
       className="sticky top-0 z-50 backdrop-blur-xl"
       style={{
-        background: 'rgba(27, 23, 96, 0.85)',
-        borderBottom: `2px solid ${primaryColor}40`
+        background: `linear-gradient(135deg, rgba(14, 11, 44, 0.95) 0%, ${primaryColor}15 100%)`,
+        borderBottom: `3px solid ${primaryColor}`,
+        boxShadow: `0 4px 30px ${primaryColor}25`
       }}
     >
       <div className="px-8 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-8">
-            <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate('/')}>
+            <div 
+              className="flex items-center gap-3 cursor-pointer group"
+              onClick={() => navigate('/')}
+            >
               {currentWorkspace?.logoUrl ? (
                 <img 
                   src={currentWorkspace.logoUrl} 
                   alt={currentWorkspace.name || 'Workspace'} 
-                  className="h-8 w-auto max-w-[120px] object-contain"
+                  className="h-10 w-auto max-w-[160px] object-contain transition-transform group-hover:scale-105"
                   onError={(e) => {
                     e.currentTarget.style.display = 'none';
                   }}
                 />
               ) : (
-                <Building2 className="h-8 w-8 text-white" />
+                <div 
+                  className="h-10 w-10 rounded-lg flex items-center justify-center transition-transform group-hover:scale-105"
+                  style={{ 
+                    background: `linear-gradient(135deg, ${primaryColor} 0%, ${primaryColor}80 100%)`,
+                    boxShadow: `0 0 20px ${primaryColor}40`
+                  }}
+                >
+                  <Building2 className="h-6 w-6 text-white" />
+                </div>
               )}
             </div>
 
