@@ -102,8 +102,8 @@ export function Header() {
                       hasNotification && !isActive && "text-primary"
                     )}
                     style={isActive ? { 
-                      background: `linear-gradient(135deg, ${primaryColor}, ${primaryColor}cc)`,
-                      boxShadow: `0 4px 20px ${primaryColor}50, 0 2px 8px ${primaryColor}30`,
+                      background: `linear-gradient(135deg, #FF6B35, #E85D04)`,
+                      boxShadow: `0 4px 20px rgba(255, 107, 53, 0.5), 0 2px 8px rgba(255, 107, 53, 0.3)`,
                     } : undefined}
                   >
                     <Icon className={cn("h-4 w-4", isActive && "drop-shadow-sm")} />
