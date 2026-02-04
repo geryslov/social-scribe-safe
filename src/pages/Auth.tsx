@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
-import { Linkedin, Loader2 } from 'lucide-react';
+import { Linkedin, Loader2, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 
 // LinkedIn icon with proper branding color
@@ -78,81 +78,77 @@ export default function Auth() {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="relative">
           <Loader2 className="h-10 w-10 animate-spin text-primary" />
-          <div className="absolute inset-0 animate-ping">
-            <Loader2 className="h-10 w-10 text-primary/30" />
-          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
-      {/* Background decorations */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
-        <div className="absolute bottom-1/4 right-1/4 w-64 h-64 bg-primary/10 rounded-full blur-3xl" />
-      </div>
+    <div className="min-h-screen flex items-center justify-center p-8 bg-background relative overflow-hidden">
+      {/* Subtle gradient background */}
+      <div 
+        className="absolute inset-0 opacity-50"
+        style={{
+          background: 'radial-gradient(circle at 30% 20%, hsl(263 70% 58% / 0.08) 0%, transparent 50%), radial-gradient(circle at 70% 80%, hsl(189 94% 43% / 0.08) 0%, transparent 50%)'
+        }}
+      />
+      
+      {/* Dot pattern */}
+      <div className="absolute inset-0 dot-pattern opacity-30" />
 
-      <div className="w-full max-w-md relative z-10">
-        <div className="card-elevated p-8 animate-fade-in cyber-corners-animated">
-          {/* Tech grid overlay */}
-          <div className="absolute inset-0 grid-overlay opacity-50 pointer-events-none rounded-md" />
+      <div className="relative z-10 w-full max-w-md">
+        {/* Logo/Brand */}
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-4 gradient-bg shadow-lg">
+            <Sparkles className="h-8 w-8 text-white" />
+          </div>
+          <h1 className="text-3xl font-bold text-foreground">Sellence</h1>
+          <p className="text-muted-foreground mt-2">Thought Leadership Platform</p>
+        </div>
+
+        <div className="bg-card border border-border rounded-xl shadow-xl overflow-hidden">
+          {/* Neon accent bar */}
+          <div className="h-1 w-full gradient-bg" />
           
-          {/* Header */}
-          <div className="text-center mb-8 relative">
-            <div className="flex items-center justify-center gap-3 mb-6">
-              <div className="relative">
-                <div className="flex items-center justify-center w-16 h-16 rounded-lg bg-gradient-to-br from-primary to-primary/70 glow-primary">
-                  <Linkedin className="h-8 w-8 text-primary-foreground" />
-                </div>
-                {/* Corner accents */}
-                <div className="absolute -top-1 -left-1 w-3 h-3 border-t-2 border-l-2 border-primary" />
-                <div className="absolute -bottom-1 -right-1 w-3 h-3 border-b-2 border-r-2 border-primary" />
-              </div>
+          <div className="p-8">
+            <div className="text-center mb-6">
+              <h2 className="text-xl font-semibold text-foreground mb-2">Welcome Back</h2>
+              <p className="text-sm text-muted-foreground">
+                Sign in to access your workspace
+              </p>
             </div>
-            <h1 className="text-3xl font-bold font-orbitron tracking-wider">
-              <span className="gradient-text text-glow">SELLENCE</span>
-            </h1>
-            <p className="text-muted-foreground mt-3 font-mono text-sm tracking-wide">
-              // LINKEDIN MANAGEMENT SYSTEM
-            </p>
-          </div>
 
-          {/* LinkedIn Sign In Button */}
-          <Button
-            onClick={handleLinkedInSignIn}
-            disabled={isLoading}
-            variant="glow"
-            className="w-full h-14 text-sm gap-3 relative overflow-hidden group"
-          >
-            {isLoading ? (
-              <Loader2 className="h-5 w-5 animate-spin" />
-            ) : (
-              <>
-                <LinkedInIcon />
-                <span className="relative z-10">Initialize LinkedIn SSO</span>
-              </>
-            )}
-          </Button>
+            {/* LinkedIn Sign In Button */}
+            <Button
+              onClick={handleLinkedInSignIn}
+              disabled={isLoading}
+              variant="glow"
+              className="w-full h-12 gap-3"
+            >
+              {isLoading ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : (
+                <>
+                  <LinkedInIcon />
+                  <span>Sign in with LinkedIn</span>
+                </>
+              )}
+            </Button>
 
-          <div className="mt-6 pt-4 border-t border-primary/10">
-            <p className="text-xs text-muted-foreground text-center font-mono">
-              <span className="text-primary/60">&gt;</span> Secure authentication via LinkedIn OAuth 2.0
-            </p>
+            <div className="mt-6 pt-4 border-t border-border">
+              <p className="text-xs text-muted-foreground text-center">
+                Secure authentication via LinkedIn OAuth 2.0
+              </p>
+            </div>
           </div>
         </div>
 
-        {/* Bottom tech decoration */}
-        <div className="mt-4 flex justify-center">
-          <div className="flex items-center gap-2 text-xs text-muted-foreground/50 font-mono">
-            <div className="w-2 h-2 rounded-full bg-primary/50 animate-pulse" />
-            <span>SYSTEM READY</span>
-          </div>
-        </div>
+        <p className="text-center text-xs text-muted-foreground mt-6">
+          By continuing, you agree to our Terms of Service and Privacy Policy
+        </p>
       </div>
     </div>
   );

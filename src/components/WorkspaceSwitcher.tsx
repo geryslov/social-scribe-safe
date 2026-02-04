@@ -26,31 +26,27 @@ export function WorkspaceSwitcher() {
         <Button
           variant="ghost"
           size="sm"
-          className="gap-2 text-[#C7C9E3] hover:text-white hover:bg-white/10"
+          className="gap-2 text-muted-foreground hover:text-foreground hover:bg-secondary"
         >
           <Building2 className="h-4 w-4" />
-          <span className="max-w-32 truncate">{currentWorkspace?.name || 'Select Workspace'}</span>
+          <span className="max-w-32 truncate font-medium">{currentWorkspace?.name || 'Select Workspace'}</span>
           <ChevronDown className="h-3 w-3 opacity-50" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent 
         align="start" 
-        className="w-56"
-        style={{
-          background: 'rgba(27, 23, 96, 0.95)',
-          borderColor: 'rgba(255, 255, 255, 0.1)',
-        }}
+        className="w-56 bg-card border-border shadow-lg"
       >
         {workspaces.map((workspace) => (
           <DropdownMenuItem
             key={workspace.id}
             onClick={() => switchWorkspace(workspace.id)}
-            className="gap-2 text-[#C7C9E3] hover:text-white hover:bg-white/10 cursor-pointer"
+            className="gap-2 text-foreground hover:bg-secondary cursor-pointer"
           >
             {workspace.isTestWorkspace ? (
-              <FlaskConical className="h-4 w-4 text-yellow-400" />
+              <FlaskConical className="h-4 w-4 text-warning" />
             ) : (
-              <Building2 className="h-4 w-4" />
+              <Building2 className="h-4 w-4 text-muted-foreground" />
             )}
             <span className="flex-1 truncate">{workspace.name}</span>
             {currentWorkspace?.id === workspace.id && (
@@ -61,12 +57,12 @@ export function WorkspaceSwitcher() {
         
         {isAdmin && (
           <>
-            <DropdownMenuSeparator className="bg-white/10" />
+            <DropdownMenuSeparator className="bg-border" />
             <DropdownMenuItem
               onClick={() => navigate('/admin')}
-              className="gap-2 text-[#C7C9E3] hover:text-white hover:bg-white/10 cursor-pointer"
+              className="gap-2 text-foreground hover:bg-secondary cursor-pointer"
             >
-              <Settings className="h-4 w-4" />
+              <Settings className="h-4 w-4 text-muted-foreground" />
               Manage Workspaces
             </DropdownMenuItem>
           </>

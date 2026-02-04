@@ -50,63 +50,37 @@ export function WorkspaceThemeProvider({ children }: { children: React.ReactNode
 
     if (theme?.primaryColor) {
       const primaryHSL = hexToHSL(theme.primaryColor);
-      // Create lighter/darker variants for better visibility
-      const hslParts = primaryHSL.split(' ');
-      const h = hslParts[0];
-      const s = hslParts[1];
-      const l = parseInt(hslParts[2]);
-      
-      // Create variants with good contrast
-      const primaryLight = `${h} ${s} ${Math.min(l + 15, 85)}%`;
-      const primaryDark = `${h} ${s} ${Math.max(l - 15, 25)}%`;
-      const primaryMuted = `${h} ${parseInt(s) * 0.6}% ${l}%`;
       
       root.style.setProperty('--workspace-primary', theme.primaryColor);
       root.style.setProperty('--workspace-primary-hsl', primaryHSL);
-      root.style.setProperty('--workspace-primary-light', primaryLight);
-      root.style.setProperty('--workspace-primary-dark', primaryDark);
-      root.style.setProperty('--workspace-primary-muted', primaryMuted);
-      
-      // Update all primary-related CSS variables
       root.style.setProperty('--primary', primaryHSL);
-      root.style.setProperty('--accent', primaryHSL);
       root.style.setProperty('--ring', primaryHSL);
       root.style.setProperty('--sidebar-primary', primaryHSL);
       root.style.setProperty('--sidebar-ring', primaryHSL);
-      
-      // Card and border styling with workspace color
-      root.style.setProperty('--card-accent', `${h} ${s} ${Math.max(l - 45, 10)}%`);
-      root.style.setProperty('--border-accent', `${h} ${parseInt(s) * 0.5}% ${Math.min(l + 5, 50)}%`);
-      
-      // Update scrollbar and glow effects via CSS
       root.style.setProperty('--glow-color', theme.primaryColor);
     } else {
-      // Reset to default Sellence Orange
-      root.style.setProperty('--workspace-primary', '#FF6B35');
-      root.style.setProperty('--workspace-primary-hsl', '18 100% 60%');
-      root.style.setProperty('--workspace-primary-light', '18 100% 75%');
-      root.style.setProperty('--workspace-primary-dark', '18 100% 45%');
-      root.style.setProperty('--workspace-primary-muted', '18 60% 60%');
-      root.style.setProperty('--primary', '18 100% 60%');
-      root.style.setProperty('--accent', '18 100% 60%');
-      root.style.setProperty('--ring', '18 100% 60%');
-      root.style.setProperty('--sidebar-primary', '18 100% 60%');
-      root.style.setProperty('--sidebar-ring', '18 100% 60%');
-      root.style.setProperty('--card-accent', '18 100% 20%');
-      root.style.setProperty('--border-accent', '18 60% 65%');
-      root.style.setProperty('--glow-color', '#FF6B35');
+      // Reset to default SaaS Violet
+      root.style.setProperty('--workspace-primary', '#7C3AED');
+      root.style.setProperty('--workspace-primary-hsl', '263 70% 58%');
+      root.style.setProperty('--primary', '263 70% 58%');
+      root.style.setProperty('--ring', '263 70% 58%');
+      root.style.setProperty('--sidebar-primary', '263 70% 58%');
+      root.style.setProperty('--sidebar-ring', '263 70% 58%');
+      root.style.setProperty('--glow-color', '#7C3AED');
     }
 
     if (theme?.accentColor) {
       const accentHSL = hexToHSL(theme.accentColor);
       root.style.setProperty('--workspace-accent', theme.accentColor);
       root.style.setProperty('--workspace-accent-hsl', accentHSL);
+      root.style.setProperty('--accent', accentHSL);
       root.style.setProperty('--info', accentHSL);
     } else {
-      // Reset to default Deep Orange
-      root.style.setProperty('--workspace-accent', '#E85D04');
-      root.style.setProperty('--workspace-accent-hsl', '24 97% 46%');
-      root.style.setProperty('--info', '24 97% 46%');
+      // Reset to default Cyan
+      root.style.setProperty('--workspace-accent', '#06B6D4');
+      root.style.setProperty('--workspace-accent-hsl', '189 94% 43%');
+      root.style.setProperty('--accent', '189 94% 43%');
+      root.style.setProperty('--info', '189 94% 43%');
     }
   }, [currentWorkspace]);
 
