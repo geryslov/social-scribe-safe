@@ -78,28 +78,47 @@ export default function Auth() {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="relative">
+          <Loader2 className="h-10 w-10 animate-spin text-primary" />
+          <div className="absolute inset-0 animate-ping">
+            <Loader2 className="h-10 w-10 text-primary/30" />
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <div className="card-elevated p-8 animate-fade-in">
+    <div className="min-h-screen flex items-center justify-center p-4">
+      {/* Background decorations */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
+        <div className="absolute bottom-1/4 right-1/4 w-64 h-64 bg-primary/10 rounded-full blur-3xl" />
+      </div>
+
+      <div className="w-full max-w-md relative z-10">
+        <div className="card-elevated p-8 animate-fade-in cyber-corners-animated">
+          {/* Tech grid overlay */}
+          <div className="absolute inset-0 grid-overlay opacity-50 pointer-events-none rounded-md" />
+          
           {/* Header */}
-          <div className="text-center mb-8">
-            <div className="flex items-center justify-center gap-3 mb-4">
-              <div className="flex items-center justify-center w-14 h-14 rounded-2xl gradient-bg glow-primary">
-                <Linkedin className="h-7 w-7 text-primary-foreground" />
+          <div className="text-center mb-8 relative">
+            <div className="flex items-center justify-center gap-3 mb-6">
+              <div className="relative">
+                <div className="flex items-center justify-center w-16 h-16 rounded-lg bg-gradient-to-br from-primary to-primary/70 glow-primary">
+                  <Linkedin className="h-8 w-8 text-primary-foreground" />
+                </div>
+                {/* Corner accents */}
+                <div className="absolute -top-1 -left-1 w-3 h-3 border-t-2 border-l-2 border-primary" />
+                <div className="absolute -bottom-1 -right-1 w-3 h-3 border-b-2 border-r-2 border-primary" />
               </div>
             </div>
-            <h1 className="text-2xl font-bold">
-              <span className="gradient-text">PostFlow</span>
+            <h1 className="text-3xl font-bold font-orbitron tracking-wider">
+              <span className="gradient-text text-glow">SELLENCE</span>
             </h1>
-            <p className="text-muted-foreground mt-2">
-              Sign in to manage your LinkedIn posts
+            <p className="text-muted-foreground mt-3 font-mono text-sm tracking-wide">
+              // LINKEDIN MANAGEMENT SYSTEM
             </p>
           </div>
 
@@ -107,21 +126,32 @@ export default function Auth() {
           <Button
             onClick={handleLinkedInSignIn}
             disabled={isLoading}
-            className="w-full h-12 text-base gap-3 bg-[#0A66C2] hover:bg-[#004182] text-white"
+            variant="glow"
+            className="w-full h-14 text-sm gap-3 relative overflow-hidden group"
           >
             {isLoading ? (
               <Loader2 className="h-5 w-5 animate-spin" />
             ) : (
               <>
                 <LinkedInIcon />
-                Sign in with LinkedIn
+                <span className="relative z-10">Initialize LinkedIn SSO</span>
               </>
             )}
           </Button>
 
-          <p className="text-xs text-muted-foreground text-center mt-6">
-            By signing in, you'll be able to create and schedule posts for your LinkedIn account.
-          </p>
+          <div className="mt-6 pt-4 border-t border-primary/10">
+            <p className="text-xs text-muted-foreground text-center font-mono">
+              <span className="text-primary/60">&gt;</span> Secure authentication via LinkedIn OAuth 2.0
+            </p>
+          </div>
+        </div>
+
+        {/* Bottom tech decoration */}
+        <div className="mt-4 flex justify-center">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground/50 font-mono">
+            <div className="w-2 h-2 rounded-full bg-primary/50 animate-pulse" />
+            <span>SYSTEM READY</span>
+          </div>
         </div>
       </div>
     </div>
