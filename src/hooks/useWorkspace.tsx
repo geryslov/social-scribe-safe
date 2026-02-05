@@ -79,6 +79,16 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     }
   }, [workspaces, currentWorkspace]);
 
+  // Keep currentWorkspace in sync with fresh data from queries
+  useEffect(() => {
+    if (currentWorkspace && workspaces.length > 0) {
+      const updatedWorkspace = workspaces.find(w => w.id === currentWorkspace.id);
+      if (updatedWorkspace && JSON.stringify(updatedWorkspace) !== JSON.stringify(currentWorkspace)) {
+        setCurrentWorkspace(updatedWorkspace);
+      }
+    }
+  }, [workspaces, currentWorkspace]);
+
   // Save current workspace to localStorage
   useEffect(() => {
     if (currentWorkspace) {
