@@ -442,6 +442,7 @@ export interface DocumentSection {
   sectionNumber: number;
   content: string;
   status: string;
+  publisherId: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -452,6 +453,7 @@ interface DbSection {
   section_number: number;
   content: string;
   status: string;
+  publisher_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -462,6 +464,7 @@ const mapDbToSection = (db: DbSection): DocumentSection => ({
   sectionNumber: db.section_number,
   content: db.content,
   status: db.status,
+  publisherId: db.publisher_id,
   createdAt: db.created_at,
   updatedAt: db.updated_at,
 });
@@ -485,7 +488,7 @@ export function useDocumentSections(documentId: string) {
   });
 
   const updateSection = useMutation({
-    mutationFn: async (data: { id: string; content?: string; status?: string }) => {
+    mutationFn: async (data: { id: string; content?: string; status?: string; publisherId?: string | null }) => {
       // Fetch current section to track changes
       const { data: currentSection, error: fetchError } = await supabase
         .from('document_sections')
@@ -498,6 +501,7 @@ export function useDocumentSections(documentId: string) {
       const updates: Record<string, unknown> = {};
       if (data.content !== undefined) updates.content = data.content;
       if (data.status !== undefined) updates.status = data.status;
+      if (data.publisherId !== undefined) updates.publisher_id = data.publisherId;
       
       const { error } = await supabase
         .from('document_sections')

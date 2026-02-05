@@ -1,27 +1,34 @@
 import { useState, useRef, useEffect } from 'react';
-import { Check, Trash2 } from 'lucide-react';
+import { Check, Trash2, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { DocumentSection } from '@/hooks/useDocuments';
 import { SectionEditHistory } from '@/components/SectionEditHistory';
+import { DocumentPublisherSelect, PublisherBadge } from '@/components/DocumentPublisherSelect';
+import { usePublishers } from '@/hooks/usePublishers';
 
 interface DocumentSectionCardProps {
   section: DocumentSection;
   onUpdate: (id: string, content: string) => void;
   onDelete: (id: string) => void;
   onApprove: (id: string) => void;
+  onPublisherChange: (id: string, publisherId: string | null) => void;
 }
 
 export function DocumentSectionCard({ 
   section, 
   onUpdate, 
   onDelete,
-  onApprove 
+  onApprove,
+  onPublisherChange
 }: DocumentSectionCardProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(section.content);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const { publishers } = usePublishers();
+
+  const assignedPublisher = publishers.find(p => p.id === section.publisherId);
 
   useEffect(() => {
     setEditContent(section.content);
@@ -63,6 +70,7 @@ export function DocumentSectionCard({
           <Badge variant="secondary" className={statusColors[section.status] || ''}>
             {section.status}
           </Badge>
+          {assignedPublisher && <PublisherBadge publisher={assignedPublisher} />}
         </div>
         
         <div className="flex items-center gap-1">
@@ -103,6 +111,18 @@ export function DocumentSectionCard({
           {section.content}
         </p>
       )}
+
+      {/* Publisher Assignment */}
+      <div className="flex items-center gap-2 pt-2 border-t border-border">
+        <User className="h-4 w-4 text-muted-foreground" />
+        <span className="text-sm text-muted-foreground">Assign to:</span>
+        <div className="flex-1 max-w-48">
+          <DocumentPublisherSelect
+            publisherId={section.publisherId}
+            onPublisherChange={(publisherId) => onPublisherChange(section.id, publisherId)}
+          />
+        </div>
+      </div>
 
       <SectionEditHistory sectionId={section.id} />
     </div>
