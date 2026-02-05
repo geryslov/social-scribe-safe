@@ -122,7 +122,8 @@ export function useWorkspaces() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['all-workspaces'] });
-      queryClient.invalidateQueries({ queryKey: ['workspaces'] });
+      // Use partial match to invalidate all workspace queries regardless of user ID
+      queryClient.invalidateQueries({ queryKey: ['workspaces'], exact: false });
       toast.success('Workspace updated');
     },
     onError: (error) => {
