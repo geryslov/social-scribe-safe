@@ -7,6 +7,7 @@ export interface WorkspaceTheme {
   accentColor?: string;
   buttonBgColor?: string;
   buttonTextColor?: string;
+  navButtonColor?: string;
 }
 
 interface WorkspaceThemeEditorProps {
@@ -43,6 +44,17 @@ const textColorPresets = [
   { label: 'Dark', value: '#1F2937' },
 ];
 
+const navButtonPresets = [
+  { label: 'Orange Fire', value: 'linear-gradient(135deg, #FF6B35, #E85D04)' },
+  { label: 'Purple Glow', value: 'linear-gradient(135deg, #8B5CF6, #6366F1)' },
+  { label: 'Blue Ocean', value: 'linear-gradient(135deg, #3B82F6, #06B6D4)' },
+  { label: 'Pink Sunset', value: 'linear-gradient(135deg, #EC4899, #F97316)' },
+  { label: 'Emerald', value: 'linear-gradient(135deg, #10B981, #22C55E)' },
+  { label: 'Red Alert', value: 'linear-gradient(135deg, #EF4444, #DC2626)' },
+  { label: 'Gold', value: 'linear-gradient(135deg, #F59E0B, #FACC15)' },
+  { label: 'Dark', value: 'linear-gradient(135deg, #374151, #1F2937)' },
+];
+
 export function WorkspaceThemeEditor({ theme, onChange }: WorkspaceThemeEditorProps) {
   const handlePrimaryChange = (color: string) => {
     onChange({ ...theme, primaryColor: color });
@@ -60,6 +72,10 @@ export function WorkspaceThemeEditor({ theme, onChange }: WorkspaceThemeEditorPr
     onChange({ ...theme, buttonTextColor: color });
   };
 
+  const handleNavButtonChange = (value: string) => {
+    onChange({ ...theme, navButtonColor: value });
+  };
+
   const isValidHex = (color: string) => /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(color);
   const isGradient = (value: string) => value?.startsWith('linear-gradient');
 
@@ -75,6 +91,7 @@ export function WorkspaceThemeEditor({ theme, onChange }: WorkspaceThemeEditorPr
 
   const currentButtonBg = theme.buttonBgColor || 'linear-gradient(135deg, #8B5CF6, #6366F1)';
   const currentButtonText = theme.buttonTextColor || '#FFFFFF';
+  const currentNavButton = theme.navButtonColor || 'linear-gradient(135deg, #FF6B35, #E85D04)';
 
   return (
     <div className="space-y-6">
@@ -220,10 +237,70 @@ export function WorkspaceThemeEditor({ theme, onChange }: WorkspaceThemeEditorPr
         </div>
       </div>
 
+      {/* Navigation Button Color */}
+      <div className="space-y-3">
+        <Label className="text-sm font-medium">Top Bar Navigation (Active Tab)</Label>
+        <p className="text-xs text-muted-foreground">Color for active navigation tabs in the header</p>
+        <div className="grid grid-cols-4 gap-2">
+          {navButtonPresets.map((preset) => (
+            <button
+              key={preset.value}
+              type="button"
+              onClick={() => handleNavButtonChange(preset.value)}
+              className={`h-10 rounded-lg border-2 transition-all hover:scale-105 ${
+                currentNavButton === preset.value 
+                  ? 'border-white shadow-lg ring-2 ring-white/30' 
+                  : 'border-transparent hover:border-white/30'
+              }`}
+              style={{ background: preset.value }}
+              title={preset.label}
+            />
+          ))}
+        </div>
+        <div className="flex items-center gap-2">
+          <Input
+            type="color"
+            value={isGradient(currentNavButton) ? '#FF6B35' : currentNavButton}
+            onChange={(e) => handleNavButtonChange(e.target.value)}
+            className="h-10 w-10 p-1 cursor-pointer border-0 rounded-lg"
+          />
+          <Input
+            type="text"
+            value={isGradient(currentNavButton) ? '' : currentNavButton}
+            onChange={(e) => handleHexInput(e.target.value, handleNavButtonChange)}
+            placeholder="Custom #hex"
+            className="w-32 font-mono text-sm"
+          />
+        </div>
+      </div>
+
       {/* Live Preview */}
       <div className="p-5 rounded-xl border border-border/50 bg-gradient-to-br from-background to-secondary/30 space-y-4">
         <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Live Preview</p>
         
+        {/* Nav Preview */}
+        <div className="space-y-2">
+          <p className="text-xs text-muted-foreground">Navigation Bar</p>
+          <div className="flex items-center gap-1 bg-secondary/50 p-1.5 rounded-xl w-fit">
+            <button
+              type="button"
+              className="px-4 py-2 rounded-lg text-sm font-medium text-white shadow-lg"
+              style={{ 
+                background: currentNavButton,
+                boxShadow: `0 4px 20px ${isGradient(currentNavButton) ? 'rgba(255, 107, 53, 0.5)' : currentNavButton}40`
+              }}
+            >
+              Active
+            </button>
+            <button
+              type="button"
+              className="px-4 py-2 rounded-lg text-sm font-medium text-muted-foreground"
+            >
+              Inactive
+            </button>
+          </div>
+        </div>
+
         <div className="flex items-center gap-4">
           <div className="flex gap-2">
             <div 

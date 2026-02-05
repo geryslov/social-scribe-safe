@@ -6,6 +6,7 @@ interface WorkspaceTheme {
   accentColor?: string;
   buttonBgColor?: string;
   buttonTextColor?: string;
+  navButtonColor?: string;
 }
 
 // Convert hex to HSL values for CSS variables
@@ -99,6 +100,13 @@ export function WorkspaceThemeProvider({ children }: { children: React.ReactNode
     } else {
       root.style.setProperty('--button-text', '#FFFFFF');
       root.style.setProperty('--button-text-hsl', '0 0% 100%');
+    }
+
+    // Navigation button customization
+    if (theme?.navButtonColor) {
+      root.style.setProperty('--nav-button-bg', theme.navButtonColor);
+    } else {
+      root.style.setProperty('--nav-button-bg', 'linear-gradient(135deg, #FF6B35, #E85D04)');
     }
   }, [currentWorkspace]);
 
