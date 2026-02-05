@@ -161,23 +161,21 @@ export function WorkspaceThemeEditor({ theme, onChange }: WorkspaceThemeEditorPr
             />
           ))}
         </div>
-        {!isGradient(currentButtonBg) && (
-          <div className="flex items-center gap-2">
-            <Input
-              type="color"
-              value={currentButtonBg}
-              onChange={(e) => handleButtonBgChange(e.target.value)}
-              className="h-10 w-10 p-1 cursor-pointer border-0 rounded-lg"
-            />
-            <Input
-              type="text"
-              value={currentButtonBg}
-              onChange={(e) => handleHexInput(e.target.value, handleButtonBgChange)}
-              placeholder="#8B5CF6"
-              className="w-32 font-mono text-sm"
-            />
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          <Input
+            type="color"
+            value={isGradient(currentButtonBg) ? '#8B5CF6' : currentButtonBg}
+            onChange={(e) => handleButtonBgChange(e.target.value)}
+            className="h-10 w-10 p-1 cursor-pointer border-0 rounded-lg"
+          />
+          <Input
+            type="text"
+            value={isGradient(currentButtonBg) ? '' : currentButtonBg}
+            onChange={(e) => handleHexInput(e.target.value, handleButtonBgChange)}
+            placeholder="Custom #hex"
+            className="w-32 font-mono text-sm"
+          />
+        </div>
       </div>
 
       {/* Button Text Color */}
