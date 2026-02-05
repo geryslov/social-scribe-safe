@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, Save, Send, CheckCircle, RotateCcw, Split, 
-  FileText, Clock, MessageSquare, ExternalLink, Layers, User 
+  FileText, Clock, MessageSquare, ExternalLink, Layers, User, Users 
 } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { Button } from '@/components/ui/button';
@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Checkbox } from '@/components/ui/checkbox';
 import { DocumentSplitModal } from '@/components/DocumentSplitModal';
 import { LinkedPostsList } from '@/components/LinkedPostCard';
 import { DocumentEditHistory } from '@/components/DocumentEditHistory';
@@ -45,6 +46,7 @@ export default function DocumentEditor() {
   const [newComment, setNewComment] = useState('');
   const [hasChanges, setHasChanges] = useState(false);
   const [splitModalOpen, setSplitModalOpen] = useState(false);
+  const [selectedSections, setSelectedSections] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (document) {
@@ -238,19 +240,86 @@ export default function DocumentEditor() {
             {/* Document Sections for Review */}
             {sections.length > 0 && (
               <div className="space-y-4">
-                <div className="flex items-center gap-2">
-                  <Layers className="h-4 w-4 text-primary" />
-                  <h3 className="font-medium">Posts for Review ({sections.length})</h3>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Layers className="h-4 w-4 text-primary" />
+                    <h3 className="font-medium">Posts for Review ({sections.length})</h3>
+                  </div>
+                  
+                  {/* Select All Checkbox */}
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="select-all"
+                      checked={selectedSections.size === sections.length && sections.length > 0}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setSelectedSections(new Set(sections.map(s => s.id)));
+                        } else {
+                          setSelectedSections(new Set());
+                        }
+                      }}
+                    />
+                    <label htmlFor="select-all" className="text-sm text-muted-foreground cursor-pointer">
+                      Select all
+                    </label>
+                  </div>
                 </div>
+
+                {/* Bulk Actions Bar */}
+                {selectedSections.size > 0 && (
+                  <div className="flex items-center gap-3 p-3 bg-primary/10 border border-primary/20 rounded-lg">
+                    <Users className="h-4 w-4 text-primary" />
+                    <span className="text-sm font-medium">
+                      {selectedSections.size} post{selectedSections.size !== 1 ? 's' : ''} selected
+                    </span>
+                    <div className="flex-1 max-w-64">
+                      <DocumentPublisherSelect
+                        publisherId={null}
+                        onPublisherChange={(newPublisherId) => {
+                          selectedSections.forEach(sectionId => {
+                            updateSection.mutate({ id: sectionId, publisherId: newPublisherId });
+                          });
+                          setSelectedSections(new Set());
+                          toast.success(`Assigned publisher to ${selectedSections.size} posts`);
+                        }}
+                      />
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setSelectedSections(new Set())}
+                    >
+                      Clear
+                    </Button>
+                  </div>
+                )}
+
                 {sections.map((section) => (
-                  <DocumentSectionCard
-                    key={section.id}
-                    section={section}
-                    onUpdate={(id, content) => updateSection.mutate({ id, content })}
-                    onDelete={(id) => deleteSection.mutate(id)}
-                    onApprove={(id) => updateSection.mutate({ id, status: 'approved' })}
-                    onPublisherChange={(id, publisherId) => updateSection.mutate({ id, publisherId })}
-                  />
+                  <div key={section.id} className="flex gap-3">
+                    <div className="pt-4">
+                      <Checkbox
+                        checked={selectedSections.has(section.id)}
+                        onCheckedChange={(checked) => {
+                          const newSelected = new Set(selectedSections);
+                          if (checked) {
+                            newSelected.add(section.id);
+                          } else {
+                            newSelected.delete(section.id);
+                          }
+                          setSelectedSections(newSelected);
+                        }}
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <DocumentSectionCard
+                        section={section}
+                        onUpdate={(id, content) => updateSection.mutate({ id, content })}
+                        onDelete={(id) => deleteSection.mutate(id)}
+                        onApprove={(id) => updateSection.mutate({ id, status: 'approved' })}
+                        onPublisherChange={(id, publisherId) => updateSection.mutate({ id, publisherId })}
+                      />
+                    </div>
+                  </div>
                 ))}
               </div>
             )}
