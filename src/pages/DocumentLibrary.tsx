@@ -114,8 +114,8 @@ export default function DocumentLibrary() {
             </p>
           </div>
           
-          {isAdmin && (
-            <Button onClick={() => setUploadModalOpen(true)}>
+{isAdmin && (
+            <Button variant="glow" onClick={() => setUploadModalOpen(true)}>
               <Plus className="h-4 w-4 mr-2" />
               Add Document
             </Button>
