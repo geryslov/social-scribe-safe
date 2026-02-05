@@ -20,6 +20,7 @@ interface DbDocument {
   approved_at: string | null;
   notes: string | null;
   workspace_id: string | null;
+  publisher_id: string | null;
 }
 
 interface DbComment {
@@ -45,6 +46,7 @@ const mapDbToDocument = (db: DbDocument): Document => ({
   approvedBy: db.approved_by,
   approvedAt: db.approved_at,
   notes: db.notes,
+  publisherId: db.publisher_id,
 });
 
 const mapDbToComment = (db: DbComment): DocumentComment => ({
@@ -194,6 +196,7 @@ function parsePostSections(content: string): string[] {
       title?: string; 
       content?: string; 
       notes?: string;
+      publisherId?: string | null;
     }) => {
       // Fetch current document to track changes
       const { data: currentDoc, error: fetchError } = await supabase
@@ -208,6 +211,7 @@ function parsePostSections(content: string): string[] {
       if (data.title !== undefined) updates.title = data.title;
       if (data.content !== undefined) updates.content = data.content;
       if (data.notes !== undefined) updates.notes = data.notes;
+      if (data.publisherId !== undefined) updates.publisher_id = data.publisherId;
       
       const { error } = await supabase
         .from('documents')

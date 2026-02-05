@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useDocuments, useDocumentSections } from '@/hooks/useDocuments';
 import { usePosts } from '@/hooks/usePosts';
+import { usePublishers } from '@/hooks/usePublishers';
 import { Document, DocumentStatus } from '@/types/document';
 import { toast } from 'sonner';
 
@@ -25,6 +26,7 @@ export default function DocumentLibrary() {
   const navigate = useNavigate();
   const { documents, isLoading, isAdmin, createDocument, deleteDocument, updateStatus } = useDocuments();
   const { createPost } = usePosts();
+  const { publishers } = usePublishers();
   
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<DocumentStatus | 'all'>('all');
@@ -180,6 +182,7 @@ export default function DocumentLibrary() {
               <DocumentCard
                 key={document.id}
                 document={document}
+                publisher={publishers.find(p => p.id === document.publisherId)}
                 isAdmin={isAdmin}
                 onEdit={(id) => navigate(`/documents/${id}`)}
                 onDelete={handleDeleteDocument}

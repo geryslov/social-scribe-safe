@@ -14,6 +14,7 @@ export interface Document {
   approvedBy: string | null;
   approvedAt: string | null;
   notes: string | null;
+  publisherId: string | null;
 }
 
 export interface DocumentComment {

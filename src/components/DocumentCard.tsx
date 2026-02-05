@@ -11,10 +11,13 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { Publisher } from '@/hooks/usePublishers';
+import { PublisherBadge } from './DocumentPublisherSelect';
 
 interface DocumentCardProps {
   document: Document;
   postCount?: number;
+  publisher?: Publisher;
   onEdit: (id: string) => void;
   onDelete: (id: string) => void;
   onSplit: (document: Document) => void;
@@ -28,7 +31,7 @@ const statusConfig: Record<DocumentStatus, { label: string; color: string; icon:
   split: { label: 'Split', color: 'bg-blue-500/20 text-blue-500', icon: Split },
 };
 
-export function DocumentCard({ document, postCount = 0, onEdit, onDelete, onSplit, isAdmin }: DocumentCardProps) {
+export function DocumentCard({ document, postCount = 0, publisher, onEdit, onDelete, onSplit, isAdmin }: DocumentCardProps) {
   const status = statusConfig[document.status];
   const StatusIcon = status.icon;
 
@@ -69,7 +72,8 @@ export function DocumentCard({ document, postCount = 0, onEdit, onDelete, onSpli
 
       {/* Footer */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          {publisher && <PublisherBadge publisher={publisher} />}
           {document.status === 'split' && postCount > 0 && (
             <span className="text-xs text-muted-foreground bg-secondary px-2 py-1 rounded">
               {postCount} post{postCount !== 1 ? 's' : ''}
