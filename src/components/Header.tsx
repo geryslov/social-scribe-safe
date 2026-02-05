@@ -95,16 +95,16 @@ export function Header() {
                     key={item.path}
                     onClick={() => navigate(item.path)}
                     className={cn(
-                      "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 relative",
-                      "active:scale-[0.95] active:bg-[#FF6B35] active:text-white active:shadow-[0_0_20px_rgba(255,107,53,0.6)]",
+                      "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 relative nav-button",
+                      "active:scale-[0.95]",
                       isActive 
                         ? "text-white shadow-lg scale-[1.02]" 
                         : "text-muted-foreground hover:text-foreground hover:bg-white/60",
                       hasNotification && !isActive && "text-primary"
                     )}
                     style={isActive ? { 
-                      background: `linear-gradient(135deg, #FF6B35, #E85D04)`,
-                      boxShadow: `0 4px 20px rgba(255, 107, 53, 0.5), 0 2px 8px rgba(255, 107, 53, 0.3)`,
+                      background: 'var(--nav-button-bg, linear-gradient(135deg, #FF6B35, #E85D04))',
+                      boxShadow: `0 4px 20px rgba(0, 0, 0, 0.25), 0 2px 8px rgba(0, 0, 0, 0.15)`,
                     } : undefined}
                   >
                     <Icon className={cn("h-4 w-4", isActive && "drop-shadow-sm")} />
