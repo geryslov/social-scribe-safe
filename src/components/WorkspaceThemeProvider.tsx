@@ -4,6 +4,8 @@ import { useWorkspace } from '@/hooks/useWorkspace';
 interface WorkspaceTheme {
   primaryColor?: string;
   accentColor?: string;
+  buttonBgColor?: string;
+  buttonTextColor?: string;
 }
 
 // Convert hex to HSL values for CSS variables
@@ -81,6 +83,22 @@ export function WorkspaceThemeProvider({ children }: { children: React.ReactNode
       root.style.setProperty('--workspace-accent-hsl', '189 94% 43%');
       root.style.setProperty('--accent', '189 94% 43%');
       root.style.setProperty('--info', '189 94% 43%');
+    }
+
+    // Button customization
+    if (theme?.buttonBgColor) {
+      root.style.setProperty('--button-bg', theme.buttonBgColor);
+    } else {
+      root.style.setProperty('--button-bg', 'linear-gradient(135deg, #8B5CF6, #6366F1)');
+    }
+
+    if (theme?.buttonTextColor) {
+      const textHSL = hexToHSL(theme.buttonTextColor);
+      root.style.setProperty('--button-text', theme.buttonTextColor);
+      root.style.setProperty('--button-text-hsl', textHSL);
+    } else {
+      root.style.setProperty('--button-text', '#FFFFFF');
+      root.style.setProperty('--button-text-hsl', '0 0% 100%');
     }
   }, [currentWorkspace]);
 

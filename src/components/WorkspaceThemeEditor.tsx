@@ -1,9 +1,12 @@
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 
 export interface WorkspaceTheme {
   primaryColor?: string;
   accentColor?: string;
+  buttonBgColor?: string;
+  buttonTextColor?: string;
 }
 
 interface WorkspaceThemeEditorProps {
@@ -21,6 +24,25 @@ const colorPresets = [
   { label: 'Red', value: '#EF4444' },
 ];
 
+const buttonBgPresets = [
+  { label: 'Gradient Purple', value: 'linear-gradient(135deg, #8B5CF6, #6366F1)' },
+  { label: 'Gradient Blue', value: 'linear-gradient(135deg, #3B82F6, #06B6D4)' },
+  { label: 'Gradient Orange', value: 'linear-gradient(135deg, #F97316, #EF4444)' },
+  { label: 'Gradient Pink', value: 'linear-gradient(135deg, #EC4899, #8B5CF6)' },
+  { label: 'Gradient Teal', value: 'linear-gradient(135deg, #14B8A6, #22C55E)' },
+  { label: 'Solid Violet', value: '#8B5CF6' },
+  { label: 'Solid Blue', value: '#3B82F6' },
+];
+
+const textColorPresets = [
+  { label: 'White', value: '#FFFFFF' },
+  { label: 'Cyan', value: '#06B6D4' },
+  { label: 'Yellow', value: '#FACC15' },
+  { label: 'Lime', value: '#84CC16' },
+  { label: 'Pink', value: '#F472B6' },
+  { label: 'Dark', value: '#1F2937' },
+];
+
 export function WorkspaceThemeEditor({ theme, onChange }: WorkspaceThemeEditorProps) {
   const handlePrimaryChange = (color: string) => {
     onChange({ ...theme, primaryColor: color });
@@ -30,10 +52,18 @@ export function WorkspaceThemeEditor({ theme, onChange }: WorkspaceThemeEditorPr
     onChange({ ...theme, accentColor: color });
   };
 
+  const handleButtonBgChange = (value: string) => {
+    onChange({ ...theme, buttonBgColor: value });
+  };
+
+  const handleButtonTextChange = (color: string) => {
+    onChange({ ...theme, buttonTextColor: color });
+  };
+
   const isValidHex = (color: string) => /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(color);
+  const isGradient = (value: string) => value?.startsWith('linear-gradient');
 
   const handleHexInput = (value: string, setter: (color: string) => void) => {
-    // Auto-add # if missing
     let hex = value.trim();
     if (hex && !hex.startsWith('#')) {
       hex = '#' + hex;
@@ -43,17 +73,20 @@ export function WorkspaceThemeEditor({ theme, onChange }: WorkspaceThemeEditorPr
     }
   };
 
+  const currentButtonBg = theme.buttonBgColor || 'linear-gradient(135deg, #8B5CF6, #6366F1)';
+  const currentButtonText = theme.buttonTextColor || '#FFFFFF';
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {/* Primary Color */}
       <div className="space-y-2">
-        <Label>Primary Color</Label>
+        <Label className="text-sm font-medium">Primary Color</Label>
         <div className="flex items-center gap-2">
           <Input
             type="color"
             value={theme.primaryColor || '#8B5CF6'}
             onChange={(e) => handlePrimaryChange(e.target.value)}
-            className="h-10 w-10 p-1 cursor-pointer border-0"
+            className="h-10 w-10 p-1 cursor-pointer border-0 rounded-lg"
           />
           <Input
             type="text"
@@ -62,13 +95,13 @@ export function WorkspaceThemeEditor({ theme, onChange }: WorkspaceThemeEditorPr
             placeholder="#8B5CF6"
             className="w-24 font-mono text-sm"
           />
-          <div className="flex gap-1 flex-wrap flex-1">
+          <div className="flex gap-1.5 flex-wrap flex-1">
             {colorPresets.map((preset) => (
               <button
                 key={preset.value}
                 type="button"
                 onClick={() => handlePrimaryChange(preset.value)}
-                className="h-6 w-6 rounded-full border border-border/50 hover:scale-110 transition-transform"
+                className="h-7 w-7 rounded-lg border-2 border-transparent hover:border-white/50 hover:scale-110 transition-all shadow-sm"
                 style={{ backgroundColor: preset.value }}
                 title={preset.label}
               />
@@ -79,13 +112,13 @@ export function WorkspaceThemeEditor({ theme, onChange }: WorkspaceThemeEditorPr
 
       {/* Accent Color */}
       <div className="space-y-2">
-        <Label>Accent Color</Label>
+        <Label className="text-sm font-medium">Accent Color</Label>
         <div className="flex items-center gap-2">
           <Input
             type="color"
             value={theme.accentColor || '#5DA9FF'}
             onChange={(e) => handleAccentChange(e.target.value)}
-            className="h-10 w-10 p-1 cursor-pointer border-0"
+            className="h-10 w-10 p-1 cursor-pointer border-0 rounded-lg"
           />
           <Input
             type="text"
@@ -94,13 +127,13 @@ export function WorkspaceThemeEditor({ theme, onChange }: WorkspaceThemeEditorPr
             placeholder="#5DA9FF"
             className="w-24 font-mono text-sm"
           />
-          <div className="flex gap-1 flex-wrap flex-1">
+          <div className="flex gap-1.5 flex-wrap flex-1">
             {colorPresets.map((preset) => (
               <button
                 key={preset.value}
                 type="button"
                 onClick={() => handleAccentChange(preset.value)}
-                className="h-6 w-6 rounded-full border border-border/50 hover:scale-110 transition-transform"
+                className="h-7 w-7 rounded-lg border-2 border-transparent hover:border-white/50 hover:scale-110 transition-all shadow-sm"
                 style={{ backgroundColor: preset.value }}
                 title={preset.label}
               />
@@ -109,24 +142,131 @@ export function WorkspaceThemeEditor({ theme, onChange }: WorkspaceThemeEditorPr
         </div>
       </div>
 
-      {/* Preview */}
-      <div className="p-4 rounded-lg border border-border/50 bg-background/50">
-        <p className="text-xs text-muted-foreground mb-2">Preview</p>
-        <div className="flex items-center gap-3">
-          <div 
-            className="h-8 w-8 rounded-md"
-            style={{ backgroundColor: theme.primaryColor || '#8B5CF6' }}
+      {/* Button Background */}
+      <div className="space-y-3">
+        <Label className="text-sm font-medium">Button Background</Label>
+        <div className="grid grid-cols-4 gap-2">
+          {buttonBgPresets.map((preset) => (
+            <button
+              key={preset.value}
+              type="button"
+              onClick={() => handleButtonBgChange(preset.value)}
+              className={`h-10 rounded-lg border-2 transition-all hover:scale-105 ${
+                currentButtonBg === preset.value 
+                  ? 'border-white shadow-lg ring-2 ring-white/30' 
+                  : 'border-transparent hover:border-white/30'
+              }`}
+              style={{ background: preset.value }}
+              title={preset.label}
+            />
+          ))}
+        </div>
+        {!isGradient(currentButtonBg) && (
+          <div className="flex items-center gap-2">
+            <Input
+              type="color"
+              value={currentButtonBg}
+              onChange={(e) => handleButtonBgChange(e.target.value)}
+              className="h-10 w-10 p-1 cursor-pointer border-0 rounded-lg"
+            />
+            <Input
+              type="text"
+              value={currentButtonBg}
+              onChange={(e) => handleHexInput(e.target.value, handleButtonBgChange)}
+              placeholder="#8B5CF6"
+              className="w-32 font-mono text-sm"
+            />
+          </div>
+        )}
+      </div>
+
+      {/* Button Text Color */}
+      <div className="space-y-3">
+        <Label className="text-sm font-medium">Button Text Color</Label>
+        <div className="flex gap-2 flex-wrap">
+          {textColorPresets.map((preset) => (
+            <button
+              key={preset.value}
+              type="button"
+              onClick={() => handleButtonTextChange(preset.value)}
+              className={`h-9 px-4 rounded-lg border-2 text-xs font-semibold transition-all hover:scale-105 ${
+                currentButtonText === preset.value 
+                  ? 'border-white shadow-lg ring-2 ring-white/30' 
+                  : 'border-border/50 hover:border-white/30'
+              }`}
+              style={{ 
+                backgroundColor: preset.value === '#1F2937' ? '#1F2937' : 'transparent',
+                color: preset.value,
+                textShadow: preset.value === '#FFFFFF' ? '0 0 4px rgba(0,0,0,0.5)' : 'none'
+              }}
+              title={preset.label}
+            >
+              Aa
+            </button>
+          ))}
+        </div>
+        <div className="flex items-center gap-2">
+          <Input
+            type="color"
+            value={currentButtonText}
+            onChange={(e) => handleButtonTextChange(e.target.value)}
+            className="h-10 w-10 p-1 cursor-pointer border-0 rounded-lg"
           />
-          <div 
-            className="h-8 w-8 rounded-md"
-            style={{ backgroundColor: theme.accentColor || '#5DA9FF' }}
+          <Input
+            type="text"
+            value={currentButtonText}
+            onChange={(e) => handleHexInput(e.target.value, handleButtonTextChange)}
+            placeholder="#FFFFFF"
+            className="w-24 font-mono text-sm"
           />
+        </div>
+      </div>
+
+      {/* Live Preview */}
+      <div className="p-5 rounded-xl border border-border/50 bg-gradient-to-br from-background to-secondary/30 space-y-4">
+        <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Live Preview</p>
+        
+        <div className="flex items-center gap-4">
+          <div className="flex gap-2">
+            <div 
+              className="h-10 w-10 rounded-lg shadow-md"
+              style={{ backgroundColor: theme.primaryColor || '#8B5CF6' }}
+            />
+            <div 
+              className="h-10 w-10 rounded-lg shadow-md"
+              style={{ backgroundColor: theme.accentColor || '#5DA9FF' }}
+            />
+          </div>
           <div 
-            className="h-8 flex-1 rounded-md"
+            className="h-10 flex-1 rounded-lg shadow-md"
             style={{ 
               background: `linear-gradient(135deg, ${theme.primaryColor || '#8B5CF6'} 0%, ${theme.accentColor || '#5DA9FF'} 100%)` 
             }}
           />
+        </div>
+
+        <div className="flex gap-3">
+          <Button
+            type="button"
+            className="flex-1 h-11 font-semibold shadow-lg transition-all hover:scale-[1.02]"
+            style={{ 
+              background: currentButtonBg,
+              color: currentButtonText,
+            }}
+          >
+            Primary Action
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            className="flex-1 h-11 font-semibold"
+            style={{ 
+              borderColor: theme.primaryColor || '#8B5CF6',
+              color: theme.primaryColor || '#8B5CF6',
+            }}
+          >
+            Secondary
+          </Button>
         </div>
       </div>
     </div>
