@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, Save, Send, CheckCircle, RotateCcw, Split, 
-  FileText, Clock, MessageSquare, ExternalLink, Layers 
+  FileText, Clock, MessageSquare, ExternalLink, Layers, User 
 } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { Button } from '@/components/ui/button';
@@ -14,6 +14,7 @@ import { DocumentSplitModal } from '@/components/DocumentSplitModal';
 import { LinkedPostsList } from '@/components/LinkedPostCard';
 import { DocumentEditHistory } from '@/components/DocumentEditHistory';
 import { DocumentSectionCard } from '@/components/DocumentSectionCard';
+import { DocumentPublisherSelect } from '@/components/DocumentPublisherSelect';
 import { useDocument, useDocuments, useDocumentComments, useDocumentPosts, useDocumentSections } from '@/hooks/useDocuments';
 import { usePosts } from '@/hooks/usePosts';
 import { DocumentStatus } from '@/types/document';
@@ -40,6 +41,7 @@ export default function DocumentEditor() {
 
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
+  const [publisherId, setPublisherId] = useState<string | null>(null);
   const [newComment, setNewComment] = useState('');
   const [hasChanges, setHasChanges] = useState(false);
   const [splitModalOpen, setSplitModalOpen] = useState(false);
@@ -48,18 +50,23 @@ export default function DocumentEditor() {
     if (document) {
       setTitle(document.title);
       setContent(document.content);
+      setPublisherId(document.publisherId);
     }
   }, [document]);
 
   useEffect(() => {
     if (document) {
-      setHasChanges(title !== document.title || content !== document.content);
+      setHasChanges(
+        title !== document.title || 
+        content !== document.content || 
+        publisherId !== document.publisherId
+      );
     }
-  }, [title, content, document]);
+  }, [title, content, publisherId, document]);
 
   const handleSave = async () => {
     if (!id) return;
-    await updateDocument.mutateAsync({ id, title, content });
+    await updateDocument.mutateAsync({ id, title, content, publisherId });
     setHasChanges(false);
   };
 
@@ -292,6 +299,20 @@ export default function DocumentEditor() {
                 )}
               </div>
             </div>
+
+            {/* Assigned Publisher */}
+            {isAdmin && (
+              <div className="bg-card border border-border rounded-xl p-4">
+                <h3 className="font-medium flex items-center gap-2 mb-3">
+                  <User className="h-4 w-4 text-primary" />
+                  Assigned Publisher
+                </h3>
+                <DocumentPublisherSelect
+                  publisherId={publisherId}
+                  onPublisherChange={setPublisherId}
+                />
+              </div>
+            )}
 
             {/* Edit History */}
             <DocumentEditHistory documentId={id || ''} />

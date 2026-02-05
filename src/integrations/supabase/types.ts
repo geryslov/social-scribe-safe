@@ -141,6 +141,7 @@ export type Database = {
           id: string
           notes: string | null
           original_content: string
+          publisher_id: string | null
           status: string
           title: string
           updated_at: string
@@ -157,6 +158,7 @@ export type Database = {
           id?: string
           notes?: string | null
           original_content: string
+          publisher_id?: string | null
           status?: string
           title: string
           updated_at?: string
@@ -173,12 +175,20 @@ export type Database = {
           id?: string
           notes?: string | null
           original_content?: string
+          publisher_id?: string | null
           status?: string
           title?: string
           updated_at?: string
           workspace_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "documents_publisher_id_fkey"
+            columns: ["publisher_id"]
+            isOneToOne: false
+            referencedRelation: "publishers"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "documents_workspace_id_fkey"
             columns: ["workspace_id"]
