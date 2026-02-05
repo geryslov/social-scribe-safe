@@ -249,6 +249,7 @@ export default function DocumentEditor() {
                     onUpdate={(id, content) => updateSection.mutate({ id, content })}
                     onDelete={(id) => deleteSection.mutate(id)}
                     onApprove={(id) => updateSection.mutate({ id, status: 'approved' })}
+                    onPublisherChange={(id, publisherId) => updateSection.mutate({ id, publisherId })}
                   />
                 ))}
               </div>

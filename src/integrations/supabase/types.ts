@@ -97,6 +97,7 @@ export type Database = {
           created_at: string
           document_id: string
           id: string
+          publisher_id: string | null
           section_number: number
           status: string
           updated_at: string
@@ -106,6 +107,7 @@ export type Database = {
           created_at?: string
           document_id: string
           id?: string
+          publisher_id?: string | null
           section_number: number
           status?: string
           updated_at?: string
@@ -115,6 +117,7 @@ export type Database = {
           created_at?: string
           document_id?: string
           id?: string
+          publisher_id?: string | null
           section_number?: number
           status?: string
           updated_at?: string
@@ -125,6 +128,13 @@ export type Database = {
             columns: ["document_id"]
             isOneToOne: false
             referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_sections_publisher_id_fkey"
+            columns: ["publisher_id"]
+            isOneToOne: false
+            referencedRelation: "publishers"
             referencedColumns: ["id"]
           },
         ]
