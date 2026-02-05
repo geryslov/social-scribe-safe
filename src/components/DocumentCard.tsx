@@ -97,11 +97,11 @@ export function DocumentCard({ document, postCount = 0, publisher, onEdit, onDel
             <Edit className="h-4 w-4" />
           </Button>
           
-          {document.status === 'approved' && isAdmin && (
+{document.status === 'approved' && isAdmin && (
             <Button
-              variant="ghost"
+              variant="outline"
               size="icon"
-              className="h-8 w-8 text-primary"
+              className="h-8 w-8 text-accent border-accent/50 hover:bg-accent/10 hover:border-accent"
               onClick={() => onSplit(document)}
             >
               <Split className="h-4 w-4" />
