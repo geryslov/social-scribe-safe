@@ -30,6 +30,28 @@ export function useWorkspaces() {
     enabled: isAdmin,
   });
 
+  // Fetch publisher counts per workspace
+  const { data: publisherCounts = {} } = useQuery({
+    queryKey: ['workspace-publisher-counts'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('publishers')
+        .select('workspace_id');
+      
+      if (error) throw error;
+      
+      // Count publishers per workspace
+      const counts: Record<string, number> = {};
+      data.forEach((p) => {
+        if (p.workspace_id) {
+          counts[p.workspace_id] = (counts[p.workspace_id] || 0) + 1;
+        }
+      });
+      return counts;
+    },
+    enabled: isAdmin,
+  });
+
   const createWorkspace = useMutation({
     mutationFn: async (data: { 
       name: string; 
@@ -152,6 +174,7 @@ export function useWorkspaces() {
 
   return {
     workspaces,
+    publisherCounts,
     isLoading,
     isAdmin,
     createWorkspace,

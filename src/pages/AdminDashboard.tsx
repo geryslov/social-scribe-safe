@@ -11,7 +11,6 @@ import {
   Plus, 
   Copy, 
   Users, 
-  FileText, 
   ExternalLink,
   FlaskConical,
   Check,
@@ -26,7 +25,7 @@ import { toast } from 'sonner';
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const { isAdmin, isLoading: authLoading } = useAuth();
-  const { workspaces, isLoading } = useWorkspaces();
+  const { workspaces, publisherCounts, isLoading } = useWorkspaces();
   const { switchWorkspace } = useWorkspace();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingWorkspace, setEditingWorkspace] = useState<Workspace | null>(null);
@@ -137,13 +136,12 @@ export default function AdminDashboard() {
                   )}
                   
                   <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                    <div className="flex items-center gap-1">
-                      <Users className="h-4 w-4" />
-                      <span>--</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <FileText className="h-4 w-4" />
-                      <span>--</span>
+                    <div className="flex items-center gap-1.5 bg-primary/10 px-2.5 py-1 rounded-full">
+                      <Users className="h-4 w-4 text-primary" />
+                      <span className="font-medium text-foreground">
+                        {publisherCounts[workspace.id] || 0}
+                      </span>
+                      <span className="text-xs">publishers</span>
                     </div>
                   </div>
 
