@@ -121,7 +121,7 @@ export function DocumentCard({ document, postCount = 0, publisher, onEdit, onDel
                   View & Edit
                 </DropdownMenuItem>
                 {document.status === 'approved' && (
-                  <DropdownMenuItem onClick={() => onSplit(document)}>
+                  <DropdownMenuItem onClick={() => onSplit(document)} className="text-accent focus:text-accent">
                     <Split className="h-4 w-4 mr-2" />
                     Split to Posts
                   </DropdownMenuItem>
