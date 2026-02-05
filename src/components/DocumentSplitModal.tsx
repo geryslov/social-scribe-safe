@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Shuffle, Sparkles, Loader2 } from 'lucide-react';
+import { Plus, Shuffle, Sparkles, Loader2, Users } from 'lucide-react';
 import { Document } from '@/types/document';
 import { DocumentSection } from '@/hooks/useDocuments';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { usePublishers } from '@/hooks/usePublishers';
 import { format } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
@@ -87,6 +95,15 @@ export function DocumentSplitModal({ open, onOpenChange, document, sections, onS
       ...post,
       publisherId: publishers[Math.floor(Math.random() * publishers.length)].id,
     })));
+  };
+
+  const assignAllToPublisher = (publisherId: string) => {
+    setParsedPosts(prev => prev.map(post => ({
+      ...post,
+      publisherId,
+    })));
+    const publisher = publishers.find(p => p.id === publisherId);
+    toast.success(`Assigned all posts to ${publisher?.name}`);
   };
 
   const handleAISplit = async () => {
@@ -175,7 +192,7 @@ export function DocumentSplitModal({ open, onOpenChange, document, sections, onS
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto space-y-4 py-4">
-          <div className="flex justify-between items-center">
+          <div className="flex justify-between items-center flex-wrap gap-2">
             <Button 
               variant="outline" 
               onClick={handleAISplit}
@@ -191,15 +208,42 @@ export function DocumentSplitModal({ open, onOpenChange, document, sections, onS
             </Button>
             
             {parsedPosts.length > 0 && publishers.length > 0 && (
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={randomizePublishers}
-                className="gap-2"
-              >
-                <Shuffle className="h-4 w-4" />
-                Randomize Publishers
-              </Button>
+              <div className="flex items-center gap-2">
+                {/* Assign All to One Publisher */}
+                <div className="flex items-center gap-2">
+                  <Users className="h-4 w-4 text-muted-foreground" />
+                  <Select onValueChange={assignAllToPublisher}>
+                    <SelectTrigger className="w-48">
+                      <SelectValue placeholder="Assign all to..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {publishers.map((publisher) => (
+                        <SelectItem key={publisher.id} value={publisher.id}>
+                          <div className="flex items-center gap-2">
+                            <Avatar className="h-5 w-5">
+                              <AvatarImage src={publisher.avatar_url || undefined} />
+                              <AvatarFallback className="text-[10px]">
+                                {publisher.name.slice(0, 2).toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span>{publisher.name}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={randomizePublishers}
+                  className="gap-2"
+                >
+                  <Shuffle className="h-4 w-4" />
+                  Randomize
+                </Button>
+              </div>
             )}
           </div>
           
