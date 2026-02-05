@@ -296,12 +296,12 @@ const Posts = () => {
                     onClick={() => setIsBulkUploadOpen(true)} 
                     size="lg" 
                     variant="outline"
-                    className="gap-2 rounded-xl"
+                    className="gap-2 rounded-xl text-accent"
                   >
                     <Upload className="h-5 w-5" />
                     Bulk Upload
                   </Button>
-                  <Button onClick={handleNewPost} size="lg" className="gap-2 gradient-bg glow-primary hover:scale-105 transition-transform rounded-xl">
+                  <Button onClick={handleNewPost} size="lg" className="gap-2 gradient-bg glow-primary hover:scale-105 transition-transform rounded-xl text-accent">
                     <Plus className="h-5 w-5" />
                     New Post
                   </Button>
