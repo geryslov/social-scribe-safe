@@ -30,8 +30,8 @@ const App = () => {
               <Sonner />
               <BrowserRouter>
                 <Routes>
-                  <Route path="/" element={<Analytics />} />
-                  <Route path="/posts" element={<Posts />} />
+                <Route path="/" element={<Posts />} />
+                  <Route path="/analytics" element={<Analytics />} />
                   <Route path="/publisher/:name" element={<PublisherAnalytics />} />
                   <Route path="/auth" element={<Auth />} />
                   <Route path="/documents" element={<DocumentLibrary />} />
