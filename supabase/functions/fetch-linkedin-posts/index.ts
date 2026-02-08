@@ -12,6 +12,7 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
 // LinkedIn API version
 const LINKEDIN_VERSION = '202601';
+const LEGACY_WORKSPACE_ID = 'f26b7a85-d4ad-451e-8585-d9906d5b9f95';
 
 interface PublisherData {
   id: string;
@@ -273,6 +274,47 @@ async function saveAnalyticsSnapshot(
   }
 }
 
+// Fetch profile analytics (followers, profile viewers, search appearances)
+async function fetchProfileAnalytics(
+  accessToken: string
+): Promise<{ followers: number; profileViewers: number; searchAppearances: number }> {
+  const result = { followers: 0, profileViewers: 0, searchAppearances: 0 };
+
+  const endpoints = [
+    { key: 'followers' as const, url: 'https://api.linkedin.com/rest/memberFollowersCount?q=me' },
+    { key: 'profileViewers' as const, url: 'https://api.linkedin.com/rest/memberProfileViewersCount?q=me' },
+    { key: 'searchAppearances' as const, url: 'https://api.linkedin.com/rest/memberSearchAppearancesCount?q=me' },
+  ];
+
+  for (const endpoint of endpoints) {
+    try {
+      console.log(`Fetching ${endpoint.key}...`);
+      const response = await fetch(endpoint.url, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'LinkedIn-Version': LINKEDIN_VERSION,
+          'X-Restli-Protocol-Version': '2.0.0',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        // LinkedIn returns count in different field names depending on endpoint
+        const count = data.count ?? data.followersCount ?? data.profileViewersCount ?? data.searchAppearancesCount ?? 0;
+        result[endpoint.key] = count;
+        console.log(`${endpoint.key}: ${count}`);
+      } else {
+        const errorText = await response.text();
+        console.log(`Could not fetch ${endpoint.key}: ${response.status} - ${errorText}`);
+      }
+    } catch (error) {
+      console.error(`Error fetching ${endpoint.key}:`, error);
+    }
+  }
+
+  return result;
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -295,7 +337,7 @@ Deno.serve(async (req) => {
     // Get publisher with LinkedIn credentials
     const { data: publisher, error: publisherError } = await supabase
       .from('publishers')
-      .select('id, name, linkedin_member_id, linkedin_access_token, linkedin_refresh_token, linkedin_token_expires_at')
+      .select('id, name, workspace_id, linkedin_member_id, linkedin_access_token, linkedin_refresh_token, linkedin_token_expires_at')
       .eq('id', publisherId)
       .single();
 
@@ -396,10 +438,39 @@ Deno.serve(async (req) => {
 
     console.log(`Successfully synced analytics for ${syncedCount} posts`);
 
+    // Fetch profile analytics only for Legacy Data workspace publishers
+    let profileAnalytics = null;
+    if (publisher.workspace_id === LEGACY_WORKSPACE_ID) {
+      console.log('Legacy Data workspace publisher - fetching profile analytics...');
+      try {
+        profileAnalytics = await fetchProfileAnalytics(accessToken);
+        
+        const { error: profileUpdateError } = await supabase
+          .from('publishers')
+          .update({
+            profile_viewers: profileAnalytics.profileViewers,
+            followers_count: profileAnalytics.followers,
+            search_appearances: profileAnalytics.searchAppearances,
+            profile_analytics_fetched_at: new Date().toISOString(),
+          })
+          .eq('id', publisher.id);
+
+        if (profileUpdateError) {
+          console.error('Failed to update profile analytics:', profileUpdateError);
+        } else {
+          console.log('Profile analytics updated:', profileAnalytics);
+        }
+      } catch (profileError) {
+        console.error('Error fetching profile analytics:', profileError);
+        // Don't fail the whole sync for profile analytics
+      }
+    }
+
     return new Response(
       JSON.stringify({ 
         success: true, 
         syncedCount,
+        profileAnalytics,
         message: `Synced analytics for ${syncedCount} posts`
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

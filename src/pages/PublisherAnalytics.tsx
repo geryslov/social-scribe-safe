@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Eye, Users, Heart, MessageCircle, Share2, TrendingUp, Loader2, ExternalLink, RefreshCw, ArrowLeft } from 'lucide-react';
+import { Eye, Users, Heart, MessageCircle, Share2, TrendingUp, Loader2, ExternalLink, RefreshCw, ArrowLeft, Search } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { useAuth } from '@/hooks/useAuth';
 import { useAnalytics } from '@/hooks/useAnalytics';
 import { usePublishers } from '@/hooks/usePublishers';
 import { usePosts } from '@/hooks/usePosts';
+import { useWorkspace } from '@/hooks/useWorkspace';
 import { CyberCard, CyberCardContent, CyberCardHeader, CyberCardTitle } from '@/components/ui/cyber-card';
 import { PerformanceChart } from '@/components/PerformanceChart';
 import { TopPostsLeaderboard } from '@/components/TopPostsLeaderboard';
@@ -18,6 +19,7 @@ import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+const LEGACY_WORKSPACE_ID = 'f26b7a85-d4ad-451e-8585-d9906d5b9f95';
 
 const PublisherAnalytics = () => {
   const navigate = useNavigate();
@@ -27,6 +29,7 @@ const PublisherAnalytics = () => {
   const { user, isLoading: authLoading } = useAuth();
   const { publishers: dbPublishers } = usePublishers();
   const { posts } = usePosts();
+  const { currentWorkspace } = useWorkspace();
   const [timeRange, setTimeRange] = useState<'7d' | '30d' | '90d'>('30d');
   const [isSyncing, setIsSyncing] = useState(false);
   
@@ -247,6 +250,60 @@ const PublisherAnalytics = () => {
             );
           })}
         </div>
+
+        {/* Profile Insights - Legacy Data Workspace Only */}
+        {currentWorkspace?.id === LEGACY_WORKSPACE_ID && (
+          <div className="mb-8">
+            <h2 className="text-sm font-mono text-muted-foreground tracking-wider mb-4">PROFILE INSIGHTS</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <CyberCard variant="stat" className="animate-fade-in">
+                <CyberCardContent className="p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="p-2 rounded-lg bg-info/10">
+                      <Eye className="h-4 w-4 text-info" />
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-2xl font-bold font-mono tabular-nums">
+                      <CountUp end={publisher.profile_viewers ?? 0} />
+                    </p>
+                    <p className="text-[10px] font-mono text-muted-foreground tracking-wider">PROFILE VIEWERS</p>
+                  </div>
+                </CyberCardContent>
+              </CyberCard>
+              <CyberCard variant="stat" className="animate-fade-in" style={{ animationDelay: '50ms' }}>
+                <CyberCardContent className="p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="p-2 rounded-lg bg-primary/10">
+                      <Users className="h-4 w-4 text-primary" />
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-2xl font-bold font-mono tabular-nums">
+                      <CountUp end={publisher.followers_count ?? 0} />
+                    </p>
+                    <p className="text-[10px] font-mono text-muted-foreground tracking-wider">FOLLOWERS</p>
+                  </div>
+                </CyberCardContent>
+              </CyberCard>
+              <CyberCard variant="stat" className="animate-fade-in" style={{ animationDelay: '100ms' }}>
+                <CyberCardContent className="p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="p-2 rounded-lg bg-warning/10">
+                      <Search className="h-4 w-4 text-warning" />
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-2xl font-bold font-mono tabular-nums">
+                      <CountUp end={publisher.search_appearances ?? 0} />
+                    </p>
+                    <p className="text-[10px] font-mono text-muted-foreground tracking-wider">SEARCH APPEARANCES</p>
+                  </div>
+                </CyberCardContent>
+              </CyberCard>
+            </div>
+          </div>
+        )}
 
         {/* Performance Chart */}
         <div className="mb-8">

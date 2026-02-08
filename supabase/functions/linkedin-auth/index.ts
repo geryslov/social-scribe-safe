@@ -79,6 +79,7 @@ Deno.serve(async (req) => {
         'w_member_social',           // Create, modify, delete posts
         'r_member_postAnalytics',    // Retrieve post analytics/reporting data
         'r_basicprofile',            // Basic profile access
+        'r_member_profileAnalytics', // Profile viewers, followers, search appearances
       ];
       const authUrl = new URL('https://www.linkedin.com/oauth/v2/authorization');
       authUrl.searchParams.set('response_type', 'code');

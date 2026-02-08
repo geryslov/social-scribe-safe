@@ -23,6 +23,11 @@ export interface Publisher {
   company_name: string | null;
   company_logo_url: string | null;
   managed_organizations: Record<string, unknown> | null;
+  // Profile analytics (Legacy Data workspace only)
+  profile_viewers: number | null;
+  followers_count: number | null;
+  search_appearances: number | null;
+  profile_analytics_fetched_at: string | null;
 }
 
 export function usePublishers() {
