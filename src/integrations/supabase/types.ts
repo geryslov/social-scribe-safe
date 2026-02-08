@@ -562,6 +562,7 @@ export type Database = {
           company_logo_url: string | null
           company_name: string | null
           created_at: string
+          followers_count: number | null
           headline: string | null
           id: string
           linkedin_access_token: string | null
@@ -572,7 +573,10 @@ export type Database = {
           linkedin_url: string | null
           managed_organizations: Json | null
           name: string
+          profile_analytics_fetched_at: string | null
+          profile_viewers: number | null
           role: string | null
+          search_appearances: number | null
           updated_at: string
           user_id: string | null
           workspace_id: string | null
@@ -582,6 +586,7 @@ export type Database = {
           company_logo_url?: string | null
           company_name?: string | null
           created_at?: string
+          followers_count?: number | null
           headline?: string | null
           id?: string
           linkedin_access_token?: string | null
@@ -592,7 +597,10 @@ export type Database = {
           linkedin_url?: string | null
           managed_organizations?: Json | null
           name: string
+          profile_analytics_fetched_at?: string | null
+          profile_viewers?: number | null
           role?: string | null
+          search_appearances?: number | null
           updated_at?: string
           user_id?: string | null
           workspace_id?: string | null
@@ -602,6 +610,7 @@ export type Database = {
           company_logo_url?: string | null
           company_name?: string | null
           created_at?: string
+          followers_count?: number | null
           headline?: string | null
           id?: string
           linkedin_access_token?: string | null
@@ -612,7 +621,10 @@ export type Database = {
           linkedin_url?: string | null
           managed_organizations?: Json | null
           name?: string
+          profile_analytics_fetched_at?: string | null
+          profile_viewers?: number | null
           role?: string | null
+          search_appearances?: number | null
           updated_at?: string
           user_id?: string | null
           workspace_id?: string | null

@@ -5,6 +5,7 @@ import { Header } from '@/components/Header';
 import { useAuth } from '@/hooks/useAuth';
 import { useAnalytics } from '@/hooks/useAnalytics';
 import { usePublishers } from '@/hooks/usePublishers';
+import { useWorkspace } from '@/hooks/useWorkspace';
 import { useAutoSync } from '@/hooks/useAutoSync';
 import { CyberCard, CyberCardContent, CyberCardHeader, CyberCardTitle } from '@/components/ui/cyber-card';
 import { PerformanceChart } from '@/components/PerformanceChart';
@@ -15,10 +16,13 @@ import { PublisherAvatar } from '@/components/PublisherAvatar';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 
+const LEGACY_WORKSPACE_ID = 'f26b7a85-d4ad-451e-8585-d9906d5b9f95';
+
 const Analytics = () => {
   const navigate = useNavigate();
   const { user, isLoading: authLoading } = useAuth();
   const { publishers: dbPublishers } = usePublishers();
+  const { currentWorkspace } = useWorkspace();
   const [timeRange, setTimeRange] = useState<'7d' | '30d' | '90d'>('30d');
   
   // Auto-sync LinkedIn analytics on login
@@ -210,6 +214,10 @@ const Analytics = () => {
                       <p className="text-sm font-medium truncate">{pub.name}</p>
                       <p className="text-xs text-muted-foreground font-mono">
                         {pub.postCount} posts • {pub.totalReach.toLocaleString()} reach
+                        {currentWorkspace?.id === LEGACY_WORKSPACE_ID && (() => {
+                          const dbPub = dbPublishers.find(p => p.name === pub.name);
+                          return dbPub?.followers_count ? ` • ${dbPub.followers_count.toLocaleString()} followers` : '';
+                        })()}
                       </p>
                     </div>
                     <div className="text-right">
