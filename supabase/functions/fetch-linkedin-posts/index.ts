@@ -274,45 +274,91 @@ async function saveAnalyticsSnapshot(
   }
 }
 
-// Fetch profile analytics (followers, profile viewers, search appearances)
-async function fetchProfileAnalytics(
-  accessToken: string
-): Promise<{ followers: number; profileViewers: number; searchAppearances: number }> {
-  const result = { followers: 0, profileViewers: 0, searchAppearances: 0 };
+// Fetch follower history using time-bound memberFollowersCount API
+async function fetchFollowerHistory(
+  accessToken: string,
+  publisherId: string,
+  supabase: any
+): Promise<number> {
+  let latestCount = 0;
 
-  const endpoints = [
-    { key: 'followers' as const, url: 'https://api.linkedin.com/rest/memberFollowersCount?q=me' },
-    { key: 'profileViewers' as const, url: 'https://api.linkedin.com/rest/memberProfileViewersCount?q=me' },
-    { key: 'searchAppearances' as const, url: 'https://api.linkedin.com/rest/memberSearchAppearancesCount?q=me' },
-  ];
+  try {
+    // Calculate 90-day lookback window
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - 90);
 
-  for (const endpoint of endpoints) {
-    try {
-      console.log(`Fetching ${endpoint.key}...`);
-      const response = await fetch(endpoint.url, {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'LinkedIn-Version': LINKEDIN_VERSION,
-          'X-Restli-Protocol-Version': '2.0.0',
-        },
+    const dateRangeParam = `(start:(year:${startDate.getFullYear()},month:${startDate.getMonth() + 1},day:${startDate.getDate()}),end:(year:${endDate.getFullYear()},month:${endDate.getMonth() + 1},day:${endDate.getDate()}))`;
+    const url = `https://api.linkedin.com/rest/memberFollowersCount?q=dateRange&dateRange=${dateRangeParam}`;
+
+    console.log(`Fetching follower history for publisher ${publisherId}...`);
+    console.log(`URL: ${url}`);
+
+    const response = await fetch(url, {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'LinkedIn-Version': LINKEDIN_VERSION,
+        'X-Restli-Protocol-Version': '2.0.0',
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`Failed to fetch follower history: ${response.status} - ${errorText}`);
+      return latestCount;
+    }
+
+    const data = await response.json();
+    const elements = data.elements || [];
+    console.log(`Got ${elements.length} follower history data points`);
+
+    if (elements.length === 0) {
+      return latestCount;
+    }
+
+    // Prepare upsert data
+    const upsertRows = [];
+    for (const element of elements) {
+      const count = element.memberFollowersCount ?? element.followerCount ?? 0;
+      const dateRange = element.dateRange;
+
+      if (!dateRange?.start) {
+        console.log('Skipping element with no date range:', element);
+        continue;
+      }
+
+      const { year, month, day } = dateRange.start;
+      const snapshotDate = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+
+      upsertRows.push({
+        publisher_id: publisherId,
+        snapshot_date: snapshotDate,
+        follower_count: count,
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        // LinkedIn returns count in different field names depending on endpoint
-        const count = data.count ?? data.followersCount ?? data.profileViewersCount ?? data.searchAppearancesCount ?? 0;
-        result[endpoint.key] = count;
-        console.log(`${endpoint.key}: ${count}`);
-      } else {
-        const errorText = await response.text();
-        console.log(`Could not fetch ${endpoint.key}: ${response.status} - ${errorText}`);
+      // Track the latest count
+      if (count > latestCount) {
+        latestCount = count;
       }
-    } catch (error) {
-      console.error(`Error fetching ${endpoint.key}:`, error);
     }
+
+    if (upsertRows.length > 0) {
+      console.log(`Upserting ${upsertRows.length} follower history rows...`);
+      const { error } = await supabase
+        .from('follower_history')
+        .upsert(upsertRows, { onConflict: 'publisher_id,snapshot_date' });
+
+      if (error) {
+        console.error('Failed to upsert follower history:', error);
+      } else {
+        console.log(`Successfully upserted ${upsertRows.length} follower history rows`);
+      }
+    }
+  } catch (error) {
+    console.error('Error fetching follower history:', error);
   }
 
-  return result;
+  return latestCount;
 }
 
 Deno.serve(async (req) => {
@@ -438,31 +484,31 @@ Deno.serve(async (req) => {
 
     console.log(`Successfully synced analytics for ${syncedCount} posts`);
 
-    // Fetch profile analytics only for Legacy Data workspace publishers
-    let profileAnalytics = null;
+    // Fetch follower history only for Legacy Data workspace publishers
+    let followerCount = null;
     if (publisher.workspace_id === LEGACY_WORKSPACE_ID) {
-      console.log('Legacy Data workspace publisher - fetching profile analytics...');
+      console.log('Legacy Data workspace publisher - fetching follower history...');
       try {
-        profileAnalytics = await fetchProfileAnalytics(accessToken);
+        followerCount = await fetchFollowerHistory(accessToken, publisher.id, supabase);
         
-        const { error: profileUpdateError } = await supabase
-          .from('publishers')
-          .update({
-            profile_viewers: profileAnalytics.profileViewers,
-            followers_count: profileAnalytics.followers,
-            search_appearances: profileAnalytics.searchAppearances,
-            profile_analytics_fetched_at: new Date().toISOString(),
-          })
-          .eq('id', publisher.id);
+        if (followerCount > 0) {
+          const { error: followerUpdateError } = await supabase
+            .from('publishers')
+            .update({
+              followers_count: followerCount,
+              profile_analytics_fetched_at: new Date().toISOString(),
+            })
+            .eq('id', publisher.id);
 
-        if (profileUpdateError) {
-          console.error('Failed to update profile analytics:', profileUpdateError);
-        } else {
-          console.log('Profile analytics updated:', profileAnalytics);
+          if (followerUpdateError) {
+            console.error('Failed to update follower count:', followerUpdateError);
+          } else {
+            console.log('Follower count updated:', followerCount);
+          }
         }
-      } catch (profileError) {
-        console.error('Error fetching profile analytics:', profileError);
-        // Don't fail the whole sync for profile analytics
+      } catch (followerError) {
+        console.error('Error fetching follower history:', followerError);
+        // Don't fail the whole sync for follower data
       }
     }
 
@@ -470,7 +516,7 @@ Deno.serve(async (req) => {
       JSON.stringify({ 
         success: true, 
         syncedCount,
-        profileAnalytics,
+        followerCount,
         message: `Synced analytics for ${syncedCount} posts`
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
