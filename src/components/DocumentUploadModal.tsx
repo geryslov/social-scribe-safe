@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { Upload, FileText, X, Plus } from 'lucide-react';
+import { Upload, FileText, X, Plus, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -13,13 +13,16 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
+const CLAUDE_PROJECT_URL = 'https://claude.ai/project/019a57fa-5c62-7625-a3a4-9a7eb3150763';
+
 interface DocumentUploadModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSave: (data: { title: string; content: string; fileName?: string; fileUrl?: string }) => void;
+  showAiCreate?: boolean;
 }
 
-export function DocumentUploadModal({ open, onOpenChange, onSave }: DocumentUploadModalProps) {
+export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate }: DocumentUploadModalProps) {
   const [mode, setMode] = useState<'upload' | 'create'>('upload');
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
@@ -159,6 +162,16 @@ export function DocumentUploadModal({ open, onOpenChange, onSave }: DocumentUplo
             <Plus className="h-4 w-4 mr-2" />
             Create New
           </Button>
+          {showAiCreate && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => window.open(CLAUDE_PROJECT_URL, '_blank')}
+            >
+              <Sparkles className="h-4 w-4 mr-2" />
+              Create with AI
+            </Button>
+          )}
         </div>
 
         {mode === 'upload' && !fileName && (

@@ -11,6 +11,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useDocuments, useDocumentSections } from '@/hooks/useDocuments';
 import { usePosts } from '@/hooks/usePosts';
 import { usePublishers } from '@/hooks/usePublishers';
+import { useWorkspace } from '@/hooks/useWorkspace';
 import { Document, DocumentStatus } from '@/types/document';
 import { toast } from 'sonner';
 
@@ -22,11 +23,15 @@ const statusFilters: Array<{ value: DocumentStatus | 'all'; label: string }> = [
   { value: 'split', label: 'Split' },
 ];
 
+const LEGACY_WORKSPACE_ID = 'f26b7a85-d4ad-451e-8585-d9906d5b9f95';
+
 export default function DocumentLibrary() {
   const navigate = useNavigate();
   const { documents, isLoading, isAdmin, createDocument, deleteDocument, updateStatus } = useDocuments();
   const { createPost } = usePosts();
   const { publishers } = usePublishers();
+  const { currentWorkspace } = useWorkspace();
+  const isLegacyWorkspace = currentWorkspace?.id === LEGACY_WORKSPACE_ID;
   
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<DocumentStatus | 'all'>('all');
@@ -197,6 +202,7 @@ export default function DocumentLibrary() {
         open={uploadModalOpen}
         onOpenChange={setUploadModalOpen}
         onSave={handleCreateDocument}
+        showAiCreate={isLegacyWorkspace}
       />
 
       <DocumentSplitModal
