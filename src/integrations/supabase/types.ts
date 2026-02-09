@@ -208,6 +208,38 @@ export type Database = {
           },
         ]
       }
+      follower_history: {
+        Row: {
+          created_at: string | null
+          follower_count: number
+          id: string
+          publisher_id: string
+          snapshot_date: string
+        }
+        Insert: {
+          created_at?: string | null
+          follower_count?: number
+          id?: string
+          publisher_id: string
+          snapshot_date: string
+        }
+        Update: {
+          created_at?: string | null
+          follower_count?: number
+          id?: string
+          publisher_id?: string
+          snapshot_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "follower_history_publisher_id_fkey"
+            columns: ["publisher_id"]
+            isOneToOne: false
+            referencedRelation: "publishers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       linkedin_posts: {
         Row: {
           comments: number | null
