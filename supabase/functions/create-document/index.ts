@@ -110,7 +110,7 @@ Deno.serve(async (req) => {
     if (!topic) {
       return new Response(
         JSON.stringify({ success: false, error: 'Topic is required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -119,7 +119,7 @@ Deno.serve(async (req) => {
       console.error('ANTHROPIC_API_KEY not configured');
       return new Response(
         JSON.stringify({ success: false, error: 'AI service not configured. Please set ANTHROPIC_API_KEY in Supabase secrets.' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -145,23 +145,19 @@ Deno.serve(async (req) => {
     });
 
     if (!response.ok) {
-      if (response.status === 429) {
-        return new Response(
-          JSON.stringify({ success: false, error: 'Rate limit exceeded, please try again later' }),
-          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      if (response.status === 401) {
-        return new Response(
-          JSON.stringify({ success: false, error: 'Invalid API key. Please check ANTHROPIC_API_KEY in Supabase secrets.' }),
-          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
       const errorText = await response.text();
       console.error('Anthropic API error:', response.status, errorText);
+
+      let errorMessage = 'Failed to generate document';
+      if (response.status === 429) {
+        errorMessage = 'Rate limit exceeded, please try again later';
+      } else if (response.status === 401) {
+        errorMessage = 'Invalid API key. Please check ANTHROPIC_API_KEY in Supabase secrets.';
+      }
+
       return new Response(
-        JSON.stringify({ success: false, error: 'Failed to generate document' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ success: false, error: errorMessage }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -171,7 +167,7 @@ Deno.serve(async (req) => {
     if (!generatedText) {
       return new Response(
         JSON.stringify({ success: false, error: 'No content generated' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -191,7 +187,7 @@ Deno.serve(async (req) => {
     const errorMessage = error instanceof Error ? error.message : 'Failed to create document';
     return new Response(
       JSON.stringify({ success: false, error: errorMessage }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });
