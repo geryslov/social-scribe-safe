@@ -129,13 +129,23 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate }
 
     setIsGenerating(true);
     try {
-      const { data, error } = await supabase.functions.invoke('create-document', {
+      const response = await supabase.functions.invoke('create-document', {
         body: { topic: aiTopic.trim(), guidance: aiGuidance.trim() || undefined },
       });
 
+      console.log('create-document response:', JSON.stringify(response, null, 2));
+
+      const { data, error } = response;
+
       if (error) {
-        console.error('Error generating document:', error);
-        const errorMsg = error?.message || error?.context?.json?.error || 'Failed to generate document';
+        console.error('Edge function error:', error);
+        // Try to extract meaningful error from various response shapes
+        let errorMsg = 'Failed to generate document';
+        if (typeof error === 'object' && error !== null) {
+          errorMsg = error.message || JSON.stringify(error);
+        } else if (typeof error === 'string') {
+          errorMsg = error;
+        }
         toast.error(errorMsg);
         return;
       }
@@ -145,11 +155,13 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate }
         setContent(data.content || '');
         toast.success('Document generated! Review and edit before saving.');
       } else {
-        toast.error(data?.error || 'Failed to generate document');
+        const msg = data?.error || 'Failed to generate document';
+        console.error('create-document returned success:false:', data);
+        toast.error(msg);
       }
     } catch (err) {
-      console.error('Error calling create-document:', err);
-      toast.error('Failed to generate document');
+      console.error('Exception calling create-document:', err);
+      toast.error(err instanceof Error ? err.message : 'Failed to generate document');
     } finally {
       setIsGenerating(false);
     }
