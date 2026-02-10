@@ -34,15 +34,15 @@ const POST_COUNT_OPTIONS = [
 ] as const;
 
 const TONE_OPTIONS = [
-  { value: 'default', label: 'Default', description: 'Standard thought leadership', icon: PenLine, color: 'text-muted-foreground' },
-  { value: 'stream_of_consciousness', label: 'Stream of Thought', description: 'Raw, unfiltered', icon: Mic, color: 'text-purple-500' },
-  { value: 'typo_prone_human', label: 'Human & Raw', description: 'Casual real-person', icon: User, color: 'text-amber-500' },
-  { value: 'uneven_storyteller', label: 'Storyteller', description: 'Narrative pacing', icon: BookOpen, color: 'text-emerald-500' },
-  { value: 'passionate_amateur', label: 'Passionate', description: 'Energetic & excited', icon: Zap, color: 'text-yellow-500' },
-  { value: 'professional', label: 'Professional', description: 'Corporate authority', icon: Shield, color: 'text-blue-500' },
-  { value: 'conversational', label: 'Conversational', description: 'Friendly & warm', icon: MessageSquare, color: 'text-teal-500' },
-  { value: 'aggressive', label: 'Aggressive', description: 'Bold & direct', icon: Flame, color: 'text-red-500' },
-  { value: 'provocative', label: 'Provocative', description: 'Debate-starter', icon: Megaphone, color: 'text-orange-500' },
+  { value: 'default', label: 'Default', description: 'Standard thought leadership', icon: PenLine, color: 'text-muted-foreground', example: '"3 things I learned scaling a team from 5 to 50. Number 2 changed everything."' },
+  { value: 'stream_of_consciousness', label: 'Stream of Thought', description: 'Raw, unfiltered', icon: Mic, color: 'text-purple-500', example: '"been thinking about this all morning and honestly... hiring is broken. like truly broken."' },
+  { value: 'typo_prone_human', label: 'Human & Raw', description: 'Casual real-person', icon: User, color: 'text-amber-500', example: '"so i just realized somethign. weve been doing standups wrong for 3 yrs. heres what changed"' },
+  { value: 'uneven_storyteller', label: 'Storyteller', description: 'Narrative pacing', icon: BookOpen, color: 'text-emerald-500', example: '"It was 2am. The server was down. And the only person who knew the fix... had just quit."' },
+  { value: 'passionate_amateur', label: 'Passionate', description: 'Energetic & excited', icon: Zap, color: 'text-yellow-500', example: '"I CANNOT stop thinking about what happened at our offsite last week!! This changes EVERYTHING 🚀"' },
+  { value: 'professional', label: 'Professional', description: 'Corporate authority', icon: Shield, color: 'text-blue-500', example: '"After analyzing Q4 data across 12 portfolio companies, one pattern became undeniable."' },
+  { value: 'conversational', label: 'Conversational', description: 'Friendly & warm', icon: MessageSquare, color: 'text-teal-500', example: '"Hey, can we talk about something? I think most people are overthinking their LinkedIn strategy."' },
+  { value: 'aggressive', label: 'Aggressive', description: 'Bold & direct', icon: Flame, color: 'text-red-500', example: '"Stop. Posting. Motivational. Quotes. Your audience deserves better and you know it."' },
+  { value: 'provocative', label: 'Provocative', description: 'Debate-starter', icon: Megaphone, color: 'text-orange-500', example: '"Unpopular opinion: your \'company culture\' is just a nicer word for peer pressure."' },
 ] as const;
 
 export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate }: DocumentUploadModalProps) {
@@ -611,6 +611,12 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate }
                       </button>
                     );
                   })}
+                </div>
+                {/* Tone Example Preview */}
+                <div className="mt-2.5 px-3 py-2 rounded-lg bg-muted/50 border border-border/50">
+                  <p className="text-xs text-muted-foreground italic leading-relaxed">
+                    {selectedTone.example}
+                  </p>
                 </div>
               </div>
 
