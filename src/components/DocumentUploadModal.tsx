@@ -34,6 +34,12 @@ const LENGTH_OPTIONS = [
   { value: 'long', label: 'Long', description: '400-700 words' },
 ] as const;
 
+const POST_COUNT_OPTIONS = [
+  { value: 'single', label: 'Single Post', description: '1 post' },
+  { value: '2-4', label: '2-4 Posts', description: 'Small batch' },
+  { value: '4-6', label: '4-6 Posts', description: 'Full series' },
+] as const;
+
 export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate }: DocumentUploadModalProps) {
   const [mode, setMode] = useState<'upload' | 'create' | 'ai'>('upload');
   const [title, setTitle] = useState('');
@@ -51,6 +57,7 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate }
   const [aiReferenceFile, setAiReferenceFile] = useState<File | null>(null);
   const [aiReferenceContent, setAiReferenceContent] = useState('');
   const [aiLength, setAiLength] = useState('medium');
+  const [aiPostCount, setAiPostCount] = useState('4-6');
   const [isParsingRef, setIsParsingRef] = useState(false);
   const refFileInputRef = useRef<HTMLInputElement>(null);
 
@@ -66,6 +73,7 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate }
     setAiReferenceFile(null);
     setAiReferenceContent('');
     setAiLength('medium');
+    setAiPostCount('4-6');
   };
 
   const handleClose = () => {
@@ -192,6 +200,7 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate }
           websiteUrl: aiWebsiteUrl.trim() || undefined,
           referenceContent: aiReferenceContent || undefined,
           length: aiLength,
+          postCount: aiPostCount,
         },
       });
 
@@ -346,6 +355,23 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate }
                 </SelectTrigger>
                 <SelectContent>
                   {LENGTH_OPTIONS.map(opt => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label} <span className="text-muted-foreground ml-1">({opt.description})</span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Number of Posts */}
+            <div>
+              <label className="text-sm font-medium mb-1.5 block">Number of Posts</label>
+              <Select value={aiPostCount} onValueChange={setAiPostCount} disabled={isGenerating}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {POST_COUNT_OPTIONS.map(opt => (
                     <SelectItem key={opt.value} value={opt.value}>
                       {opt.label} <span className="text-muted-foreground ml-1">({opt.description})</span>
                     </SelectItem>
