@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { Upload, FileText, X, Plus, Sparkles, Loader2, Globe, Paperclip } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -60,6 +60,7 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate }
   const [aiPostCount, setAiPostCount] = useState('4-6');
   const [isParsingRef, setIsParsingRef] = useState(false);
   const refFileInputRef = useRef<HTMLInputElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const resetForm = () => {
     setMode('upload');
@@ -77,6 +78,14 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate }
   };
 
   const handleClose = () => {
+    // Abort any in-progress AI generation
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    setIsGenerating(false);
+    setIsLoading(false);
+    setIsParsingRef(false);
     resetForm();
     onOpenChange(false);
   };
@@ -192,6 +201,9 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate }
     }
 
     setIsGenerating(true);
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     try {
       const { data, error } = await supabase.functions.invoke('create-document', {
         body: {
@@ -203,6 +215,9 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate }
           postCount: aiPostCount,
         },
       });
+
+      // Check if cancelled
+      if (controller.signal.aborted) return;
 
       if (error) {
         console.error('Error generating document:', error);
@@ -218,11 +233,15 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate }
       } else {
         toast.error(data?.error || 'Failed to generate document');
       }
-    } catch (err) {
+    } catch (err: any) {
+      if (err?.name === 'AbortError' || controller.signal.aborted) return;
       console.error('Error calling create-document:', err);
       toast.error('Failed to generate document');
     } finally {
-      setIsGenerating(false);
+      if (!controller.signal.aborted) {
+        setIsGenerating(false);
+      }
+      abortControllerRef.current = null;
     }
   };
 
