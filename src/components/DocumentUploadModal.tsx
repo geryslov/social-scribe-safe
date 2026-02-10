@@ -56,7 +56,8 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate }
   const [aiTopic, setAiTopic] = useState('');
   const [aiGuidance, setAiGuidance] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
-  
+  const [generatingPhase, setGeneratingPhase] = useState(0);
+
   const [aiWebsiteUrl, setAiWebsiteUrl] = useState('');
   const [aiReferenceFile, setAiReferenceFile] = useState<File | null>(null);
   const [aiReferenceContent, setAiReferenceContent] = useState('');
@@ -67,6 +68,24 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate }
   const [showAdvanced, setShowAdvanced] = useState(false);
   const refFileInputRef = useRef<HTMLInputElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+
+  const GENERATING_PHASES = [
+    { icon: '🔍', text: 'Researching your topic...' },
+    { icon: '🧠', text: 'Crafting the narrative...' },
+    { icon: '✍️', text: 'Writing your posts...' },
+    { icon: '✨', text: 'Polishing the content...' },
+  ];
+
+  useEffect(() => {
+    if (!isGenerating) {
+      setGeneratingPhase(0);
+      return;
+    }
+    const interval = setInterval(() => {
+      setGeneratingPhase(prev => (prev + 1) % GENERATING_PHASES.length);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [isGenerating]);
 
   const resetForm = () => {
     setMode('upload');
@@ -621,24 +640,55 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate }
               </div>
 
               {/* Generate Button */}
-              <Button
-                onClick={handleGenerate}
-                disabled={isGenerating || isParsingRef || !aiTopic.trim()}
-                variant="glow"
-                className="w-full h-12 text-accent font-semibold text-base"
-              >
-                {isGenerating ? (
-                  <>
-                    <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                    Generating your posts...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="h-5 w-5 mr-2" />
-                    Generate Posts
-                  </>
-                )}
-              </Button>
+              {isGenerating ? (
+                <div className="flex flex-col items-center justify-center py-10 space-y-6 animate-fade-in">
+                  {/* Animated orb */}
+                  <div className="relative w-20 h-20">
+                    <div className="absolute inset-0 rounded-full bg-primary/20 animate-ping" />
+                    <div className="absolute inset-2 rounded-full bg-primary/30 animate-pulse" />
+                    <div className="absolute inset-0 flex items-center justify-center text-3xl animate-bounce">
+                      {GENERATING_PHASES[generatingPhase].icon}
+                    </div>
+                  </div>
+
+                  {/* Phase text */}
+                  <p className="text-sm font-medium text-foreground animate-pulse">
+                    {GENERATING_PHASES[generatingPhase].text}
+                  </p>
+
+                  {/* Progress dots */}
+                  <div className="flex gap-2">
+                    {GENERATING_PHASES.map((_, i) => (
+                      <div
+                        key={i}
+                        className={cn(
+                          "w-2 h-2 rounded-full transition-all duration-500",
+                          i <= generatingPhase ? "bg-primary scale-100" : "bg-muted-foreground/30 scale-75"
+                        )}
+                      />
+                    ))}
+                  </div>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleClose}
+                    className="text-xs"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  onClick={handleGenerate}
+                  disabled={isParsingRef || !aiTopic.trim()}
+                  variant="glow"
+                  className="w-full h-12 text-accent font-semibold text-base"
+                >
+                  <Sparkles className="h-5 w-5 mr-2" />
+                  Generate Posts
+                </Button>
+              )}
             </div>
           )}
 
