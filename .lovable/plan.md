@@ -1,23 +1,28 @@
 
 
-# Update System Prompt in `create-document` Edge Function
+# Remove Lovable AI from PDF Parsing -- Send Everything to Anthropic
 
-## Overview
-Append the provided content framework to the existing system prompt in `supabase/functions/create-document/index.ts`. The current prompt covers core principles, structural requirements, and formatting rules. The new content adds extensive sections on hooks, narrative arcs, data integrity, tone, LinkedIn optimization, persona targeting, advanced techniques, and more.
+## Problem
+The `parse-document` edge function currently has a fallback (lines 72-119) that calls Lovable AI (Google Gemini) to extract text from PDFs when native text extraction yields less than 50 characters. You want all AI processing to go exclusively through Anthropic.
+
+## Solution
+
+### Change 1: Update `supabase/functions/parse-document/index.ts`
+- Remove the Lovable AI fallback (lines 72-119) from the `parsePdf` function
+- Instead, when native PDF extraction fails, send the raw PDF content (base64-encoded) to **Anthropic's Claude API** using the existing `ANTHROPIC_API_KEY` secret
+- Claude will extract the text from the PDF, keeping all AI processing on one provider
+
+### Change 2: Verify `supabase/functions/create-document/index.ts`
+- This function already sends everything (website content, reference content, length, post count) directly to Anthropic -- no changes needed here
 
 ## Technical Details
 
-**File to modify:** `supabase/functions/create-document/index.ts`
+In `parse-document/index.ts`, the Lovable AI block (lines 72-119) will be replaced with an Anthropic API call:
+- Use the `ANTHROPIC_API_KEY` secret (already configured)
+- Use Claude's vision capability to process the PDF as a base64 document
+- Model: `claude-sonnet-4-5-20250929` (same as `create-document` uses)
+- The API endpoint: `https://api.anthropic.com/v1/messages`
+- Send the PDF as a `base64` source with `media_type: "application/pdf"`
 
-**What changes:**
-- Append the full provided framework text to the end of the `SYSTEM_PROMPT` string (before the closing backtick), starting from the `## CORE PRINCIPLES` section through `## FRAMEWORK ATTRIBUTION`.
-- Some sections overlap with existing prompt content (e.g., formatting rules, data integrity, power phrases). The new content will serve as expanded, more detailed guidance alongside the existing rules -- no existing content will be removed.
-
-**After editing:** Redeploy the `create-document` edge function so the updated prompt takes effect.
-
-## Steps
-
-1. Edit `supabase/functions/create-document/index.ts` -- append the full framework text to `SYSTEM_PROMPT`
-2. Redeploy the `create-document` edge function
-3. Test document generation to confirm the new prompt works
+Everything else in the flow stays the same -- native text extraction is attempted first, and Claude is only called as a fallback for image-heavy or complex PDFs.
 
