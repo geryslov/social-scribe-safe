@@ -13,8 +13,7 @@ import { LinkedInPostCard } from '@/components/LinkedInPostCard';
 import { BulkUploadModal } from '@/components/BulkUploadModal';
 
 import { Button } from '@/components/ui/button';
-import { Plus, Inbox, ExternalLink, Loader2, Upload, Users, Eye, Heart, TrendingUp, LayoutList, LayoutGrid } from 'lucide-react';
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { Plus, Inbox, ExternalLink, Loader2, Upload, Users, Eye, Heart, TrendingUp } from 'lucide-react';
 import { useAnalytics } from '@/hooks/useAnalytics';
 import { CountUp } from '@/components/CountUp';
 import { Card, CardContent } from '@/components/ui/card';
@@ -35,7 +34,7 @@ const Posts = () => {
   const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false);
   const [editingPost, setEditingPost] = useState<Post | null>(null);
   const [preselectedPublisher, setPreselectedPublisher] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<'list' | 'feed'>('list');
+  const viewMode = 'feed' as const;
 
   // Redirect to auth if not logged in
   useEffect(() => {
@@ -319,16 +318,6 @@ const Posts = () => {
                 </h3>
                 
                 {/* View Toggle */}
-                <ToggleGroup type="single" value={viewMode} onValueChange={(v) => v && setViewMode(v as 'list' | 'feed')}>
-                  <ToggleGroupItem value="list" aria-label="List view" className="gap-1.5">
-                    <LayoutList className="h-4 w-4" />
-                    <span className="hidden sm:inline text-xs">List</span>
-                  </ToggleGroupItem>
-                  <ToggleGroupItem value="feed" aria-label="Feed view" className="gap-1.5">
-                    <LayoutGrid className="h-4 w-4" />
-                    <span className="hidden sm:inline text-xs">Feed</span>
-                  </ToggleGroupItem>
-                </ToggleGroup>
               </div>
               
               {activePosts.length === 0 ? (
@@ -349,19 +338,6 @@ const Posts = () => {
                     </Button>
                   )}
                 </div>
-              ) : viewMode === 'list' ? (
-                activePosts.map((post, index) => (
-                  <PostRow
-                    key={post.id}
-                    post={post}
-                    onEdit={handleEdit}
-                    onDelete={handleDelete}
-                    onStatusChange={handleStatusChange}
-                    showPublisher={selectedPublisher === null}
-                    index={index}
-                    isAdmin={isAdmin}
-                  />
-                ))
               ) : (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                   {activePosts.map((post) => {
@@ -389,21 +365,7 @@ const Posts = () => {
                   <span className="ml-2 text-sm font-normal text-muted-foreground">({publishedPosts.length})</span>
                 </h3>
                 
-                {viewMode === 'list' ? (
-                  publishedPosts.map((post, index) => (
-                    <PostRow
-                      key={post.id}
-                      post={post}
-                      onEdit={handleEdit}
-                      onDelete={handleDelete}
-                      onStatusChange={handleStatusChange}
-                      showPublisher={selectedPublisher === null}
-                      index={index}
-                      isAdmin={isAdmin}
-                    />
-                  ))
-                ) : (
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                     {publishedPosts.map((post) => {
                       const publisher = dbPublishers.find(p => p.name === post.publisherName);
                       return (
@@ -417,8 +379,7 @@ const Posts = () => {
                         />
                       );
                     })}
-                  </div>
-                )}
+                </div>
               </div>
             )}
           </div>
