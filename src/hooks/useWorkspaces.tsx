@@ -104,6 +104,7 @@ export function useWorkspaces() {
       inviteEnabled?: boolean;
       logoUrl?: string;
       theme?: Record<string, unknown>;
+      systemPrompt?: string | null;
     }) => {
       const updates: Record<string, unknown> = {};
       if (data.name !== undefined) updates.name = data.name;
@@ -112,6 +113,7 @@ export function useWorkspaces() {
       if (data.inviteEnabled !== undefined) updates.invite_enabled = data.inviteEnabled;
       if (data.logoUrl !== undefined) updates.logo_url = data.logoUrl;
       if (data.theme !== undefined) updates.theme = data.theme;
+      if (data.systemPrompt !== undefined) updates.system_prompt = data.systemPrompt;
       
       const { error } = await supabase
         .from('workspaces')
