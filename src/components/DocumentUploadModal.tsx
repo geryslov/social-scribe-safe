@@ -40,6 +40,18 @@ const POST_COUNT_OPTIONS = [
   { value: '4-6', label: '4-6 Posts', description: 'Full series' },
 ] as const;
 
+const TONE_OPTIONS = [
+  { value: 'default', label: 'Default', description: 'Standard thought leadership' },
+  { value: 'stream_of_consciousness', label: 'Stream of Consciousness', description: 'Raw, unfiltered thinking' },
+  { value: 'typo_prone_human', label: 'Typo-Prone Human', description: 'Casual, real-person feel' },
+  { value: 'uneven_storyteller', label: 'Uneven Storyteller', description: 'Narrative with varied pacing' },
+  { value: 'passionate_amateur', label: 'Passionate Amateur', description: 'Enthusiastic & energetic' },
+  { value: 'professional', label: 'Professional', description: 'Clean, corporate authority' },
+  { value: 'conversational', label: 'Conversational', description: 'Friendly & approachable' },
+  { value: 'aggressive', label: 'Aggressive', description: 'Bold & confrontational' },
+  { value: 'provocative', label: 'Provocative', description: 'Controversial debate-starter' },
+] as const;
+
 export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate }: DocumentUploadModalProps) {
   const [mode, setMode] = useState<'upload' | 'create' | 'ai'>('upload');
   const [title, setTitle] = useState('');
@@ -58,6 +70,7 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate }
   const [aiReferenceContent, setAiReferenceContent] = useState('');
   const [aiLength, setAiLength] = useState('medium');
   const [aiPostCount, setAiPostCount] = useState('4-6');
+  const [aiTone, setAiTone] = useState('default');
   const [isParsingRef, setIsParsingRef] = useState(false);
   const refFileInputRef = useRef<HTMLInputElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -75,6 +88,7 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate }
     setAiReferenceContent('');
     setAiLength('medium');
     setAiPostCount('4-6');
+    setAiTone('default');
   };
 
   const handleClose = () => {
@@ -213,6 +227,7 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate }
           referenceContent: aiReferenceContent || undefined,
           length: aiLength,
           postCount: aiPostCount,
+          tone: aiTone !== 'default' ? aiTone : undefined,
         },
       });
 
@@ -391,6 +406,23 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate }
                 </SelectTrigger>
                 <SelectContent>
                   {POST_COUNT_OPTIONS.map(opt => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label} <span className="text-muted-foreground ml-1">({opt.description})</span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Tone */}
+            <div>
+              <label className="text-sm font-medium mb-1.5 block">Tone & Style</label>
+              <Select value={aiTone} onValueChange={setAiTone} disabled={isGenerating}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {TONE_OPTIONS.map(opt => (
                     <SelectItem key={opt.value} value={opt.value}>
                       {opt.label} <span className="text-muted-foreground ml-1">({opt.description})</span>
                     </SelectItem>
