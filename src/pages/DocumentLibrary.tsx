@@ -57,7 +57,10 @@ export default function DocumentLibrary() {
     fileName?: string; 
     fileUrl?: string 
   }) => {
-    await createDocument.mutateAsync(data);
+    const doc = await createDocument.mutateAsync(data);
+    // Auto-open split modal with the newly created document
+    setSelectedDocument(doc);
+    setSplitModalOpen(true);
   };
 
   const handleDeleteDocument = async (id: string) => {
