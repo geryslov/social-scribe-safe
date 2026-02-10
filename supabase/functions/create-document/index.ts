@@ -630,11 +630,10 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Fetch website content if URL provided
+    // Fetch website content if URL provided - send raw HTML to Anthropic for processing
     let websiteContent = '';
     if (websiteUrl) {
       try {
-        // Ensure URL has protocol
         const normalizedUrl = websiteUrl.startsWith('http') ? websiteUrl : `https://${websiteUrl}`;
         console.log('Fetching website content from:', normalizedUrl);
         const siteRes = await fetch(normalizedUrl, {
@@ -642,15 +641,12 @@ Deno.serve(async (req) => {
         });
         if (siteRes.ok) {
           const html = await siteRes.text();
-          // Strip HTML tags to get text content
+          // Only remove scripts/styles, keep the rest for Anthropic to process
           websiteContent = html
             .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
             .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
-            .replace(/<[^>]+>/g, ' ')
-            .replace(/\s+/g, ' ')
-            .trim()
-            .substring(0, 10000); // Limit to 10k chars
-          console.log('Website content fetched, length:', websiteContent.length);
+            .substring(0, 30000);
+          console.log('Website HTML fetched for Anthropic processing, length:', websiteContent.length);
         } else {
           console.warn('Failed to fetch website:', siteRes.status);
         }
@@ -682,7 +678,7 @@ Deno.serve(async (req) => {
     if (guidance) userMessage += `\n\nAdditional guidance: ${guidance}`;
     if (lengthInstruction) userMessage += `\n\n${lengthInstruction}`;
     if (postCountInstruction) userMessage += `\n\n${postCountInstruction}`;
-    if (websiteContent) userMessage += `\n\n--- REFERENCE: Website Content ---\nUse the following website content as context and source material for the posts. Extract relevant data, insights, and messaging:\n\n${websiteContent}`;
+    if (websiteContent) userMessage += `\n\n--- REFERENCE: Website HTML ---\nThe following is raw HTML from the provided website URL. Extract and interpret the meaningful text content, data, insights, company information, and messaging from this HTML. Use it as context and source material for the posts:\n\n${websiteContent}`;
     if (referenceContent) userMessage += `\n\n--- REFERENCE: Uploaded Document ---\nUse the following document content as context and source material for the posts. Extract relevant data, insights, and messaging:\n\n${referenceContent.substring(0, 15000)}`;
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
