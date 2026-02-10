@@ -634,8 +634,10 @@ Deno.serve(async (req) => {
     let websiteContent = '';
     if (websiteUrl) {
       try {
-        console.log('Fetching website content from:', websiteUrl);
-        const siteRes = await fetch(websiteUrl, {
+        // Ensure URL has protocol
+        const normalizedUrl = websiteUrl.startsWith('http') ? websiteUrl : `https://${websiteUrl}`;
+        console.log('Fetching website content from:', normalizedUrl);
+        const siteRes = await fetch(normalizedUrl, {
           headers: { 'User-Agent': 'Mozilla/5.0 (compatible; ContentBot/1.0)' },
         });
         if (siteRes.ok) {
