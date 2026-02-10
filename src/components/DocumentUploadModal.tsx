@@ -135,7 +135,8 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate }
 
       if (error) {
         console.error('Error generating document:', error);
-        toast.error('Failed to generate document');
+        const errorMsg = error?.message || error?.context?.json?.error || 'Failed to generate document';
+        toast.error(errorMsg);
         return;
       }
 
