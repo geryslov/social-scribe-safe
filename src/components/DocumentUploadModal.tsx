@@ -449,89 +449,7 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate }
                 />
               </div>
 
-              {/* Post Length - Chip Selector */}
-              <div>
-                <label className="text-sm font-medium mb-2 block text-foreground">Post Length</label>
-                <div className="flex gap-2">
-                  {LENGTH_OPTIONS.map(opt => (
-                    <button
-                      key={opt.value}
-                      onClick={() => !isGenerating && setAiLength(opt.value)}
-                      disabled={isGenerating}
-                      className={cn(
-                        "flex-1 px-3 py-2.5 rounded-lg border text-center transition-all duration-200 cursor-pointer",
-                        aiLength === opt.value
-                          ? "border-primary bg-primary/10 text-primary shadow-sm"
-                          : "border-border hover:border-primary/40 hover:bg-muted/50 text-muted-foreground",
-                        isGenerating && "opacity-50 cursor-not-allowed"
-                      )}
-                    >
-                      <span className="text-base block mb-0.5">{opt.icon}</span>
-                      <span className="text-xs font-medium block">{opt.label}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Post Count - Chip Selector */}
-              <div>
-                <label className="text-sm font-medium mb-2 block text-foreground">Number of Posts</label>
-                <div className="flex gap-2">
-                  {POST_COUNT_OPTIONS.map(opt => (
-                    <button
-                      key={opt.value}
-                      onClick={() => !isGenerating && setAiPostCount(opt.value)}
-                      disabled={isGenerating}
-                      className={cn(
-                        "flex-1 px-3 py-2.5 rounded-lg border text-center transition-all duration-200 cursor-pointer",
-                        aiPostCount === opt.value
-                          ? "border-primary bg-primary/10 text-primary shadow-sm"
-                          : "border-border hover:border-primary/40 hover:bg-muted/50 text-muted-foreground",
-                        isGenerating && "opacity-50 cursor-not-allowed"
-                      )}
-                    >
-                      <span className="text-lg font-bold block mb-0.5">{opt.icon}</span>
-                      <span className="text-xs font-medium block">{opt.description}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Tone - Visual Grid */}
-              <div>
-                <label className="text-sm font-medium mb-2 block text-foreground">Tone & Style</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {TONE_OPTIONS.map(opt => {
-                    const Icon = opt.icon;
-                    return (
-                      <button
-                        key={opt.value}
-                        onClick={() => !isGenerating && setAiTone(opt.value)}
-                        disabled={isGenerating}
-                        className={cn(
-                          "flex items-center gap-2 px-3 py-2 rounded-lg border transition-all duration-200 cursor-pointer text-left",
-                          aiTone === opt.value
-                            ? "border-primary bg-primary/10 shadow-sm"
-                            : "border-border hover:border-primary/30 hover:bg-muted/50",
-                          isGenerating && "opacity-50 cursor-not-allowed"
-                        )}
-                      >
-                        <Icon className={cn("h-4 w-4 shrink-0", aiTone === opt.value ? "text-primary" : opt.color)} />
-                        <div className="min-w-0">
-                          <span className={cn(
-                            "text-xs font-medium block truncate",
-                            aiTone === opt.value ? "text-primary" : "text-foreground"
-                          )}>
-                            {opt.label}
-                          </span>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Advanced Options Toggle */}
+              {/* Source Materials (moved up) */}
               <div>
                 <button
                   onClick={() => setShowAdvanced(!showAdvanced)}
@@ -612,6 +530,88 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate }
                     </div>
                   </div>
                 )}
+              </div>
+
+              {/* Post Length - Chip Selector */}
+              <div>
+                <label className="text-sm font-medium mb-2 block text-foreground">Post Length</label>
+                <div className="flex gap-2">
+                  {LENGTH_OPTIONS.map(opt => (
+                    <button
+                      key={opt.value}
+                      onClick={() => !isGenerating && setAiLength(opt.value)}
+                      disabled={isGenerating}
+                      className={cn(
+                        "flex-1 px-3 py-2.5 rounded-lg border text-center transition-all duration-200 cursor-pointer",
+                        aiLength === opt.value
+                          ? "border-primary bg-primary/10 text-primary shadow-sm"
+                          : "border-border hover:border-primary/40 hover:bg-muted/50 text-muted-foreground",
+                        isGenerating && "opacity-50 cursor-not-allowed"
+                      )}
+                    >
+                      <span className="text-base block mb-0.5">{opt.icon}</span>
+                      <span className="text-xs font-medium block">{opt.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Post Count - Chip Selector */}
+              <div>
+                <label className="text-sm font-medium mb-2 block text-foreground">Number of Posts</label>
+                <div className="flex gap-2">
+                  {POST_COUNT_OPTIONS.map(opt => (
+                    <button
+                      key={opt.value}
+                      onClick={() => !isGenerating && setAiPostCount(opt.value)}
+                      disabled={isGenerating}
+                      className={cn(
+                        "flex-1 px-3 py-2.5 rounded-lg border text-center transition-all duration-200 cursor-pointer",
+                        aiPostCount === opt.value
+                          ? "border-primary bg-primary/10 text-primary shadow-sm"
+                          : "border-border hover:border-primary/40 hover:bg-muted/50 text-muted-foreground",
+                        isGenerating && "opacity-50 cursor-not-allowed"
+                      )}
+                    >
+                      <span className="text-lg font-bold block mb-0.5">{opt.icon}</span>
+                      <span className="text-xs font-medium block">{opt.description}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Tone - Visual Grid */}
+              <div>
+                <label className="text-sm font-medium mb-2 block text-foreground">Tone & Style</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {TONE_OPTIONS.map(opt => {
+                    const Icon = opt.icon;
+                    return (
+                      <button
+                        key={opt.value}
+                        onClick={() => !isGenerating && setAiTone(opt.value)}
+                        disabled={isGenerating}
+                        className={cn(
+                          "flex items-center gap-2 px-3 py-2 rounded-lg border transition-all duration-200 cursor-pointer text-left",
+                          aiTone === opt.value
+                            ? "border-primary bg-primary/10 shadow-sm"
+                            : "border-border hover:border-primary/30 hover:bg-muted/50",
+                          isGenerating && "opacity-50 cursor-not-allowed"
+                        )}
+                      >
+                        <Icon className={cn("h-4 w-4 shrink-0", aiTone === opt.value ? "text-primary" : opt.color)} />
+                        <div className="min-w-0">
+                          <span className={cn(
+                            "text-xs font-medium block truncate",
+                            aiTone === opt.value ? "text-primary" : "text-foreground"
+                          )}>
+                            {opt.label}
+                          </span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
               {/* Generate Button */}
