@@ -438,7 +438,47 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate }
           )}
 
           {/* AI Mode */}
-          {mode === 'ai' && !content && (
+          {mode === 'ai' && !content && isGenerating && (
+            <div className="flex flex-col items-center justify-center py-16 space-y-6 animate-fade-in min-h-[340px]">
+              {/* Animated orb */}
+              <div className="relative w-20 h-20">
+                <div className="absolute inset-0 rounded-full bg-primary/20 animate-ping" />
+                <div className="absolute inset-2 rounded-full bg-primary/30 animate-pulse" />
+                <div className="absolute inset-0 flex items-center justify-center text-3xl animate-bounce">
+                  {GENERATING_PHASES[generatingPhase].icon}
+                </div>
+              </div>
+
+              {/* Phase text */}
+              <p className="text-sm font-medium text-foreground animate-pulse">
+                {GENERATING_PHASES[generatingPhase].text}
+              </p>
+
+              {/* Progress dots */}
+              <div className="flex gap-2">
+                {GENERATING_PHASES.map((_, i) => (
+                  <div
+                    key={i}
+                    className={cn(
+                      "w-2 h-2 rounded-full transition-all duration-500",
+                      i <= generatingPhase ? "bg-primary scale-100" : "bg-muted-foreground/30 scale-75"
+                    )}
+                  />
+                ))}
+              </div>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleClose}
+                className="text-xs"
+              >
+                Cancel
+              </Button>
+            </div>
+          )}
+
+          {mode === 'ai' && !content && !isGenerating && (
             <div className="space-y-5 animate-fade-in">
               {/* Topic */}
               <div>
@@ -449,7 +489,6 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate }
                   value={aiTopic}
                   onChange={(e) => setAiTopic(e.target.value)}
                   placeholder="e.g., Benefits of remote work for engineering teams"
-                  disabled={isGenerating}
                   className="h-11"
                 />
               </div>
@@ -464,16 +503,14 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate }
                   onChange={(e) => setAiGuidance(e.target.value)}
                   placeholder="e.g., Focus on productivity metrics, target VP-level audience..."
                   className="min-h-16 resize-none"
-                  disabled={isGenerating}
                 />
               </div>
 
-              {/* Source Materials (moved up) */}
+              {/* Source Materials */}
               <div>
                 <button
                   onClick={() => setShowAdvanced(!showAdvanced)}
                   className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors w-full"
-                  disabled={isGenerating}
                 >
                   {showAdvanced ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                   <span className="font-medium">Source Materials</span>
@@ -482,7 +519,6 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate }
 
                 {showAdvanced && (
                   <div className="mt-3 space-y-4 animate-fade-in">
-                    {/* Website URL */}
                     <div className="rounded-lg border border-border p-3 space-y-2">
                       <label className="text-xs font-medium flex items-center gap-1.5 text-foreground">
                         <Globe className="h-3.5 w-3.5 text-primary" />
@@ -492,7 +528,6 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate }
                         value={aiWebsiteUrl}
                         onChange={(e) => setAiWebsiteUrl(e.target.value)}
                         placeholder="https://yourcompany.com/about"
-                        disabled={isGenerating}
                         type="url"
                         className="h-9 text-sm"
                       />
@@ -501,7 +536,6 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate }
                       </p>
                     </div>
 
-                    {/* Reference PDF */}
                     <div className="rounded-lg border border-border p-3 space-y-2">
                       <label className="text-xs font-medium flex items-center gap-1.5 text-foreground">
                         <Paperclip className="h-3.5 w-3.5 text-primary" />
@@ -513,7 +547,6 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate }
                         className="hidden"
                         accept=".pdf"
                         onChange={handleReferenceFileSelect}
-                        disabled={isGenerating}
                       />
                       {aiReferenceFile ? (
                         <div className="flex items-center gap-2 p-2 bg-primary/5 rounded-lg border border-primary/20">
@@ -529,7 +562,6 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate }
                               setAiReferenceFile(null);
                               setAiReferenceContent('');
                             }}
-                            disabled={isGenerating}
                           >
                             <X className="h-3.5 w-3.5" />
                           </Button>
@@ -540,7 +572,6 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate }
                           size="sm"
                           className="w-full h-9 text-sm"
                           onClick={() => refFileInputRef.current?.click()}
-                          disabled={isGenerating}
                         >
                           <Paperclip className="h-3.5 w-3.5 mr-2" />
                           Attach PDF
@@ -551,21 +582,19 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate }
                 )}
               </div>
 
-              {/* Post Length - Chip Selector */}
+              {/* Post Length */}
               <div>
                 <label className="text-sm font-medium mb-2 block text-foreground">Post Length</label>
                 <div className="flex gap-2">
                   {LENGTH_OPTIONS.map(opt => (
                     <button
                       key={opt.value}
-                      onClick={() => !isGenerating && setAiLength(opt.value)}
-                      disabled={isGenerating}
+                      onClick={() => setAiLength(opt.value)}
                       className={cn(
                         "flex-1 px-3 py-2.5 rounded-lg border text-center transition-all duration-200 cursor-pointer",
                         aiLength === opt.value
                           ? "border-primary bg-primary/10 text-primary shadow-sm"
-                          : "border-border hover:border-primary/40 hover:bg-muted/50 text-muted-foreground",
-                        isGenerating && "opacity-50 cursor-not-allowed"
+                          : "border-border hover:border-primary/40 hover:bg-muted/50 text-muted-foreground"
                       )}
                     >
                       <span className="text-base block mb-0.5">{opt.icon}</span>
@@ -575,21 +604,19 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate }
                 </div>
               </div>
 
-              {/* Post Count - Chip Selector */}
+              {/* Post Count */}
               <div>
                 <label className="text-sm font-medium mb-2 block text-foreground">Number of Posts</label>
                 <div className="flex gap-2">
                   {POST_COUNT_OPTIONS.map(opt => (
                     <button
                       key={opt.value}
-                      onClick={() => !isGenerating && setAiPostCount(opt.value)}
-                      disabled={isGenerating}
+                      onClick={() => setAiPostCount(opt.value)}
                       className={cn(
                         "flex-1 px-3 py-2.5 rounded-lg border text-center transition-all duration-200 cursor-pointer",
                         aiPostCount === opt.value
                           ? "border-primary bg-primary/10 text-primary shadow-sm"
-                          : "border-border hover:border-primary/40 hover:bg-muted/50 text-muted-foreground",
-                        isGenerating && "opacity-50 cursor-not-allowed"
+                          : "border-border hover:border-primary/40 hover:bg-muted/50 text-muted-foreground"
                       )}
                     >
                       <span className="text-lg font-bold block mb-0.5">{opt.icon}</span>
@@ -599,7 +626,7 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate }
                 </div>
               </div>
 
-              {/* Tone - Visual Grid */}
+              {/* Tone */}
               <div>
                 <label className="text-sm font-medium mb-2 block text-foreground">Tone & Style</label>
                 <div className="grid grid-cols-3 gap-2">
@@ -608,14 +635,12 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate }
                     return (
                       <button
                         key={opt.value}
-                        onClick={() => !isGenerating && setAiTone(opt.value)}
-                        disabled={isGenerating}
+                        onClick={() => setAiTone(opt.value)}
                         className={cn(
                           "flex items-center gap-2 px-3 py-2 rounded-lg border transition-all duration-200 cursor-pointer text-left",
                           aiTone === opt.value
                             ? "border-primary bg-primary/10 shadow-sm"
-                            : "border-border hover:border-primary/30 hover:bg-muted/50",
-                          isGenerating && "opacity-50 cursor-not-allowed"
+                            : "border-border hover:border-primary/30 hover:bg-muted/50"
                         )}
                       >
                         <Icon className={cn("h-4 w-4 shrink-0", aiTone === opt.value ? "text-primary" : opt.color)} />
@@ -631,7 +656,6 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate }
                     );
                   })}
                 </div>
-                {/* Tone Example Preview */}
                 <div className="mt-2.5 px-3 py-2 rounded-lg bg-muted/50 border border-border/50">
                   <p className="text-xs text-muted-foreground italic leading-relaxed">
                     {selectedTone.example}
@@ -640,55 +664,15 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate }
               </div>
 
               {/* Generate Button */}
-              {isGenerating ? (
-                <div className="flex flex-col items-center justify-center py-10 space-y-6 animate-fade-in">
-                  {/* Animated orb */}
-                  <div className="relative w-20 h-20">
-                    <div className="absolute inset-0 rounded-full bg-primary/20 animate-ping" />
-                    <div className="absolute inset-2 rounded-full bg-primary/30 animate-pulse" />
-                    <div className="absolute inset-0 flex items-center justify-center text-3xl animate-bounce">
-                      {GENERATING_PHASES[generatingPhase].icon}
-                    </div>
-                  </div>
-
-                  {/* Phase text */}
-                  <p className="text-sm font-medium text-foreground animate-pulse">
-                    {GENERATING_PHASES[generatingPhase].text}
-                  </p>
-
-                  {/* Progress dots */}
-                  <div className="flex gap-2">
-                    {GENERATING_PHASES.map((_, i) => (
-                      <div
-                        key={i}
-                        className={cn(
-                          "w-2 h-2 rounded-full transition-all duration-500",
-                          i <= generatingPhase ? "bg-primary scale-100" : "bg-muted-foreground/30 scale-75"
-                        )}
-                      />
-                    ))}
-                  </div>
-
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleClose}
-                    className="text-xs"
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              ) : (
-                <Button
-                  onClick={handleGenerate}
-                  disabled={isParsingRef || !aiTopic.trim()}
-                  variant="glow"
-                  className="w-full h-12 text-accent font-semibold text-base"
-                >
-                  <Sparkles className="h-5 w-5 mr-2" />
-                  Generate Posts
-                </Button>
-              )}
+              <Button
+                onClick={handleGenerate}
+                disabled={isParsingRef || !aiTopic.trim()}
+                variant="glow"
+                className="w-full h-12 text-accent font-semibold text-base"
+              >
+                <Sparkles className="h-5 w-5 mr-2" />
+                Generate Posts
+              </Button>
             </div>
           )}
 
