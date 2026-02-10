@@ -1,22 +1,23 @@
 
 
-# Store Anthropic API Key and Fix Document Generation
+# Update System Prompt in `create-document` Edge Function
 
-## What We'll Do
-Store your Anthropic API key as a secure backend secret so the document generation feature works.
+## Overview
+Append the provided content framework to the existing system prompt in `supabase/functions/create-document/index.ts`. The current prompt covers core principles, structural requirements, and formatting rules. The new content adds extensive sections on hooks, narrative arcs, data integrity, tone, LinkedIn optimization, persona targeting, advanced techniques, and more.
+
+## Technical Details
+
+**File to modify:** `supabase/functions/create-document/index.ts`
+
+**What changes:**
+- Append the full provided framework text to the end of the `SYSTEM_PROMPT` string (before the closing backtick), starting from the `## CORE PRINCIPLES` section through `## FRAMEWORK ATTRIBUTION`.
+- Some sections overlap with existing prompt content (e.g., formatting rules, data integrity, power phrases). The new content will serve as expanded, more detailed guidance alongside the existing rules -- no existing content will be removed.
+
+**After editing:** Redeploy the `create-document` edge function so the updated prompt takes effect.
 
 ## Steps
 
-1. **Add the `ANTHROPIC_API_KEY` secret** using the secrets tool so it's securely stored and accessible by the backend function.
-
-2. **Redeploy the `create-document` function** to pick up the new secret.
-
-No code changes are needed -- the existing `create-document` function already uses `ANTHROPIC_API_KEY` correctly.
-
-## Important Security Note
-Since the key you shared is now visible in chat history, you should:
-- Go to [Anthropic Console](https://console.anthropic.com/settings/keys)
-- Revoke the exposed key
-- Generate a new one
-- We'll store the new key as the secret
+1. Edit `supabase/functions/create-document/index.ts` -- append the full framework text to `SYSTEM_PROMPT`
+2. Redeploy the `create-document` edge function
+3. Test document generation to confirm the new prompt works
 
