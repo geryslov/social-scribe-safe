@@ -1,5 +1,5 @@
-import { useState, useCallback } from 'react';
-import { Upload, FileText, X, Plus, Sparkles, Loader2 } from 'lucide-react';
+import { useState, useCallback, useRef } from 'react';
+import { Upload, FileText, X, Plus, Sparkles, Loader2, Globe, Paperclip } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -9,6 +9,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -19,6 +26,13 @@ interface DocumentUploadModalProps {
   onSave: (data: { title: string; content: string; fileName?: string; fileUrl?: string }) => void;
   showAiCreate?: boolean;
 }
+
+const LENGTH_OPTIONS = [
+  { value: 'super_short', label: 'Super Short', description: '< 100 words' },
+  { value: 'short', label: 'Short', description: '100-200 words' },
+  { value: 'medium', label: 'Medium', description: '200-400 words' },
+  { value: 'long', label: 'Long', description: '400-700 words' },
+] as const;
 
 export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate }: DocumentUploadModalProps) {
   const [mode, setMode] = useState<'upload' | 'create' | 'ai'>('upload');
@@ -31,6 +45,14 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate }
   const [aiTopic, setAiTopic] = useState('');
   const [aiGuidance, setAiGuidance] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
+  
+  // New AI options
+  const [aiWebsiteUrl, setAiWebsiteUrl] = useState('');
+  const [aiReferenceFile, setAiReferenceFile] = useState<File | null>(null);
+  const [aiReferenceContent, setAiReferenceContent] = useState('');
+  const [aiLength, setAiLength] = useState('medium');
+  const [isParsingRef, setIsParsingRef] = useState(false);
+  const refFileInputRef = useRef<HTMLInputElement>(null);
 
   const resetForm = () => {
     setMode('upload');
@@ -40,6 +62,10 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate }
     setFileUrl(null);
     setAiTopic('');
     setAiGuidance('');
+    setAiWebsiteUrl('');
+    setAiReferenceFile(null);
+    setAiReferenceContent('');
+    setAiLength('medium');
   };
 
   const handleClose = () => {
@@ -61,7 +87,6 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate }
     setIsLoading(true);
 
     try {
-      // Upload file to storage
       const storagePath = `${Date.now()}-${file.name}`;
       const { error: uploadError } = await supabase.storage
         .from('documents')
@@ -75,14 +100,12 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate }
 
       setFileName(file.name);
       setFileUrl(urlData.publicUrl);
-      setTitle(file.name.replace(/\.[^/.]+$/, '')); // Remove extension for title
+      setTitle(file.name.replace(/\.[^/.]+$/, ''));
 
-      // Parse content based on file type
       if (file.name.endsWith('.txt')) {
         const text = await file.text();
         setContent(text);
       } else if (file.name.endsWith('.docx') || file.name.endsWith('.csv')) {
-        // Use parse-document edge function
         const formData = new FormData();
         formData.append('file', file);
 
@@ -121,6 +144,39 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate }
     }
   };
 
+  const handleReferenceFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.name.endsWith('.pdf')) {
+      toast.error('Only PDF files are supported for reference documents');
+      return;
+    }
+
+    setAiReferenceFile(file);
+    setIsParsingRef(true);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const { data, error } = await supabase.functions.invoke('parse-document', {
+        body: formData,
+      });
+
+      if (error) throw error;
+      setAiReferenceContent(data.content || '');
+      toast.success(`Reference document loaded: ${file.name}`);
+    } catch (error) {
+      console.error('Error parsing reference PDF:', error);
+      toast.error('Failed to parse PDF');
+      setAiReferenceFile(null);
+      setAiReferenceContent('');
+    } finally {
+      setIsParsingRef(false);
+    }
+  };
+
   const handleGenerate = async () => {
     if (!aiTopic.trim()) {
       toast.error('Please enter a topic');
@@ -130,7 +186,13 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate }
     setIsGenerating(true);
     try {
       const { data, error } = await supabase.functions.invoke('create-document', {
-        body: { topic: aiTopic.trim(), guidance: aiGuidance.trim() || undefined },
+        body: {
+          topic: aiTopic.trim(),
+          guidance: aiGuidance.trim() || undefined,
+          websiteUrl: aiWebsiteUrl.trim() || undefined,
+          referenceContent: aiReferenceContent || undefined,
+          length: aiLength,
+        },
       });
 
       if (error) {
@@ -178,7 +240,7 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate }
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Add Document</DialogTitle>
         </DialogHeader>
@@ -261,6 +323,7 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate }
                 disabled={isGenerating}
               />
             </div>
+
             <div>
               <label className="text-sm font-medium mb-1.5 block">
                 Additional Guidance <span className="text-muted-foreground font-normal">(optional)</span>
@@ -269,13 +332,98 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate }
                 value={aiGuidance}
                 onChange={(e) => setAiGuidance(e.target.value)}
                 placeholder="e.g., Focus on productivity metrics, target VP-level audience, include data about hybrid models..."
-                className="min-h-24 resize-none"
+                className="min-h-20 resize-none"
                 disabled={isGenerating}
               />
             </div>
+
+            {/* Post Length */}
+            <div>
+              <label className="text-sm font-medium mb-1.5 block">Post Length</label>
+              <Select value={aiLength} onValueChange={setAiLength} disabled={isGenerating}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {LENGTH_OPTIONS.map(opt => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label} <span className="text-muted-foreground ml-1">({opt.description})</span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Website URL */}
+            <div>
+              <label className="text-sm font-medium mb-1.5 block">
+                <Globe className="h-3.5 w-3.5 inline mr-1 -mt-0.5" />
+                Reference Website <span className="text-muted-foreground font-normal">(optional)</span>
+              </label>
+              <Input
+                value={aiWebsiteUrl}
+                onChange={(e) => setAiWebsiteUrl(e.target.value)}
+                placeholder="https://yourcompany.com/about"
+                disabled={isGenerating}
+                type="url"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                The AI will read this page and use its content as source material
+              </p>
+            </div>
+
+            {/* Reference PDF */}
+            <div>
+              <label className="text-sm font-medium mb-1.5 block">
+                <Paperclip className="h-3.5 w-3.5 inline mr-1 -mt-0.5" />
+                Reference Document <span className="text-muted-foreground font-normal">(optional, PDF)</span>
+              </label>
+              <input
+                ref={refFileInputRef}
+                type="file"
+                className="hidden"
+                accept=".pdf"
+                onChange={handleReferenceFileSelect}
+                disabled={isGenerating}
+              />
+              {aiReferenceFile ? (
+                <div className="flex items-center gap-2 p-2.5 bg-secondary/50 rounded-lg">
+                  <FileText className="h-4 w-4 text-primary shrink-0" />
+                  <span className="text-sm flex-1 truncate">{aiReferenceFile.name}</span>
+                  {isParsingRef && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6"
+                    onClick={() => {
+                      setAiReferenceFile(null);
+                      setAiReferenceContent('');
+                    }}
+                    disabled={isGenerating}
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full"
+                  onClick={() => refFileInputRef.current?.click()}
+                  disabled={isGenerating}
+                >
+                  <Paperclip className="h-4 w-4 mr-2" />
+                  Attach PDF
+                </Button>
+              )}
+              <p className="text-xs text-muted-foreground mt-1">
+                The AI will extract and use this document's content as source material
+              </p>
+            </div>
+
             <Button
               onClick={handleGenerate}
-              disabled={isGenerating || !aiTopic.trim()}
+              disabled={isGenerating || isParsingRef || !aiTopic.trim()}
               className="w-full"
             >
               {isGenerating ? (

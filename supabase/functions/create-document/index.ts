@@ -612,7 +612,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { topic, guidance } = await req.json();
+    const { topic, guidance, websiteUrl, referenceContent, length } = await req.json();
 
     if (!topic) {
       return new Response(
@@ -630,9 +630,49 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Fetch website content if URL provided
+    let websiteContent = '';
+    if (websiteUrl) {
+      try {
+        console.log('Fetching website content from:', websiteUrl);
+        const siteRes = await fetch(websiteUrl, {
+          headers: { 'User-Agent': 'Mozilla/5.0 (compatible; ContentBot/1.0)' },
+        });
+        if (siteRes.ok) {
+          const html = await siteRes.text();
+          // Strip HTML tags to get text content
+          websiteContent = html
+            .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+            .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+            .replace(/<[^>]+>/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim()
+            .substring(0, 10000); // Limit to 10k chars
+          console.log('Website content fetched, length:', websiteContent.length);
+        } else {
+          console.warn('Failed to fetch website:', siteRes.status);
+        }
+      } catch (e) {
+        console.warn('Error fetching website:', e);
+      }
+    }
+
+    // Build length instruction
+    const lengthInstructions: Record<string, string> = {
+      'super_short': 'IMPORTANT: Each post must be UNDER 100 words. Keep them extremely concise and punchy. Prioritize impact over detail.',
+      'short': 'IMPORTANT: Each post must be 100-200 words. Keep them concise while still providing value.',
+      'medium': 'IMPORTANT: Each post must be 200-400 words. This is the standard LinkedIn optimal length for engagement.',
+      'long': 'IMPORTANT: Each post must be 400-700 words. Create in-depth, detailed posts with comprehensive analysis.',
+    };
+    const lengthInstruction = length && lengthInstructions[length] ? lengthInstructions[length] : '';
+
     console.log('Creating document with Claude for topic:', topic);
 
-    const userMessage = `Create a LinkedIn thought leadership content document about: ${topic}${guidance ? `\n\nAdditional guidance: ${guidance}` : ''}`;
+    let userMessage = `Create a LinkedIn thought leadership content document about: ${topic}`;
+    if (guidance) userMessage += `\n\nAdditional guidance: ${guidance}`;
+    if (lengthInstruction) userMessage += `\n\n${lengthInstruction}`;
+    if (websiteContent) userMessage += `\n\n--- REFERENCE: Website Content ---\nUse the following website content as context and source material for the posts. Extract relevant data, insights, and messaging:\n\n${websiteContent}`;
+    if (referenceContent) userMessage += `\n\n--- REFERENCE: Uploaded Document ---\nUse the following document content as context and source material for the posts. Extract relevant data, insights, and messaging:\n\n${referenceContent.substring(0, 15000)}`;
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
