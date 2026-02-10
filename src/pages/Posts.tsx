@@ -11,6 +11,9 @@ import { PostRow } from '@/components/PostRow';
 import { PostModal } from '@/components/PostModal';
 import { LinkedInPostCard } from '@/components/LinkedInPostCard';
 import { BulkUploadModal } from '@/components/BulkUploadModal';
+import { DocumentUploadModal } from '@/components/DocumentUploadModal';
+import { useDocuments } from '@/hooks/useDocuments';
+import { useWorkspace } from '@/hooks/useWorkspace';
 
 import { Button } from '@/components/ui/button';
 import { Plus, Inbox, ExternalLink, Loader2, Upload, Users, Eye, Heart, TrendingUp } from 'lucide-react';
@@ -35,6 +38,11 @@ const Posts = () => {
   const [editingPost, setEditingPost] = useState<Post | null>(null);
   const [preselectedPublisher, setPreselectedPublisher] = useState<string | null>(null);
   const viewMode = 'feed' as const;
+  const [isDocUploadOpen, setIsDocUploadOpen] = useState(false);
+  const { createDocument } = useDocuments();
+  const { currentWorkspace } = useWorkspace();
+  const LEGACY_WORKSPACE_ID = 'f26b7a85-d4ad-451e-8585-d9906d5b9f95';
+  const isLegacyWorkspace = currentWorkspace?.id === LEGACY_WORKSPACE_ID;
 
   // Redirect to auth if not logged in
   useEffect(() => {
@@ -143,9 +151,16 @@ const Posts = () => {
 
   const handleNewPost = () => {
     if (!isAdmin) return;
-    setPreselectedPublisher(selectedPublisher);
-    setEditingPost(null);
-    setIsModalOpen(true);
+    setIsDocUploadOpen(true);
+  };
+
+  const handleCreateDocument = async (data: { 
+    title: string; 
+    content: string; 
+    fileName?: string; 
+    fileUrl?: string 
+  }) => {
+    await createDocument.mutateAsync(data);
   };
 
   const handleBulkUpload = (posts: { content: string; publisherName: string; scheduledDate: string }[]) => {
@@ -400,6 +415,13 @@ const Posts = () => {
         onClose={() => setIsBulkUploadOpen(false)}
         onSave={handleBulkUpload}
         existingPublishers={existingPublishers}
+      />
+
+      <DocumentUploadModal
+        open={isDocUploadOpen}
+        onOpenChange={setIsDocUploadOpen}
+        onSave={handleCreateDocument}
+        showAiCreate={isLegacyWorkspace}
       />
     </div>
   );
