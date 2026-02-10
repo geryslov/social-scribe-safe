@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Post } from '@/types/post';
 import {
   Dialog,
@@ -17,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { UserPlus } from 'lucide-react';
+import { UserPlus, Loader2 } from 'lucide-react';
 import { usePublishers } from '@/hooks/usePublishers';
 
 interface Publisher {
@@ -122,8 +122,11 @@ export function PostModal({
     }
   };
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSubmitting(true);
     
     // If creating a new publisher, save the publisher first
     if (isNewPublisher && formData.publisherName) {
@@ -138,8 +141,12 @@ export function PostModal({
       }
     }
     
-    onSave(post ? { ...formData, id: post.id } : formData);
-    onClose();
+    try {
+      onSave(post ? { ...formData, id: post.id } : formData);
+      onClose();
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -270,8 +277,15 @@ export function PostModal({
             <Button type="button" variant="outline" onClick={onClose}>
               Cancel
             </Button>
-            <Button type="submit" className="gradient-bg">
-              {post ? 'Save Changes' : 'Create Post'}
+            <Button type="submit" className="gradient-bg" disabled={isSubmitting}>
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  {post ? 'Saving...' : 'Creating...'}
+                </>
+              ) : (
+                post ? 'Save Changes' : 'Create Post'
+              )}
             </Button>
           </div>
         </form>
