@@ -612,7 +612,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { topic, guidance, websiteUrl, referenceContent, length } = await req.json();
+    const { topic, guidance, websiteUrl, referenceContent, length, postCount } = await req.json();
 
     if (!topic) {
       return new Response(
@@ -666,11 +666,20 @@ Deno.serve(async (req) => {
     };
     const lengthInstruction = length && lengthInstructions[length] ? lengthInstructions[length] : '';
 
+    // Build post count instruction
+    const postCountInstructions: Record<string, string> = {
+      'single': 'IMPORTANT: Create exactly 1 post. Make it comprehensive and self-contained.',
+      '2-4': 'IMPORTANT: Create 2 to 4 posts. Each post should cover a distinct angle of the topic.',
+      '4-6': 'IMPORTANT: Create 4 to 6 posts. Cover the topic thoroughly from multiple angles.',
+    };
+    const postCountInstruction = postCount && postCountInstructions[postCount] ? postCountInstructions[postCount] : '';
+
     console.log('Creating document with Claude for topic:', topic);
 
     let userMessage = `Create a LinkedIn thought leadership content document about: ${topic}`;
     if (guidance) userMessage += `\n\nAdditional guidance: ${guidance}`;
     if (lengthInstruction) userMessage += `\n\n${lengthInstruction}`;
+    if (postCountInstruction) userMessage += `\n\n${postCountInstruction}`;
     if (websiteContent) userMessage += `\n\n--- REFERENCE: Website Content ---\nUse the following website content as context and source material for the posts. Extract relevant data, insights, and messaging:\n\n${websiteContent}`;
     if (referenceContent) userMessage += `\n\n--- REFERENCE: Uploaded Document ---\nUse the following document content as context and source material for the posts. Extract relevant data, insights, and messaging:\n\n${referenceContent.substring(0, 15000)}`;
 
