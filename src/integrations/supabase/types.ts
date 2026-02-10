@@ -779,6 +779,7 @@ export type Database = {
           logo_url: string | null
           name: string
           slug: string
+          system_prompt: string | null
           theme: Json | null
           updated_at: string | null
         }
@@ -794,6 +795,7 @@ export type Database = {
           logo_url?: string | null
           name: string
           slug: string
+          system_prompt?: string | null
           theme?: Json | null
           updated_at?: string | null
         }
@@ -809,6 +811,7 @@ export type Database = {
           logo_url?: string | null
           name?: string
           slug?: string
+          system_prompt?: string | null
           theme?: Json | null
           updated_at?: string | null
         }

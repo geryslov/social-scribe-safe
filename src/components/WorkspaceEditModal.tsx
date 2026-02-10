@@ -10,7 +10,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useWorkspaces } from '@/hooks/useWorkspaces';
 import { Workspace } from '@/types/workspace';
 import { supabase } from '@/integrations/supabase/client';
-import { Building2, Upload, Trash2, Loader2 } from 'lucide-react';
+import { Building2, Upload, Trash2, Loader2, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { WorkspaceThemeEditor, WorkspaceTheme } from './WorkspaceThemeEditor';
 
@@ -30,6 +30,7 @@ export function WorkspaceEditModal({ workspace, open, onOpenChange }: WorkspaceE
   const [inviteEnabled, setInviteEnabled] = useState(workspace.inviteEnabled);
   const [logoUrl, setLogoUrl] = useState(workspace.logoUrl || '');
   const [theme, setTheme] = useState<WorkspaceTheme>((workspace.theme as WorkspaceTheme) || {});
+  const [systemPrompt, setSystemPrompt] = useState(workspace.systemPrompt || '');
   const [isUploading, setIsUploading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -42,6 +43,7 @@ export function WorkspaceEditModal({ workspace, open, onOpenChange }: WorkspaceE
     setInviteEnabled(workspace.inviteEnabled);
     setLogoUrl(workspace.logoUrl || '');
     setTheme((workspace.theme as WorkspaceTheme) || {});
+    setSystemPrompt(workspace.systemPrompt || '');
   }, [workspace.id]);
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -86,6 +88,7 @@ export function WorkspaceEditModal({ workspace, open, onOpenChange }: WorkspaceE
         inviteEnabled,
         logoUrl: logoUrl || undefined,
         theme: theme as Record<string, unknown>,
+        systemPrompt: systemPrompt || null,
       });
       onOpenChange(false);
     } finally {
@@ -111,9 +114,10 @@ export function WorkspaceEditModal({ workspace, open, onOpenChange }: WorkspaceE
         </DialogHeader>
 
         <Tabs defaultValue="general" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="general">General</TabsTrigger>
             <TabsTrigger value="branding">Branding</TabsTrigger>
+            <TabsTrigger value="ai-prompt">AI Prompt</TabsTrigger>
           </TabsList>
 
           <TabsContent value="general" className="space-y-4 mt-4">
@@ -219,6 +223,29 @@ export function WorkspaceEditModal({ workspace, open, onOpenChange }: WorkspaceE
 
             {/* Theme Colors */}
             <WorkspaceThemeEditor theme={theme} onChange={setTheme} />
+          </TabsContent>
+
+          <TabsContent value="ai-prompt" className="space-y-4 mt-4">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-primary" />
+                <Label htmlFor="system-prompt">System Prompt</Label>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Custom instructions for AI-generated content in this workspace. This overrides the default content framework with workspace-specific tone, context, and guidelines.
+              </p>
+              <Textarea
+                id="system-prompt"
+                value={systemPrompt}
+                onChange={(e) => setSystemPrompt(e.target.value)}
+                placeholder={`e.g. You are writing LinkedIn posts for Acme Corp, a B2B SaaS company.\n\nKey guidelines:\n- Always mention our core product "AcmeFlow"\n- Use a confident but approachable tone\n- Reference real industry challenges in supply chain`}
+                rows={10}
+                className="font-mono text-sm"
+              />
+              <p className="text-xs text-muted-foreground">
+                {systemPrompt.length > 0 ? `${systemPrompt.length} characters` : 'No custom prompt set — using default framework'}
+              </p>
+            </div>
           </TabsContent>
         </Tabs>
 
