@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { Upload, FileText, X, Plus, Sparkles } from 'lucide-react';
+import { Upload, FileText, X, Plus, Sparkles, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -13,8 +13,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
-const CLAUDE_PROJECT_URL = 'https://claude.ai/project/019a57fa-5c62-7625-a3a4-9a7eb3150763';
-
 interface DocumentUploadModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -23,13 +21,16 @@ interface DocumentUploadModalProps {
 }
 
 export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate }: DocumentUploadModalProps) {
-  const [mode, setMode] = useState<'upload' | 'create'>('upload');
+  const [mode, setMode] = useState<'upload' | 'create' | 'ai'>('upload');
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [fileName, setFileName] = useState<string | null>(null);
   const [fileUrl, setFileUrl] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [aiTopic, setAiTopic] = useState('');
+  const [aiGuidance, setAiGuidance] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
 
   const resetForm = () => {
     setMode('upload');
@@ -37,6 +38,8 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate }
     setContent('');
     setFileName(null);
     setFileUrl(null);
+    setAiTopic('');
+    setAiGuidance('');
   };
 
   const handleClose = () => {
@@ -56,20 +59,20 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate }
 
   const processFile = async (file: File) => {
     setIsLoading(true);
-    
+
     try {
       // Upload file to storage
       const storagePath = `${Date.now()}-${file.name}`;
       const { error: uploadError } = await supabase.storage
         .from('documents')
         .upload(storagePath, file);
-      
+
       if (uploadError) throw uploadError;
-      
+
       const { data: urlData } = supabase.storage
         .from('documents')
         .getPublicUrl(storagePath);
-      
+
       setFileName(file.name);
       setFileUrl(urlData.publicUrl);
       setTitle(file.name.replace(/\.[^/.]+$/, '')); // Remove extension for title
@@ -104,7 +107,7 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate }
   const handleDrop = useCallback(async (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
-    
+
     const file = e.dataTransfer.files[0];
     if (file) {
       await processFile(file);
@@ -115,6 +118,39 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate }
     const file = e.target.files?.[0];
     if (file) {
       await processFile(file);
+    }
+  };
+
+  const handleGenerate = async () => {
+    if (!aiTopic.trim()) {
+      toast.error('Please enter a topic');
+      return;
+    }
+
+    setIsGenerating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('create-document', {
+        body: { topic: aiTopic.trim(), guidance: aiGuidance.trim() || undefined },
+      });
+
+      if (error) {
+        console.error('Error generating document:', error);
+        toast.error('Failed to generate document');
+        return;
+      }
+
+      if (data?.success) {
+        setTitle(data.title || aiTopic.trim());
+        setContent(data.content || '');
+        toast.success('Document generated! Review and edit before saving.');
+      } else {
+        toast.error(data?.error || 'Failed to generate document');
+      }
+    } catch (err) {
+      console.error('Error calling create-document:', err);
+      toast.error('Failed to generate document');
+    } finally {
+      setIsGenerating(false);
     }
   };
 
@@ -136,6 +172,8 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate }
     });
     handleClose();
   };
+
+  const showContentEditor = mode === 'create' || (mode === 'ai' && content) || fileName;
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -164,9 +202,9 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate }
           </Button>
           {showAiCreate && (
             <Button
-              variant="outline"
+              variant={mode === 'ai' ? 'default' : 'outline'}
               size="sm"
-              onClick={() => window.open(CLAUDE_PROJECT_URL, '_blank')}
+              onClick={() => setMode('ai')}
             >
               <Sparkles className="h-4 w-4 mr-2" />
               Create with AI
@@ -181,8 +219,8 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate }
             onDrop={handleDrop}
             className={cn(
               "border-2 border-dashed rounded-xl p-12 text-center transition-all",
-              isDragging 
-                ? "border-primary bg-primary/5" 
+              isDragging
+                ? "border-primary bg-primary/5"
                 : "border-border hover:border-primary/50"
             )}
           >
@@ -211,7 +249,50 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate }
           </div>
         )}
 
-        {(mode === 'create' || fileName) && (
+        {mode === 'ai' && !content && (
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium mb-1.5 block">Topic / Brief</label>
+              <Input
+                value={aiTopic}
+                onChange={(e) => setAiTopic(e.target.value)}
+                placeholder="e.g., Benefits of remote work for engineering teams"
+                disabled={isGenerating}
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1.5 block">
+                Additional Guidance <span className="text-muted-foreground font-normal">(optional)</span>
+              </label>
+              <Textarea
+                value={aiGuidance}
+                onChange={(e) => setAiGuidance(e.target.value)}
+                placeholder="e.g., Focus on productivity metrics, target VP-level audience, include data about hybrid models..."
+                className="min-h-24 resize-none"
+                disabled={isGenerating}
+              />
+            </div>
+            <Button
+              onClick={handleGenerate}
+              disabled={isGenerating || !aiTopic.trim()}
+              className="w-full"
+            >
+              {isGenerating ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="h-4 w-4 mr-2" />
+                  Generate Document
+                </>
+              )}
+            </Button>
+          </div>
+        )}
+
+        {showContentEditor && (
           <div className="space-y-4">
             {fileName && (
               <div className="flex items-center gap-2 p-3 bg-secondary/50 rounded-lg">
@@ -257,9 +338,9 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate }
           <Button variant="outline" onClick={handleClose}>
             Cancel
           </Button>
-          <Button 
-            onClick={handleSave} 
-            disabled={isLoading || !title.trim() || !content.trim()}
+          <Button
+            onClick={handleSave}
+            disabled={isLoading || isGenerating || !title.trim() || !content.trim()}
           >
             {isLoading ? 'Processing...' : 'Save Document'}
           </Button>
