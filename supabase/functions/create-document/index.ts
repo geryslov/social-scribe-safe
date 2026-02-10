@@ -612,7 +612,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { topic, guidance, websiteUrl, referenceContent, length, postCount } = await req.json();
+    const { topic, guidance, websiteUrl, referenceContent, length, postCount, tone } = await req.json();
 
     if (!topic) {
       return new Response(
@@ -672,12 +672,26 @@ Deno.serve(async (req) => {
     };
     const postCountInstruction = postCount && postCountInstructions[postCount] ? postCountInstructions[postCount] : '';
 
-    console.log('Creating document with Claude for topic:', topic);
+    // Build tone instruction
+    const toneInstructions: Record<string, string> = {
+      'stream_of_consciousness': `TONE: Stream of Consciousness. Write as if thinking out loud — rambling thoughts, tangents, incomplete sentences. Use long winding sentences that shift direction mid-thought. Frequent dashes, ellipses, and parenthetical asides. Include self-corrections ("wait, no, actually…"). Tangents that circle back to the main point. No clear introduction or conclusion — it just starts and ends. The content should feel raw and unfiltered, giving readers a window into the author's actual thought process.`,
+      'typo_prone_human': `TONE: Typo-Prone Human. Write with occasional misspellings, autocorrect errors, inconsistent capitalization, and slightly awkward phrasing. Include 1-2 minor typos per post. Sometimes write "ai" sometimes "AI". Use short paragraphs with abrupt transitions. The style should signal "I'm a real person who wrote this quickly because I had something important to say." Don't overdo it — not so many errors it looks careless.`,
+      'uneven_storyteller': `TONE: Uneven Storyteller. Vary paragraph lengths dramatically — dramatic one-line paragraphs for emphasis, followed by dense detailed blocks of 4-6 sentences. No consistent formatting pattern. Story arcs that build tension through pacing, not structure. The rhythm itself becomes part of the voice.`,
+      'passionate_amateur': `TONE: Passionate Amateur. Write with enthusiastic but imperfect prose — run-on sentences, excessive punctuation (!!!), and emotional language. Use ALL CAPS for key words occasionally. Connect ideas with "and" and "because" chains. Strong emotional language ("this is INSANE", "I can't believe", "this changes everything"). Overuse superlatives and hyperbole. The style should convey genuine excitement and make the reader feel the author's energy.`,
+      'professional': `TONE: Professional. Write in a clean, corporate tone with clear structure and formal language. Use clear topic sentences and logical paragraph progression. Cite data and evidence to support claims. No contractions, slang, or colloquial language. Structured with clear transitions. Authoritative, measured, and credibility-focused.`,
+      'conversational': `TONE: Conversational. Write in a friendly, approachable tone like talking to a smart friend. Use contractions and informal phrasing ("here's the thing", "let's be real"). Address the reader directly ("you", "your"). Include rhetorical questions to engage. Use analogies and everyday examples to explain complex topics. Light humor where appropriate. Warm and accessible while still delivering substantive insights.`,
+      'aggressive': `TONE: Aggressive. Write with bold, confrontational language that challenges the reader. Use declarative statements with no hedging ("This is wrong." not "This might be suboptimal."). Directly challenge the reader's assumptions. Short, punchy sentences that hit hard. Unapologetic tone — no "in my humble opinion". Strategic use of absolutes ("never", "always", "every"). Take a strong stance and don't be afraid to call out industry norms.`,
+      'provocative': `TONE: Provocative. Write controversial takes designed to spark debate. Open with a controversial or counterintuitive claim. Challenge widely held beliefs with evidence or logic. Use "unpopular opinion" framing. Back up bold claims with reasoning — provocation without substance falls flat. End with a question or call to debate. Intentionally poke at sacred cows and industry assumptions.`,
+    };
+    const toneInstruction = tone && toneInstructions[tone] ? toneInstructions[tone] : '';
+
+    console.log('Creating document with Claude for topic:', topic, 'tone:', tone || 'default');
 
     let userMessage = `Create a LinkedIn thought leadership content document about: ${topic}`;
     if (guidance) userMessage += `\n\nAdditional guidance: ${guidance}`;
     if (lengthInstruction) userMessage += `\n\n${lengthInstruction}`;
     if (postCountInstruction) userMessage += `\n\n${postCountInstruction}`;
+    if (toneInstruction) userMessage += `\n\n${toneInstruction}`;
     if (websiteContent) userMessage += `\n\n--- REFERENCE: Website HTML ---\nThe following is raw HTML from the provided website URL. Extract and interpret the meaningful text content, data, insights, company information, and messaging from this HTML. Use it as context and source material for the posts:\n\n${websiteContent}`;
     if (referenceContent) userMessage += `\n\n--- REFERENCE: Uploaded Document ---\nUse the following document content as context and source material for the posts. Extract relevant data, insights, and messaging:\n\n${referenceContent.substring(0, 15000)}`;
 
