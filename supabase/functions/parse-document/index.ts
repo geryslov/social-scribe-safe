@@ -68,36 +68,39 @@ async function parsePdf(arrayBuffer: ArrayBuffer): Promise<string> {
     .replace(/([.!?])\s/g, '$1\n')
     .trim();
 
-  // If native extraction failed, try using Lovable AI to extract via OCR-like approach
+  // If native extraction failed, use Anthropic Claude to extract text
   if (result.length < 50) {
-    console.log('Native PDF extraction yielded little text, using AI gateway for extraction');
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (LOVABLE_API_KEY) {
-      // Convert first portion to base64 for AI processing
+    console.log('Native PDF extraction yielded little text, using Anthropic Claude for extraction');
+    const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY');
+    if (ANTHROPIC_API_KEY) {
       const base64 = btoa(String.fromCharCode(...bytes.slice(0, 500000)));
       
       try {
-        const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+        const aiResponse = await fetch('https://api.anthropic.com/v1/messages', {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+            'x-api-key': ANTHROPIC_API_KEY,
+            'anthropic-version': '2023-06-01',
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            model: 'google/gemini-2.5-flash',
+            model: 'claude-sonnet-4-5-20250929',
+            max_tokens: 8192,
             messages: [
               {
                 role: 'user',
                 content: [
                   {
-                    type: 'text',
-                    text: 'Extract ALL text content from this PDF document. Return only the extracted text, preserving paragraphs and structure. Do not add any commentary.',
+                    type: 'document',
+                    source: {
+                      type: 'base64',
+                      media_type: 'application/pdf',
+                      data: base64,
+                    },
                   },
                   {
-                    type: 'image_url',
-                    image_url: {
-                      url: `data:application/pdf;base64,${base64}`,
-                    },
+                    type: 'text',
+                    text: 'Extract ALL text content from this PDF document. Return only the extracted text, preserving paragraphs and structure. Do not add any commentary.',
                   },
                 ],
               },
@@ -107,13 +110,13 @@ async function parsePdf(arrayBuffer: ArrayBuffer): Promise<string> {
 
         if (aiResponse.ok) {
           const aiData = await aiResponse.json();
-          const aiText = aiData.choices?.[0]?.message?.content;
+          const aiText = aiData.content?.[0]?.text;
           if (aiText && aiText.length > result.length) {
             result = aiText;
           }
         }
       } catch (e) {
-        console.warn('AI PDF extraction failed:', e);
+        console.warn('Anthropic PDF extraction failed:', e);
       }
     }
   }
