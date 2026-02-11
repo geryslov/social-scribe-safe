@@ -164,7 +164,7 @@ function parsePostSections(content: string): string[] {
   let inExcludedSection = false;
 
   for (const line of lines) {
-    const isPostMarker = /^Post\s*\d+/i.test(line.trim());
+    const isPostMarker = /^(?:#*\s*)?Post\s*\d+/i.test(line.trim());
     
     if (isExcluded(line)) {
       inExcludedSection = true;
