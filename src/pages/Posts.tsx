@@ -12,10 +12,8 @@ import { PostModal } from '@/components/PostModal';
 import { LinkedInPostCard } from '@/components/LinkedInPostCard';
 import { BulkUploadModal } from '@/components/BulkUploadModal';
 import { DocumentUploadModal } from '@/components/DocumentUploadModal';
-import { DocumentSplitModal } from '@/components/DocumentSplitModal';
-import { useDocuments, useDocumentSections } from '@/hooks/useDocuments';
+import { useDocuments } from '@/hooks/useDocuments';
 import { useWorkspace } from '@/hooks/useWorkspace';
-import { Document } from '@/types/document';
 
 import { Button } from '@/components/ui/button';
 import { Plus, Inbox, ExternalLink, Loader2, Upload, Users, Eye, Heart, TrendingUp } from 'lucide-react';
@@ -41,10 +39,7 @@ const Posts = () => {
   const [preselectedPublisher, setPreselectedPublisher] = useState<string | null>(null);
   const viewMode = 'feed' as const;
   const [isDocUploadOpen, setIsDocUploadOpen] = useState(false);
-  const [splitModalOpen, setSplitModalOpen] = useState(false);
-  const [splitDocument, setSplitDocument] = useState<Document | null>(null);
-  const { createDocument, updateStatus: updateDocStatus } = useDocuments();
-  const { sections: splitDocSections } = useDocumentSections(splitDocument?.id || '');
+  const { createDocument } = useDocuments();
   const { currentWorkspace } = useWorkspace();
   const LEGACY_WORKSPACE_ID = 'f26b7a85-d4ad-451e-8585-d9906d5b9f95';
   const isLegacyWorkspace = currentWorkspace?.id === LEGACY_WORKSPACE_ID;
@@ -166,41 +161,8 @@ const Posts = () => {
     fileUrl?: string 
   }) => {
     const doc = await createDocument.mutateAsync(data);
-    // Auto-open split modal with the newly created document
-    setSplitDocument(doc);
-    setSplitModalOpen(true);
-  };
-
-  const handleSplitSave = async (posts: Array<{
-    content: string;
-    publisherName: string;
-    publisherRole: string;
-    linkedinUrl: string;
-    scheduledDate: string;
-    documentId: string;
-  }>) => {
-    try {
-      for (const post of posts) {
-        await createPost.mutateAsync({
-          content: post.content,
-          publisherName: post.publisherName,
-          publisherRole: post.publisherRole,
-          linkedinUrl: post.linkedinUrl,
-          scheduledDate: post.scheduledDate,
-          status: 'draft',
-          documentId: post.documentId,
-        });
-      }
-      if (splitDocument) {
-        await updateDocStatus.mutateAsync({ id: splitDocument.id, status: 'split' });
-      }
-      toast.success(`Created ${posts.length} posts from document`);
-      setSplitModalOpen(false);
-      setSplitDocument(null);
-    } catch (error) {
-      console.error('Error creating posts:', error);
-      toast.error('Failed to create posts');
-    }
+    // Navigate to the document editor where sections are shown with editing & history
+    navigate(`/documents/${doc.id}`);
   };
 
   const handleBulkUpload = (posts: { content: string; publisherName: string; scheduledDate: string }[]) => {
@@ -464,13 +426,6 @@ const Posts = () => {
         showAiCreate={isLegacyWorkspace}
       />
 
-      <DocumentSplitModal
-        open={splitModalOpen}
-        onOpenChange={setSplitModalOpen}
-        document={splitDocument}
-        sections={splitDocSections}
-        onSave={handleSplitSave}
-      />
     </div>
   );
 };
