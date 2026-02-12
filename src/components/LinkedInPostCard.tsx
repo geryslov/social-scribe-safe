@@ -5,6 +5,10 @@ import { PublisherAvatar } from '@/components/PublisherAvatar';
 import { CountUp } from '@/components/CountUp';
 import { getRelativeTime } from '@/lib/timeUtils';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { LinkedInPublishModal } from '@/components/LinkedInPublishModal';
+import { usePublishers } from '@/hooks/usePublishers';
+import { toast } from 'sonner';
 
 interface LinkedInPostCardProps {
   post: Post;
@@ -45,6 +49,12 @@ export function LinkedInPostCard({
   publisherCompany,
 }: LinkedInPostCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [showLinkedInModal, setShowLinkedInModal] = useState(false);
+  const { publishers } = usePublishers();
+  
+  // Find the publisher for this post
+  const publisher = publishers.find(p => p.name === post.publisherName);
+  const isPublisherConnected = publisher?.linkedin_connected ?? false;
   
   const maxLength = variant === 'feed' ? 280 : 500;
   const shouldTruncate = post.content.length > maxLength;
@@ -165,6 +175,17 @@ export function LinkedInPostCard({
           <ActionButton icon={MessageCircle} label="Comment" />
           <ActionButton icon={Repeat2} label="Repost" />
           <ActionButton icon={Send} label="Send" />
+          {post.status !== 'done' && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 px-3 hover:bg-[#0077b5]/10 hover:text-[#0077b5] text-xs gap-1.5"
+              onClick={() => setShowLinkedInModal(true)}
+            >
+              <Linkedin className="h-4 w-4" />
+              Push
+            </Button>
+          )}
         </div>
       </div>
 
@@ -207,6 +228,22 @@ export function LinkedInPostCard({
           </div>
         </div>
       )}
+
+      {/* LinkedIn Publish Modal */}
+      <LinkedInPublishModal
+        isOpen={showLinkedInModal}
+        onClose={() => setShowLinkedInModal(false)}
+        post={post}
+        publisherId={publisher?.id ?? null}
+        isPublisherConnected={isPublisherConnected}
+        onPublishSuccess={() => {
+          setShowLinkedInModal(false);
+          toast.success('Published to LinkedIn!');
+        }}
+        onConnectLinkedIn={() => {
+          toast.info('Edit the publisher to connect LinkedIn');
+        }}
+      />
     </div>
   );
 }
