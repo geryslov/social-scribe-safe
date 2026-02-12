@@ -52,6 +52,7 @@ export function LinkedInPublishModal({
           publisherId,
           content: post.content,
           postId: post.id,
+          mediaUrl: post.mediaUrl || null,
         },
       });
 
@@ -132,6 +133,15 @@ export function LinkedInPublishModal({
             </div>
             <div className="rounded-lg border border-border bg-background p-4 max-h-[200px] overflow-y-auto">
               <p className="text-sm whitespace-pre-wrap">{post.content}</p>
+              {post.mediaUrl && (
+                <div className="mt-3 pt-3 border-t border-border">
+                  {post.mediaUrl.match(/\.(mp4|mov)$/i) ? (
+                    <p className="text-xs text-muted-foreground">📎 Video attached</p>
+                  ) : (
+                    <img src={post.mediaUrl} alt="Attached media" className="rounded max-h-[100px] object-cover" />
+                  )}
+                </div>
+              )}
             </div>
             {isOverLimit && (
               <p className="text-xs text-destructive flex items-center gap-1">

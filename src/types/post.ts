@@ -30,6 +30,7 @@ export interface Post {
   status: 'draft' | 'scheduled' | 'done';
   labels?: string[];
   documentId?: string | null;
+  mediaUrl?: string | null;
   // LinkedIn publishing tracking
   publishedAt?: string | null;
   linkedinPostUrl?: string | null;

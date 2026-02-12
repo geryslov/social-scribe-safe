@@ -56,6 +56,7 @@ type DbPost = {
   video_milestone_50: number | null;
   video_milestone_75: number | null;
   video_milestone_100: number | null;
+  media_url: string | null;
 };
 
 function mapDbToPost(dbPost: DbPost): Post {
@@ -120,6 +121,8 @@ function mapDbToPost(dbPost: DbPost): Post {
     clickThroughRate: dbPost.click_through_rate,
     // Video metrics
     videoMetrics,
+    // Media
+    mediaUrl: dbPost.media_url,
   };
 }
 
@@ -169,6 +172,7 @@ export function usePosts() {
           created_by: user.id,
           document_id: post.documentId || null,
           workspace_id: currentWorkspace.id,
+          media_url: (post as Post).mediaUrl || null,
         })
         .select()
         .single();
@@ -231,6 +235,7 @@ export function usePosts() {
           publisher_name: post.publisherName,
           publisher_role: post.publisherRole || null,
           linkedin_url: post.linkedinUrl || null,
+          media_url: post.mediaUrl || null,
         })
         .eq('id', post.id)
         .select()
