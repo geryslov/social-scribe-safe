@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Post } from '@/types/post';
 import {
   Dialog,
@@ -17,8 +17,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { UserPlus, Loader2 } from 'lucide-react';
+import { UserPlus, Loader2, Upload, X, Image, Film } from 'lucide-react';
 import { usePublishers } from '@/hooks/usePublishers';
+import { supabase } from '@/integrations/supabase/client';
+import { useWorkspace } from '@/hooks/useWorkspace';
+import { toast } from 'sonner';
 
 interface Publisher {
   name: string;
@@ -35,6 +38,10 @@ interface PostModalProps {
   preselectedPublisher?: string | null;
 }
 
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
+const MAX_VIDEO_SIZE = 20 * 1024 * 1024; // 20MB
+const ACCEPTED_TYPES = 'image/jpeg,image/png,image/gif,video/mp4,video/quicktime';
+
 export function PostModal({ 
   isOpen, 
   onClose, 
@@ -46,6 +53,11 @@ export function PostModal({
   const [isNewPublisher, setIsNewPublisher] = useState(false);
   const [selectedPublisher, setSelectedPublisher] = useState<string>('');
   const { upsertPublisher } = usePublishers();
+  const { currentWorkspace } = useWorkspace();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [mediaFile, setMediaFile] = useState<File | null>(null);
+  const [mediaPreview, setMediaPreview] = useState<string | null>(null);
+  const [existingMediaUrl, setExistingMediaUrl] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     publisherName: '',
     publisherRole: '',
@@ -58,6 +70,9 @@ export function PostModal({
   useEffect(() => {
     if (!isOpen) return;
     
+    setMediaFile(null);
+    setMediaPreview(null);
+    
     if (post) {
       setFormData({
         publisherName: post.publisherName,
@@ -69,6 +84,7 @@ export function PostModal({
       });
       setSelectedPublisher(post.publisherName);
       setIsNewPublisher(false);
+      setExistingMediaUrl(post.mediaUrl || null);
     } else if (preselectedPublisher) {
       const publisher = existingPublishers.find(p => p.name === preselectedPublisher);
       if (publisher) {
@@ -83,6 +99,7 @@ export function PostModal({
         setSelectedPublisher(publisher.name);
         setIsNewPublisher(false);
       }
+      setExistingMediaUrl(null);
     } else {
       setFormData({
         publisherName: '',
@@ -94,6 +111,7 @@ export function PostModal({
       });
       setSelectedPublisher('');
       setIsNewPublisher(existingPublishers.length === 0);
+      setExistingMediaUrl(null);
     }
   }, [post, existingPublishers, isOpen, preselectedPublisher]);
 
@@ -122,13 +140,37 @@ export function PostModal({
     }
   };
 
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const isVideo = file.type.startsWith('video/');
+    const maxSize = isVideo ? MAX_VIDEO_SIZE : MAX_IMAGE_SIZE;
+
+    if (file.size > maxSize) {
+      toast.error(`File too large. Max ${isVideo ? '20MB' : '5MB'} for ${isVideo ? 'videos' : 'images'}.`);
+      return;
+    }
+
+    setMediaFile(file);
+    setExistingMediaUrl(null);
+    const url = URL.createObjectURL(file);
+    setMediaPreview(url);
+  };
+
+  const handleRemoveMedia = () => {
+    setMediaFile(null);
+    setMediaPreview(null);
+    setExistingMediaUrl(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     
-    // If creating a new publisher, save the publisher first
     if (isNewPublisher && formData.publisherName) {
       try {
         await upsertPublisher.mutateAsync({
@@ -142,12 +184,45 @@ export function PostModal({
     }
     
     try {
-      onSave(post ? { ...formData, id: post.id } : formData);
+      let mediaUrl: string | null = existingMediaUrl;
+
+      // Upload new media file if selected
+      if (mediaFile && currentWorkspace) {
+        const postId = post?.id || crypto.randomUUID();
+        const ext = mediaFile.name.split('.').pop();
+        const path = `${currentWorkspace.id}/${postId}/${Date.now()}.${ext}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('post-media')
+          .upload(path, mediaFile);
+
+        if (uploadError) {
+          toast.error('Failed to upload media');
+          setIsSubmitting(false);
+          return;
+        }
+
+        const { data: publicUrlData } = supabase.storage
+          .from('post-media')
+          .getPublicUrl(path);
+        mediaUrl = publicUrlData.publicUrl;
+      }
+
+      const saveData = {
+        ...formData,
+        mediaUrl,
+        ...(post ? { id: post.id } : {}),
+      };
+
+      onSave(saveData);
       onClose();
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  const currentMediaUrl = mediaPreview || existingMediaUrl;
+  const isVideo = mediaFile?.type.startsWith('video/') || existingMediaUrl?.match(/\.(mp4|mov)$/i);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -158,7 +233,7 @@ export function PostModal({
           </DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 mt-4">
-          {/* Publisher Selection - show for new posts and editing existing posts */}
+          {/* Publisher Selection */}
           {existingPublishers.length > 0 && (
             <div className="space-y-2">
               <Label>Publisher {post && <span className="text-xs text-muted-foreground">(reassign)</span>}</Label>
@@ -194,7 +269,6 @@ export function PostModal({
           {/* New Publisher Fields */}
           {(isNewPublisher || post || existingPublishers.length === 0) && (
             <>
-              {/* LinkedIn URL */}
               <div className="space-y-2">
                 <Label htmlFor="linkedinUrl">
                   LinkedIn URL <span className="text-muted-foreground text-xs">(optional)</span>
@@ -241,6 +315,52 @@ export function PostModal({
               placeholder="Write your LinkedIn post content here..."
               className="min-h-[150px] resize-none"
               required
+            />
+          </div>
+
+          {/* Media Upload */}
+          <div className="space-y-2">
+            <Label>Attach Image / Video <span className="text-muted-foreground text-xs">(optional)</span></Label>
+            {currentMediaUrl ? (
+              <div className="relative rounded-lg border border-border overflow-hidden bg-secondary/30">
+                {isVideo ? (
+                  <div className="flex items-center gap-3 p-3">
+                    <Film className="h-8 w-8 text-muted-foreground flex-shrink-0" />
+                    <span className="text-sm truncate">{mediaFile?.name || 'Video attached'}</span>
+                  </div>
+                ) : (
+                  <img
+                    src={currentMediaUrl}
+                    alt="Media preview"
+                    className="w-full max-h-[160px] object-cover"
+                  />
+                )}
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="absolute top-1 right-1 h-7 w-7 bg-background/80 hover:bg-destructive/20 hover:text-destructive rounded-full"
+                  onClick={handleRemoveMedia}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="w-full flex items-center justify-center gap-2 rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground hover:border-primary/40 hover:text-primary transition-colors"
+              >
+                <Upload className="h-4 w-4" />
+                Click to upload (images up to 5MB, videos up to 20MB)
+              </button>
+            )}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept={ACCEPTED_TYPES}
+              className="hidden"
+              onChange={handleFileSelect}
             />
           </div>
 

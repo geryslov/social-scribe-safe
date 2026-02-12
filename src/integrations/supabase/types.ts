@@ -450,6 +450,7 @@ export type Database = {
           linkedin_post_url: string | null
           linkedin_post_urn: string | null
           linkedin_url: string | null
+          media_url: string | null
           media_urns: string[] | null
           post_type: string | null
           publish_method: string | null
@@ -496,6 +497,7 @@ export type Database = {
           linkedin_post_url?: string | null
           linkedin_post_urn?: string | null
           linkedin_url?: string | null
+          media_url?: string | null
           media_urns?: string[] | null
           post_type?: string | null
           publish_method?: string | null
@@ -542,6 +544,7 @@ export type Database = {
           linkedin_post_url?: string | null
           linkedin_post_urn?: string | null
           linkedin_url?: string | null
+          media_url?: string | null
           media_urns?: string[] | null
           post_type?: string | null
           publish_method?: string | null

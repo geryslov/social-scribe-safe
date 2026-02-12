@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Post } from '@/types/post';
 import { Button } from '@/components/ui/button';
-import { Copy, Pencil, Trash2, Check, Calendar, ExternalLink, Undo2, ChevronDown, ChevronUp, Linkedin, Eye, Users, Heart, MessageCircle, Share2, TrendingUp, MousePointerClick, Play } from 'lucide-react';
+import { Copy, Pencil, Trash2, Check, Calendar, ExternalLink, Undo2, ChevronDown, ChevronUp, Linkedin, Eye, Users, Heart, MessageCircle, Share2, TrendingUp, MousePointerClick, Play, Image, Film } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { EditHistory } from './EditHistory';
@@ -218,6 +218,24 @@ export function PostRow({ post, onEdit, onDelete, onStatusChange, showPublisher 
                     </>
                   )}
                 </button>
+              )}
+              
+              {/* Media preview */}
+              {post.mediaUrl && (
+                <div className="mb-2">
+                  {post.mediaUrl.match(/\.(mp4|mov)$/i) ? (
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground bg-secondary/50 rounded-md px-2.5 py-1.5 w-fit">
+                      <Film className="h-3.5 w-3.5" />
+                      Video attached
+                    </div>
+                  ) : (
+                    <img
+                      src={post.mediaUrl}
+                      alt="Post media"
+                      className="rounded-md max-h-[120px] object-cover border border-border/50"
+                    />
+                  )}
+                </div>
               )}
             </div>
             
