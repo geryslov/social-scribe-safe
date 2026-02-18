@@ -41,8 +41,7 @@ const Posts = () => {
   const [isDocUploadOpen, setIsDocUploadOpen] = useState(false);
   const { createDocument } = useDocuments();
   const { currentWorkspace } = useWorkspace();
-  const LEGACY_WORKSPACE_ID = 'f26b7a85-d4ad-451e-8585-d9906d5b9f95';
-  const isLegacyWorkspace = currentWorkspace?.id === LEGACY_WORKSPACE_ID;
+  const canUseAiCreate = user?.email === 'geryslov@gmail.com';
 
   // Redirect to auth if not logged in
   useEffect(() => {
@@ -423,7 +422,7 @@ const Posts = () => {
         open={isDocUploadOpen}
         onOpenChange={setIsDocUploadOpen}
         onSave={handleCreateDocument}
-        showAiCreate={isLegacyWorkspace}
+        showAiCreate={canUseAiCreate}
       />
 
     </div>
