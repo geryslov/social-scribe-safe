@@ -20,7 +20,7 @@ import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-const LEGACY_WORKSPACE_ID = 'f26b7a85-d4ad-451e-8585-d9906d5b9f95';
+
 
 const PublisherAnalytics = () => {
   const navigate = useNavigate();
@@ -30,7 +30,7 @@ const PublisherAnalytics = () => {
   const { user, isLoading: authLoading } = useAuth();
   const { publishers: dbPublishers } = usePublishers();
   const { posts } = usePosts();
-  const { currentWorkspace } = useWorkspace();
+  
   const [timeRange, setTimeRange] = useState<'7d' | '30d' | '90d'>('30d');
   const [isSyncing, setIsSyncing] = useState(false);
   
@@ -252,17 +252,15 @@ const PublisherAnalytics = () => {
           })}
         </div>
 
-        {/* Follower Growth - Legacy Data Workspace Only */}
-        {currentWorkspace?.id === LEGACY_WORKSPACE_ID && (
-          <div className="mb-8">
-            <h2 className="text-sm font-mono text-muted-foreground tracking-wider mb-4">FOLLOWER GROWTH</h2>
-            <FollowerGrowthChart
-              publisherId={publisher.id}
-              timeRange={timeRange}
-              onTimeRangeChange={setTimeRange}
-            />
-          </div>
-        )}
+        {/* Follower Growth */}
+        <div className="mb-8">
+          <h2 className="text-sm font-mono text-muted-foreground tracking-wider mb-4">FOLLOWER GROWTH</h2>
+          <FollowerGrowthChart
+            publisherId={publisher.id}
+            timeRange={timeRange}
+            onTimeRangeChange={setTimeRange}
+          />
+        </div>
 
         {/* Performance Chart */}
         <div className="mb-8">

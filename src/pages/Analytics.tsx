@@ -16,13 +16,13 @@ import { PublisherAvatar } from '@/components/PublisherAvatar';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 
-const LEGACY_WORKSPACE_ID = 'f26b7a85-d4ad-451e-8585-d9906d5b9f95';
+
 
 const Analytics = () => {
   const navigate = useNavigate();
   const { user, isLoading: authLoading } = useAuth();
   const { publishers: dbPublishers } = usePublishers();
-  const { currentWorkspace } = useWorkspace();
+  
   const [timeRange, setTimeRange] = useState<'7d' | '30d' | '90d'>('30d');
   
   // Auto-sync LinkedIn analytics on login
@@ -213,8 +213,8 @@ const Analytics = () => {
                     <div className="flex-1 text-left min-w-0">
                       <p className="text-sm font-medium truncate">{pub.name}</p>
                       <p className="text-xs text-muted-foreground font-mono">
-                        {pub.postCount} posts • {pub.totalReach.toLocaleString()} reach
-                        {currentWorkspace?.id === LEGACY_WORKSPACE_ID && (() => {
+                      {pub.postCount} posts • {pub.totalReach.toLocaleString()} reach
+                        {(() => {
                           const dbPub = dbPublishers.find(p => p.name === pub.name);
                           return dbPub?.followers_count ? ` • ${dbPub.followers_count.toLocaleString()} followers` : '';
                         })()}
