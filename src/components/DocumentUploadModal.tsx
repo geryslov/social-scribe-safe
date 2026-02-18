@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { Upload, FileText, X, Plus, Sparkles, Loader2, Globe, Paperclip, Mic, PenLine, Wand2, MessageSquare, Flame, Zap, BookOpen, User, Shield, Megaphone, ChevronDown, ChevronUp } from 'lucide-react';
+import { Upload, FileText, X, Plus, Sparkles, Loader2, Globe, Paperclip, Mic, PenLine, Wand2, MessageSquare, Flame, Zap, BookOpen, User, Shield, Megaphone, ChevronDown, ChevronUp, Link2, GitMerge, Layers } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -58,7 +58,8 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate }
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatingPhase, setGeneratingPhase] = useState(0);
 
-  const [aiWebsiteUrl, setAiWebsiteUrl] = useState('');
+  const [aiWebsiteUrls, setAiWebsiteUrls] = useState<string[]>(['']);
+  const [urlStrategy, setUrlStrategy] = useState<'cross' | 'single'>('cross');
   const [aiReferenceFile, setAiReferenceFile] = useState<File | null>(null);
   const [aiReferenceContent, setAiReferenceContent] = useState('');
   const [aiLength, setAiLength] = useState('medium');
@@ -95,7 +96,8 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate }
     setFileUrl(null);
     setAiTopic('');
     setAiGuidance('');
-    setAiWebsiteUrl('');
+    setAiWebsiteUrls(['']);
+    setUrlStrategy('cross');
     setAiReferenceFile(null);
     setAiReferenceContent('');
     setAiLength('medium');
@@ -219,11 +221,13 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate }
     const controller = new AbortController();
     abortControllerRef.current = controller;
     try {
+      const validUrls = aiWebsiteUrls.map(u => u.trim()).filter(Boolean);
       const { data, error } = await supabase.functions.invoke('create-document', {
         body: {
           topic: aiTopic.trim(),
           guidance: aiGuidance.trim() || undefined,
-          websiteUrl: aiWebsiteUrl.trim() || undefined,
+          websiteUrls: validUrls.length > 0 ? validUrls : undefined,
+          urlStrategy: validUrls.length > 1 ? urlStrategy : 'cross',
           referenceContent: aiReferenceContent || undefined,
           length: aiLength,
           postCount: aiPostCount,
@@ -519,20 +523,91 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate }
 
                 {showAdvanced && (
                   <div className="mt-3 space-y-4 animate-fade-in">
-                    <div className="rounded-lg border border-border p-3 space-y-2">
+                    {/* Reference Websites - multi-URL */}
+                    <div className="rounded-lg border border-border p-3 space-y-3">
                       <label className="text-xs font-medium flex items-center gap-1.5 text-foreground">
                         <Globe className="h-3.5 w-3.5 text-primary" />
-                        Reference Website
+                        Reference Websites
                       </label>
-                      <Input
-                        value={aiWebsiteUrl}
-                        onChange={(e) => setAiWebsiteUrl(e.target.value)}
-                        placeholder="https://yourcompany.com/about"
-                        type="url"
-                        className="h-9 text-sm"
-                      />
+
+                      {aiWebsiteUrls.map((url, idx) => (
+                        <div key={idx} className="flex items-center gap-2">
+                          <Link2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                          <Input
+                            value={url}
+                            onChange={(e) => {
+                              const next = [...aiWebsiteUrls];
+                              next[idx] = e.target.value;
+                              setAiWebsiteUrls(next);
+                            }}
+                            placeholder={`https://example.com${idx > 0 ? `/page-${idx + 1}` : '/about'}`}
+                            type="url"
+                            className="h-9 text-sm flex-1"
+                          />
+                          {aiWebsiteUrls.length > 1 && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive"
+                              onClick={() => setAiWebsiteUrls(aiWebsiteUrls.filter((_, i) => i !== idx))}
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
+                        </div>
+                      ))}
+
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full h-8 text-xs gap-1.5"
+                        onClick={() => setAiWebsiteUrls([...aiWebsiteUrls, ''])}
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                        Add another URL
+                      </Button>
+
+                      {/* URL Strategy toggle — only visible when 2+ URLs are filled */}
+                      {aiWebsiteUrls.filter(u => u.trim()).length >= 2 && (
+                        <div className="pt-1 space-y-1.5">
+                          <p className="text-[11px] font-medium text-foreground">How should the AI use these sources?</p>
+                          <div className="grid grid-cols-2 gap-2">
+                            <button
+                              onClick={() => setUrlStrategy('cross')}
+                              className={cn(
+                                "flex items-start gap-2 p-2.5 rounded-lg border text-left transition-all duration-200",
+                                urlStrategy === 'cross'
+                                  ? "border-primary bg-primary/10 shadow-sm"
+                                  : "border-border hover:border-primary/30 hover:bg-muted/50"
+                              )}
+                            >
+                              <GitMerge className={cn("h-4 w-4 mt-0.5 shrink-0", urlStrategy === 'cross' ? "text-primary" : "text-muted-foreground")} />
+                              <div>
+                                <p className={cn("text-xs font-medium", urlStrategy === 'cross' ? "text-primary" : "text-foreground")}>Cross data</p>
+                                <p className="text-[10px] text-muted-foreground leading-tight mt-0.5">AI combines all URLs into a unified context</p>
+                              </div>
+                            </button>
+                            <button
+                              onClick={() => setUrlStrategy('single')}
+                              className={cn(
+                                "flex items-start gap-2 p-2.5 rounded-lg border text-left transition-all duration-200",
+                                urlStrategy === 'single'
+                                  ? "border-primary bg-primary/10 shadow-sm"
+                                  : "border-border hover:border-primary/30 hover:bg-muted/50"
+                              )}
+                            >
+                              <Layers className={cn("h-4 w-4 mt-0.5 shrink-0", urlStrategy === 'single' ? "text-primary" : "text-muted-foreground")} />
+                              <div>
+                                <p className={cn("text-xs font-medium", urlStrategy === 'single' ? "text-primary" : "text-foreground")}>Single source</p>
+                                <p className="text-[10px] text-muted-foreground leading-tight mt-0.5">Each post uses one URL as its sole data source</p>
+                              </div>
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
                       <p className="text-[11px] text-muted-foreground">
-                        AI will read this page and use its content as source material
+                        AI will fetch and read each page as source material
                       </p>
                     </div>
 
@@ -553,7 +628,7 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate }
                           <FileText className="h-4 w-4 text-primary shrink-0" />
                           <span className="text-sm flex-1 truncate text-foreground">{aiReferenceFile.name}</span>
                           {isParsingRef && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
-                          {!isParsingRef && <span className="text-[11px] text-emerald-500 font-medium">Ready</span>}
+                          {!isParsingRef && <span className="text-[11px] text-success font-medium">Ready</span>}
                           <Button
                             variant="ghost"
                             size="icon"

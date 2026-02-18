@@ -612,7 +612,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { topic, guidance, websiteUrl, referenceContent, length, postCount, tone } = await req.json();
+    const { topic, guidance, websiteUrl, websiteUrls, urlStrategy, referenceContent, length, postCount, tone } = await req.json();
 
     if (!topic) {
       return new Response(
@@ -630,28 +630,44 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Fetch website content if URL provided - send raw HTML to Anthropic for processing
-    let websiteContent = '';
-    if (websiteUrl) {
-      try {
-        const normalizedUrl = websiteUrl.startsWith('http') ? websiteUrl : `https://${websiteUrl}`;
-        console.log('Fetching website content from:', normalizedUrl);
-        const siteRes = await fetch(normalizedUrl, {
-          headers: { 'User-Agent': 'Mozilla/5.0 (compatible; ContentBot/1.0)' },
-        });
-        if (siteRes.ok) {
-          const html = await siteRes.text();
-          // Only remove scripts/styles, keep the rest for Anthropic to process
-          websiteContent = html
-            .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
-            .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
-            .substring(0, 30000);
-          console.log('Website HTML fetched for Anthropic processing, length:', websiteContent.length);
-        } else {
-          console.warn('Failed to fetch website:', siteRes.status);
+    // Build final list of URLs to fetch (support both legacy single URL and new multi-URL)
+    const urlList: string[] = [];
+    if (websiteUrls && Array.isArray(websiteUrls)) {
+      urlList.push(...websiteUrls.filter(Boolean));
+    } else if (websiteUrl) {
+      urlList.push(websiteUrl);
+    }
+
+    // Fetch all website URLs in parallel
+    const fetchedSites: { url: string; content: string }[] = [];
+    if (urlList.length > 0) {
+      const fetches = urlList.map(async (rawUrl) => {
+        try {
+          const normalizedUrl = rawUrl.startsWith('http') ? rawUrl : `https://${rawUrl}`;
+          console.log('Fetching website content from:', normalizedUrl);
+          const siteRes = await fetch(normalizedUrl, {
+            headers: { 'User-Agent': 'Mozilla/5.0 (compatible; ContentBot/1.0)' },
+          });
+          if (siteRes.ok) {
+            const html = await siteRes.text();
+            const content = html
+              .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+              .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+              .substring(0, 20000);
+            console.log(`Fetched ${normalizedUrl}, length: ${content.length}`);
+            return { url: normalizedUrl, content };
+          } else {
+            console.warn('Failed to fetch website:', rawUrl, siteRes.status);
+            return null;
+          }
+        } catch (e) {
+          console.warn('Error fetching website:', rawUrl, e);
+          return null;
         }
-      } catch (e) {
-        console.warn('Error fetching website:', e);
+      });
+      const results = await Promise.all(fetches);
+      for (const r of results) {
+        if (r) fetchedSites.push(r);
       }
     }
 
@@ -685,14 +701,34 @@ Deno.serve(async (req) => {
     };
     const toneInstruction = tone && toneInstructions[tone] ? toneInstructions[tone] : '';
 
-    console.log('Creating document with Claude for topic:', topic, 'tone:', tone || 'default');
+    console.log('Creating document with Claude for topic:', topic, 'tone:', tone || 'default', 'urls:', fetchedSites.length, 'strategy:', urlStrategy || 'cross');
 
     let userMessage = `Create a LinkedIn thought leadership content document about: ${topic}`;
     if (guidance) userMessage += `\n\nAdditional guidance: ${guidance}`;
     if (lengthInstruction) userMessage += `\n\n${lengthInstruction}`;
     if (postCountInstruction) userMessage += `\n\n${postCountInstruction}`;
     if (toneInstruction) userMessage += `\n\n${toneInstruction}`;
-    if (websiteContent) userMessage += `\n\n--- REFERENCE: Website HTML ---\nThe following is raw HTML from the provided website URL. Extract and interpret the meaningful text content, data, insights, company information, and messaging from this HTML. Use it as context and source material for the posts:\n\n${websiteContent}`;
+
+    // Inject website content based on strategy
+    if (fetchedSites.length === 1) {
+      userMessage += `\n\n--- REFERENCE: Website HTML ---\nThe following is raw HTML from the provided website URL. Extract and interpret the meaningful text content, data, insights, company information, and messaging from this HTML. Use it as context and source material for the posts:\n\n${fetchedSites[0].content}`;
+    } else if (fetchedSites.length > 1) {
+      const effectiveStrategy = urlStrategy || 'cross';
+      if (effectiveStrategy === 'cross') {
+        userMessage += `\n\n--- REFERENCE: Multiple Websites (Cross-Data Strategy) ---\nYou have been provided with content from ${fetchedSites.length} different websites. Synthesize and cross-reference information from ALL of them to build richer, more data-backed posts. Draw connections, contrasts, and complementary insights across all sources.\n\n`;
+        for (let i = 0; i < fetchedSites.length; i++) {
+          userMessage += `Source ${i + 1} (${fetchedSites[i].url}):\n${fetchedSites[i].content}\n\n---\n\n`;
+        }
+      } else {
+        // single source per post
+        userMessage += `\n\n--- REFERENCE: Multiple Websites (Single-Source Strategy) ---\nYou have ${fetchedSites.length} website sources. Write each post using ONLY ONE source as its data foundation. Distribute the sources evenly across posts — do not mix data between sources within a single post. Label each post with which source it draws from.\n\n`;
+        for (let i = 0; i < fetchedSites.length; i++) {
+          userMessage += `Source ${i + 1} (${fetchedSites[i].url}):\n${fetchedSites[i].content}\n\n---\n\n`;
+        }
+        userMessage += `\nIMPORTANT: Each individual post must draw exclusively from a single source listed above. Do not combine data from multiple sources within one post.`;
+      }
+    }
+
     if (referenceContent) userMessage += `\n\n--- REFERENCE: Uploaded Document ---\nUse the following document content as context and source material for the posts. Extract relevant data, insights, and messaging:\n\n${referenceContent.substring(0, 15000)}`;
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
