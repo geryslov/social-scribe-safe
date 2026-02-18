@@ -1,62 +1,50 @@
 
+## Make AI Post Generation Available to All Workspaces (Admin-Only)
 
-## Add Image/Video Upload to Posts for LinkedIn Publishing
+### Current Behavior
+The "AI Create" button in the document upload modal is gated by `isLegacyWorkspace` — a hardcoded check comparing `currentWorkspace?.id` to a specific workspace UUID. This means AI generation is only available inside the single "Legacy Data" workspace.
 
-### Overview
-Add the ability to attach an image or video to a post, store it in file storage, and include it when publishing to LinkedIn via the API. The media will be visible in the post card preview and sent along with the LinkedIn publish request.
+### Goal
+Make AI generation available in **every** workspace, but only when the logged-in user is `geryslov@gmail.com`. All other users continue to see the greyed-out, disabled "AI Create" card.
 
-### What Changes
+### Implementation Approach
 
-**1. Storage Bucket**
-- Create a new `post-media` public storage bucket for uploaded images/videos
-- Add RLS policies so admins can upload and anyone can view
+The simplest and most maintainable approach is to change the `showAiCreate` flag from being based on workspace identity to being based on user identity. The `user` object is already available from `useAuth()` in both `Posts.tsx` and `DocumentLibrary.tsx`.
 
-**2. Database**
-- Add a `media_url` column (text, nullable) to the `posts` table to store the uploaded file URL
+No database changes, no new tables, no migrations required — the email check is purely a client-side gate on the UI element, which is appropriate here because:
+- The underlying `create-document` edge function is already protected and there is no security risk in showing/hiding a UI button
+- The user is already authenticated via Supabase Auth, so `user.email` is trustworthy (it comes from the verified session, not from client-side storage)
 
-**3. Post Modal (PostModal.tsx)**
-- Add a file input that accepts image and video files (jpg, png, gif, mp4, mov)
-- Show a thumbnail preview of the selected media
-- Allow removing the attached media
-- On submit, upload the file to the `post-media` bucket and save the URL to the post
+### Files to Modify
 
-**4. Post Row (PostRow.tsx)**
-- Display the attached media (image thumbnail or video icon) below the post content when present
+**1. `src/pages/Posts.tsx`**
+- Import `useAuth` (already imported)
+- Replace `isLegacyWorkspace` with `canUseAiCreate` based on `user?.email === 'geryslov@gmail.com'`
+- Pass `canUseAiCreate` as `showAiCreate` to `DocumentUploadModal`
 
-**5. LinkedIn Publish Modal (LinkedInPublishModal.tsx)**
-- Show the attached media in the preview section
-- Pass the media URL to the edge function
-
-**6. LinkedIn Post Edge Function (linkedin-post/index.ts)**
-- When `mediaUrl` is provided:
-  - Register an upload with LinkedIn's Images or Video API
-  - Download the file from storage
-  - Upload the binary to LinkedIn's upload URL
-  - Include the media asset URN in the UGC post payload with `shareMediaCategory: 'IMAGE'` or `'VIDEO'` instead of `'NONE'`
-
-**7. Posts Hook (usePosts.tsx)**
-- Map the new `media_url` field in `DbPost` and `mapDbToPost`
-- Include `media_url` in create/update mutations
+**2. `src/pages/DocumentLibrary.tsx`**
+- Import `useAuth` (need to add)
+- Replace `isLegacyWorkspace` check with `canUseAiCreate` based on `user?.email === 'geryslov@gmail.com'`
+- Pass `canUseAiCreate` as `showAiCreate` to `DocumentUploadModal`
 
 ### Technical Details
 
-**LinkedIn Image Upload Flow:**
-1. Call `POST /v2/assets?action=registerUpload` to get an upload URL and asset URN
-2. `PUT` the binary image data to the returned upload URL
-3. Include the asset URN in the `ugcPost` payload under `specificContent.com.linkedin.ugc.ShareContent.media`
+The change in both files is straightforward:
 
-**File size limits:**
-- Images: max 5MB (LinkedIn limit)
-- Videos: max 200MB (LinkedIn limit), but we will cap at 20MB for practical purposes
+```typescript
+// Before
+const LEGACY_WORKSPACE_ID = 'f26b7a85-d4ad-451e-8585-d9906d5b9f95';
+const isLegacyWorkspace = currentWorkspace?.id === LEGACY_WORKSPACE_ID;
+// ... showAiCreate={isLegacyWorkspace}
 
-**Storage path format:** `{workspace_id}/{post_id}/{filename}`
+// After
+const { user } = useAuth();
+const canUseAiCreate = user?.email === 'geryslov@gmail.com';
+// ... showAiCreate={canUseAiCreate}
+```
 
-### Files to Create/Modify
-- **Migration**: Add `media_url` column + create storage bucket
-- `src/components/PostModal.tsx` -- add file upload UI
-- `src/components/PostRow.tsx` -- show media preview
-- `src/components/LinkedInPublishModal.tsx` -- show media in preview, pass to API
-- `src/hooks/usePosts.tsx` -- map media_url field
-- `src/types/post.ts` -- add mediaUrl field
-- `supabase/functions/linkedin-post/index.ts` -- handle media upload to LinkedIn
+The `LEGACY_WORKSPACE_ID` constant can be removed entirely from both files (it is not used for anything else in Posts.tsx; in DocumentLibrary.tsx and Analytics.tsx it may still be needed for other features — those will be checked and left untouched).
 
+### What Users See
+- **geryslov@gmail.com**: The "AI Create" card is fully active and clickable in the document modal, regardless of which workspace is currently active.
+- **All other users**: The "AI Create" card remains greyed out with "Not available" text, exactly as before.
