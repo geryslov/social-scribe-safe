@@ -105,7 +105,7 @@ export default function Auth() {
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-4 gradient-bg shadow-lg">
             <Sparkles className="h-8 w-8 text-white" />
           </div>
-          <h1 className="text-3xl font-bold text-foreground">Sellence</h1>
+          <h1 className="text-3xl font-bold text-foreground">ThoughtOS</h1>
           <p className="text-muted-foreground mt-2">Thought Leadership Platform</p>
         </div>
 
