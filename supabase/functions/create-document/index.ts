@@ -67,9 +67,10 @@ Hook patterns:
 
 ## FORMATTING RULES (NON-NEGOTIABLE)
 - Maximum 3 sentences per paragraph, most should be 1-2
-- Always use arrow format: --> for bullet points (never traditional bullets)
+- RANDOMIZE list/bullet symbols across posts — randomly pick from: - , // , → for each listicle. Do NOT always use the same symbol. Each post should feel different.
 - No bold text unless explicitly requested
 - Vary sentence length deliberately: Long -> Short -> Long -> Short
+- ADD EMPTY LINES between every paragraph for readability. Posts must breathe — no wall of text. Each thought block should be separated by a blank line.
 - Strategic white space for mobile reading
 
 ## DATA INTEGRITY (ABSOLUTE)
@@ -140,11 +141,11 @@ Every piece of content follows these structural elements:
 --> White space is a feature, not a bug
 --> Break up text for mobile reading
 
-### Arrow Lists
---> Use --> for all bullet points
---> Never use traditional bullets (•) or numbers (1, 2, 3)
+### Listicle Symbols (RANDOMIZE)
+--> Randomly alternate between these symbols for list items: - , // , →
+--> Never use the same symbol for every post — mix it up across posts
 --> Keep list items parallel in structure
---> Each arrow point should be scannable
+--> Each list point should be scannable
 
 ### No Bold Text
 --> Never use **bold** or __bold__ formatting
@@ -158,10 +159,11 @@ Every piece of content follows these structural elements:
 --> Longer sentences to build context and explain complex ideas
 --> Mix rhythm: long → short → long → short
 
-### Line Breaks
---> Use single line breaks between thoughts
+### Line Breaks & Spacing
+--> ALWAYS add an empty line between every paragraph — no exceptions
 --> Use double line breaks between major sections
---> Strategic white space improves readability
+--> Posts must feel airy and easy to scan on mobile
+--> Strategic white space improves readability dramatically
 
 ---
 
