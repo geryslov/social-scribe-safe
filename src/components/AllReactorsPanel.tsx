@@ -71,11 +71,17 @@ export function AllReactorsPanel({ open, onOpenChange, postIds, title = 'All Rea
     enabled: open && postIds.length > 0,
   });
 
-  // Count engagements per person
-  const engagementCounts = reactors.reduce((acc, r) => {
-    acc[r.actor_name] = (acc[r.actor_name] || 0) + 1;
+  // Dedupe by name, keep first occurrence, count total reactions per person
+  const { deduped, counts } = reactors.reduce((acc, r) => {
+    if (!acc.seen.has(r.actor_name)) {
+      acc.seen.add(r.actor_name);
+      acc.deduped.push(r);
+      acc.counts[r.actor_name] = 1;
+    } else {
+      acc.counts[r.actor_name] += 1;
+    }
     return acc;
-  }, {} as Record<string, number>);
+  }, { seen: new Set<string>(), deduped: [] as Reactor[], counts: {} as Record<string, number> });
 
   // Group by reaction type for filter chips
   const typeCounts = reactors.reduce((acc, r) => {
@@ -85,10 +91,9 @@ export function AllReactorsPanel({ open, onOpenChange, postIds, title = 'All Rea
   }, {} as Record<string, number>);
 
   const sortedTypes = Object.entries(typeCounts).sort((a, b) => b[1] - a[1]);
-  const uniqueCount = Object.keys(engagementCounts).length;
   const filtered = filter
-    ? reactors.filter(r => r.reaction_type === filter)
-    : reactors;
+    ? deduped.filter(r => r.reaction_type === filter)
+    : deduped;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -98,7 +103,7 @@ export function AllReactorsPanel({ open, onOpenChange, postIds, title = 'All Rea
             <Users className="h-4 w-4 text-primary" />
             {title}
             <span className="text-sm font-normal text-muted-foreground">
-              ({uniqueCount} unique, {reactors.length} total)
+              ({deduped.length} profiles, {reactors.length} reactions)
             </span>
           </DialogTitle>
         </DialogHeader>
@@ -178,7 +183,7 @@ export function AllReactorsPanel({ open, onOpenChange, postIds, title = 'All Rea
                   )}
                 </div>
                 <span className="text-[10px] text-primary font-mono bg-primary/10 px-1.5 py-0.5 rounded-full font-semibold flex-shrink-0">
-                  ×{engagementCounts[r.actor_name] || 1}
+                  ×{counts[r.actor_name] || 1}
                 </span>
               </a>
             ))
