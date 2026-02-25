@@ -69,7 +69,7 @@ async function parsePdf(arrayBuffer: ArrayBuffer): Promise<string> {
     .trim();
 
   // If native extraction failed, use Anthropic Claude to extract text
-  if (result.length < 50) {
+  if (result.length < 200) {
     console.log('Native PDF extraction yielded little text, using Anthropic Claude for extraction');
     const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY');
     if (ANTHROPIC_API_KEY) {
