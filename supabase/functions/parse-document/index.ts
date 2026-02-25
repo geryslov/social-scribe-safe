@@ -5,6 +5,18 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+function uint8ArrayToBase64(bytes: Uint8Array): string {
+  const chunkSize = 0x8000;
+  let binary = '';
+
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    const chunk = bytes.subarray(i, i + chunkSize);
+    binary += String.fromCharCode(...chunk);
+  }
+
+  return btoa(binary);
+}
+
 // Parse PDF file - extract text content
 async function parsePdf(arrayBuffer: ArrayBuffer): Promise<string> {
   // Convert to Uint8Array for processing
@@ -73,7 +85,7 @@ async function parsePdf(arrayBuffer: ArrayBuffer): Promise<string> {
     console.log('Native PDF extraction yielded little text, using Anthropic Claude for extraction');
     const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY');
     if (ANTHROPIC_API_KEY) {
-      const base64 = btoa(String.fromCharCode(...bytes));
+      const base64 = uint8ArrayToBase64(bytes);
       
       try {
         const aiResponse = await fetch('https://api.anthropic.com/v1/messages', {
