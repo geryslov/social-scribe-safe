@@ -1,82 +1,53 @@
 
 
-## Plan: Add "Who Reacted" and "Who Commented" to Post Analytics
+## Analysis: Why "Who Engaged" Data Is Empty
 
-### Context
+I checked the database and the edge function logs. Here's what's happening:
 
-The LinkedIn Reactions API already returns individual reaction elements with an `actor` URN (e.g., `urn:li:person:rboDhL7Xsf`) and `reactionType`. The Comments API at `/rest/socialActions/{postUrn}/comments` returns comments with `actor` URN and `message.text`. However, resolving actor URNs to full names requires the People API (`r_liteprofile` or similar), which we already have in our scopes (`r_basicprofile`, `r_liteprofile`).
+- **`post_reactors` table: 0 rows** -- no reactor identities were saved
+- **`post_comments` table: 0 enriched rows** -- comments API returns 403 ACCESS_DENIED
 
-### What Changes
+The UI component ("Who engaged" expandable panel) is already integrated into every post card in feed view. It appears at the bottom of each `LinkedInPostCard` -- but only when `totalReactions > 0` or `totalComments > 0`. Since there's data (reactions exist), the panel should be visible, but clicking "Who engaged" shows "No reactor data yet" because the table is empty.
 
-**1. Database: New tables for reactor/commenter data**
+### Root Cause
 
-- Create a `post_reactors` table: `id`, `post_id`, `actor_urn`, `actor_name`, `actor_headline`, `actor_profile_url`, `reaction_type`, `reacted_at`, `created_at`
-- Extend existing `post_comments` table to ensure it stores `author_name`, `author_headline`, `author_profile_url`, `content`, `commented_at` (most columns exist, add `author_headline` and `author_profile_url`)
+From the logs, the reactions endpoint successfully returns reaction counts and breakdown, but **actor URN extraction silently fails**. The log shows:
 
-**2. Edge Function: `fetch-linkedin-posts/index.ts`**
+```
+Reaction breakdown: { like: 13, ... }
+Collected 0 reactors, resolving names...
+```
 
-- In `fetchReactionBreakdown()`, already iterating over reaction elements — extract `actor` URN, `reactionType`, and resolve actor name via People API batch decoration (`/rest/people?ids=List(...)`)
-- Store each reactor in `post_reactors` table (upsert by `post_id` + `actor_urn`)
-- Add new function `fetchPostComments()` that calls `/rest/socialActions/{postUrn}/comments` to get commenters with their actor URN + message text
-- Resolve commenter names via the same People API decoration
-- Upsert into `post_comments` table
+This means the reaction elements are returned but `element.actor` is either not a string or doesn't start with `urn:li:person:`. LinkedIn's Reactions API likely returns the actor as an object (e.g., `{ actor: "urn:li:member:ABC" }`) or uses `urn:li:member:` instead of `urn:li:person:`.
 
-**3. Frontend: Display who reacted and commented**
+Additionally, the **Comments API** returns `403 ACCESS_DENIED` because the `partnerApiSocialActions.GET_ALL` permission is not available for this app's OAuth scopes.
 
-- **ReactionBreakdown tooltip** — extend to show a list of reactor names grouped by reaction type (e.g., "👍 Like: John Smith, Jane Doe")
-- **PostRow / LinkedInPostCard** — add expandable section showing recent commenters with their name, comment snippet, and reaction type
-- Create a new `PostEngagersPanel` component showing:
-  - Reactors list with name, headline, reaction type emoji
-  - Commenters list with name, comment preview, timestamp
-  - Each entry links to their LinkedIn profile
+### Plan
 
-**4. Hooks**
+1. **Fix actor URN extraction in the edge function** -- Add logging to inspect the raw `element.actor` value, then broaden the URN check to accept `urn:li:member:` and other formats alongside `urn:li:person:`. Also handle cases where `actor` might be nested in a sub-field.
 
-- Add `usePostReactors(postId)` hook querying `post_reactors` table
-- Add `usePostCommenters(postId)` hook querying `post_comments` table
+2. **Gracefully handle the comments 403** -- The comments API requires a scope your app doesn't have (`partnerApiSocialActions`). Instead of silently failing, show a clear message in the UI: "Comments data requires additional LinkedIn permissions" rather than "No comment data yet. Sync to fetch."
+
+3. **No UI changes needed** -- The `PostEngagersPanel` is already wired into `LinkedInPostCard` and will display data once the backend stores it.
 
 ### Technical Details
 
-```text
-LinkedIn API Calls (per post during sync):
-┌─────────────────────────────────────────┐
-│ GET /rest/reactions/(entity:{urn})      │ ← already called, extend to store actors
-│   → elements[].actor (person URN)      │
-│   → elements[].reactionType            │
-├─────────────────────────────────────────┤
-│ GET /rest/socialActions/{urn}/comments  │ ← NEW call
-│   → elements[].actor (person URN)      │
-│   → elements[].message.text            │
-│   → elements[].created.time            │
-├─────────────────────────────────────────┤
-│ GET /rest/people?ids=List(urn1,urn2,..) │ ← NEW: batch resolve names
-│   → firstName, lastName, headline      │
-└─────────────────────────────────────────┘
+The fix is in `supabase/functions/fetch-linkedin-posts/index.ts`, specifically the `fetchReactionBreakdown` function around line 224:
 
-Database:
-post_reactors (NEW)
-├── post_id (uuid)
-├── actor_urn (text)
-├── actor_name (text)
-├── actor_headline (text, nullable)
-├── actor_profile_url (text, nullable)
-├── reaction_type (text)
-├── reacted_at (timestamptz, nullable)
-└── unique on (post_id, actor_urn)
+```typescript
+// Current code (too restrictive):
+if (actorUrn && typeof actorUrn === 'string' && actorUrn.startsWith('urn:li:person:')) {
 
-post_comments (UPDATE)
-├── + author_headline (text, nullable)
-└── + author_profile_url (text, nullable)
+// Fix: accept any LinkedIn person/member URN format
+if (actorUrn && typeof actorUrn === 'string' && 
+    (actorUrn.startsWith('urn:li:person:') || actorUrn.startsWith('urn:li:member:'))) {
 ```
 
-- Actor name resolution: Use LinkedIn's People API decoration endpoint to batch-resolve URNs to names. If resolution fails (restricted access), store the URN as fallback and show "LinkedIn Member" as name.
-- Rate limiting: LinkedIn has API rate limits, so we'll process reactors/commenters in batches and handle 429 responses gracefully.
-- The reactions API may paginate — we'll follow `start`/`count` pagination to capture all reactors.
+Plus add a debug log to capture the raw element structure on the first iteration so we can see exactly what LinkedIn returns.
 
-### Scope
+For the People API resolution, also update `resolveActorNames` to handle `urn:li:member:` URNs.
 
-- ~1 new DB migration (new table + alter existing)
-- ~1 edge function update (fetch-linkedin-posts)
-- ~3 new frontend components/hooks
-- ~2 existing component updates (ReactionBreakdown, PostRow)
+### Where to See It
+
+Once fixed and re-synced, the "Who engaged" button will appear at the bottom of each post card in **Feed View** (the LinkedIn-style card view on the Posts page). Click the toggle at the top of the posts list to switch from list view to feed view if needed.
 
