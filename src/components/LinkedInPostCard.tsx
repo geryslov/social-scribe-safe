@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ThumbsUp, MessageCircle, Repeat2, Send, ExternalLink, Eye, Users, TrendingUp, Linkedin } from 'lucide-react';
+import { ThumbsUp, MessageCircle, Repeat2, Send, ExternalLink, Eye, Users, TrendingUp, Linkedin, ChevronRight } from 'lucide-react';
 import { Post, ReactionBreakdown } from '@/types/post';
 import { PublisherAvatar } from '@/components/PublisherAvatar';
 import { CountUp } from '@/components/CountUp';
@@ -51,13 +51,14 @@ export function LinkedInPostCard({
 }: LinkedInPostCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [showLinkedInModal, setShowLinkedInModal] = useState(false);
+  const [showReactionBreakdown, setShowReactionBreakdown] = useState(false);
   const { publishers } = usePublishers();
   
   // Find the publisher for this post
   const publisher = publishers.find(p => p.name === post.publisherName);
   const isPublisherConnected = publisher?.linkedin_connected ?? false;
   
-  const maxLength = variant === 'feed' ? 280 : 500;
+  const maxLength = variant === 'feed' ? 200 : 400;
   const shouldTruncate = post.content.length > maxLength;
   const displayContent = isExpanded || !shouldTruncate 
     ? post.content 
@@ -77,87 +78,94 @@ export function LinkedInPostCard({
   // Use publisher headline if available, otherwise fall back to role
   const displaySubtitle = publisherHeadline || post.publisherRole;
 
+  // Build reaction breakdown entries
+  const breakdownEntries = post.reactionBreakdown
+    ? Object.entries(post.reactionBreakdown)
+        .filter(([_, count]) => count > 0)
+        .sort((a, b) => b[1] - a[1])
+    : [];
+
   return (
     <div className={cn(
       "bg-card border border-border rounded-lg overflow-hidden transition-all duration-200",
       "hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5",
       className
     )}>
-      {/* Post Header */}
-      <div className="p-4 pb-2">
-        <div className="flex items-start gap-3">
+      {/* Post Header - Compact */}
+      <div className="px-3 pt-3 pb-1.5">
+        <div className="flex items-center gap-2.5">
           <PublisherAvatar 
             name={post.publisherName} 
-            size="md" 
-            className="w-12 h-12 ring-2 ring-border"
+            size="sm" 
+            className="w-9 h-9 ring-1 ring-border"
           />
           
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between">
-              <div>
-                <h3 className="font-semibold text-foreground leading-tight">
+              <div className="min-w-0">
+                <h3 className="text-sm font-semibold text-foreground leading-tight truncate">
                   {post.publisherName}
                 </h3>
                 {displaySubtitle && (
-                  <p className="text-sm text-muted-foreground line-clamp-1">
+                  <p className="text-[11px] text-muted-foreground line-clamp-1 leading-tight">
                     {displaySubtitle}
                   </p>
                 )}
-                {publisherCompany && !displaySubtitle?.toLowerCase().includes(publisherCompany.toLowerCase()) && (
-                  <p className="text-xs text-muted-foreground/70 line-clamp-1 flex items-center gap-1">
-                    <span className="w-1 h-1 rounded-full bg-muted-foreground/50" />
-                    {publisherCompany}
-                  </p>
-                )}
               </div>
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <span className="text-xs">
+              <div className="flex items-center gap-1.5 text-muted-foreground flex-shrink-0 ml-2">
+                <span className="text-[10px]">
                   {publishedDate ? getRelativeTime(publishedDate) : 'Draft'}
                 </span>
-                <Linkedin className="h-4 w-4 text-[#0A66C2]" />
+                <Linkedin className="h-3.5 w-3.5 text-[#0A66C2]" />
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Post Content */}
-      <div className="px-4 pb-3">
-        <p className="text-foreground whitespace-pre-wrap leading-relaxed">
+      {/* Post Content - Compact */}
+      <div className="px-3 pb-2">
+        <p className="text-sm text-foreground whitespace-pre-wrap leading-snug">
           {displayContent}
           {shouldTruncate && !isExpanded && '...'}
         </p>
         {shouldTruncate && (
           <button
             onClick={() => setIsExpanded(!isExpanded)}
-            className="text-muted-foreground hover:text-primary text-sm font-medium mt-1"
+            className="text-muted-foreground hover:text-primary text-xs font-medium mt-0.5"
           >
             {isExpanded ? 'show less' : '...more'}
           </button>
         )}
       </div>
 
-      {/* Engagement Summary */}
+      {/* Engagement Summary - Clickable reactions */}
       {(totalReactions > 0 || comments > 0 || reshares > 0) && (
-        <div className="px-4 py-2 border-t border-border/50">
-          <div className="flex items-center justify-between text-sm text-muted-foreground">
-            <div className="flex items-center gap-1">
-              {/* Reaction icons stack */}
+        <div className="px-3 py-1.5 border-t border-border/50">
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <button
+              onClick={() => setShowReactionBreakdown(!showReactionBreakdown)}
+              className="flex items-center gap-1 hover:text-foreground transition-colors group"
+            >
               <div className="flex -space-x-1">
                 {topReactions.map((emoji, idx) => (
                   <span 
                     key={idx} 
-                    className="text-base bg-background rounded-full p-0.5 border border-border/50"
+                    className="text-sm bg-background rounded-full p-px border border-border/50"
                     style={{ zIndex: 3 - idx }}
                   >
                     {emoji}
                   </span>
                 ))}
               </div>
-              <span className="ml-1">{totalReactions.toLocaleString()}</span>
-            </div>
+              <span className="ml-0.5 font-medium">{totalReactions.toLocaleString()}</span>
+              <ChevronRight className={cn(
+                "h-3 w-3 transition-transform duration-200",
+                showReactionBreakdown && "rotate-90"
+              )} />
+            </button>
             
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2.5">
               {comments > 0 && (
                 <span>{comments} comment{comments !== 1 ? 's' : ''}</span>
               )}
@@ -166,11 +174,27 @@ export function LinkedInPostCard({
               )}
             </div>
           </div>
+
+          {/* Reaction Breakdown Slide-in */}
+          {showReactionBreakdown && breakdownEntries.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-1.5 animate-fade-in pb-1">
+              {breakdownEntries.map(([type, count]) => (
+                <span
+                  key={type}
+                  className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-muted/50 border border-border/50 text-[11px] font-medium"
+                >
+                  <span className="text-sm">{reactionEmojis[type as keyof ReactionBreakdown] || '👍'}</span>
+                  <span className="capitalize text-foreground">{type}</span>
+                  <span className="text-muted-foreground font-mono">{count}</span>
+                </span>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
-      {/* Action Buttons */}
-      <div className="px-2 py-1 border-t border-border/50">
+      {/* Action Buttons - Compact */}
+      <div className="px-1 py-0.5 border-t border-border/50">
         <div className="flex items-center justify-around">
           <ActionButton icon={ThumbsUp} label="Like" />
           <ActionButton icon={MessageCircle} label="Comment" />
@@ -180,50 +204,32 @@ export function LinkedInPostCard({
             <Button
               variant="ghost"
               size="sm"
-              className="h-8 px-3 hover:bg-[#0077b5]/10 hover:text-[#0077b5] text-xs gap-1.5"
+              className="h-7 px-2 hover:bg-[#0077b5]/10 hover:text-[#0077b5] text-xs gap-1"
               onClick={() => setShowLinkedInModal(true)}
             >
-              <Linkedin className="h-4 w-4" />
+              <Linkedin className="h-3.5 w-3.5" />
               Push
             </Button>
           )}
         </div>
       </div>
 
-      {/* Analytics Panel */}
+      {/* Analytics Panel - Compact */}
       {showAnalytics && impressions > 0 && (
-        <div className="px-4 py-3 bg-muted/30 border-t border-border">
-          <div className="flex items-center gap-2 mb-3 text-xs font-mono text-muted-foreground uppercase tracking-wider">
-            <TrendingUp className="h-3 w-3" />
-            Analytics
-          </div>
-          
-          <div className="grid grid-cols-4 gap-2">
-            <AnalyticsStat
-              icon={Eye}
-              value={impressions}
-              label="Impressions"
-            />
-            <AnalyticsStat
-              icon={Users}
-              value={reach}
-              label="Reach"
-            />
-            <AnalyticsStat
-              icon={TrendingUp}
-              value={engagementRate}
-              label="Engagement"
-              isPercentage
-            />
+        <div className="px-3 py-2 bg-muted/30 border-t border-border">
+          <div className="grid grid-cols-4 gap-1.5">
+            <AnalyticsStat icon={Eye} value={impressions} label="Impressions" />
+            <AnalyticsStat icon={Users} value={reach} label="Reach" />
+            <AnalyticsStat icon={TrendingUp} value={engagementRate} label="Engage" isPercentage />
             {linkedInUrl && (
               <a
                 href={linkedInUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex flex-col items-center justify-center p-2 rounded-lg bg-primary/10 hover:bg-primary/20 transition-colors group"
+                className="flex flex-col items-center justify-center p-1.5 rounded-lg bg-primary/10 hover:bg-primary/20 transition-colors group"
               >
-                <ExternalLink className="h-4 w-4 text-primary group-hover:scale-110 transition-transform" />
-                <span className="text-[10px] text-muted-foreground mt-1">View</span>
+                <ExternalLink className="h-3.5 w-3.5 text-primary group-hover:scale-110 transition-transform" />
+                <span className="text-[9px] text-muted-foreground mt-0.5">View</span>
               </a>
             )}
           </div>
@@ -258,9 +264,9 @@ export function LinkedInPostCard({
 
 function ActionButton({ icon: Icon, label }: { icon: typeof ThumbsUp; label: string }) {
   return (
-    <button className="flex items-center gap-2 px-4 py-2 rounded-lg text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-colors">
-      <Icon className="h-4 w-4" />
-      <span className="text-sm font-medium hidden sm:inline">{label}</span>
+    <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-colors">
+      <Icon className="h-3.5 w-3.5" />
+      <span className="text-xs font-medium hidden sm:inline">{label}</span>
     </button>
   );
 }
@@ -277,16 +283,16 @@ function AnalyticsStat({
   isPercentage?: boolean;
 }) {
   return (
-    <div className="flex flex-col items-center p-2 rounded-lg bg-background/50">
-      <Icon className="h-4 w-4 text-muted-foreground mb-1" />
-      <span className="text-sm font-bold font-mono tabular-nums">
+    <div className="flex flex-col items-center p-1.5 rounded-lg bg-background/50">
+      <Icon className="h-3.5 w-3.5 text-muted-foreground mb-0.5" />
+      <span className="text-xs font-bold font-mono tabular-nums">
         <CountUp 
           end={value} 
           decimals={isPercentage ? 1 : 0}
           suffix={isPercentage ? '%' : ''}
         />
       </span>
-      <span className="text-[10px] text-muted-foreground">{label}</span>
+      <span className="text-[9px] text-muted-foreground">{label}</span>
     </div>
   );
 }
