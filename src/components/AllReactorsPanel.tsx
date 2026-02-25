@@ -1,9 +1,10 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ExternalLink, Sparkles, Users, ThumbsUp, MessageCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { getRelativeTime } from '@/lib/timeUtils';
 
 interface Reactor {
   id: string;
@@ -21,6 +22,8 @@ interface Comment {
   author_headline: string | null;
   author_profile_url: string | null;
   author_avatar_url: string | null;
+  content: string | null;
+  commented_at: string | null;
   post_id: string;
 }
 
@@ -63,10 +66,17 @@ interface AllReactorsPanelProps {
   onOpenChange: (open: boolean) => void;
   postIds: string[];
   title?: string;
+  initialTab?: 'profiles' | 'comments';
 }
 
-export function AllReactorsPanel({ open, onOpenChange, postIds, title = 'All Engagers' }: AllReactorsPanelProps) {
+export function AllReactorsPanel({ open, onOpenChange, postIds, title = 'All Engagers', initialTab = 'profiles' }: AllReactorsPanelProps) {
   const [filter, setFilter] = useState<string | null>(null);
+  const [viewTab, setViewTab] = useState<'profiles' | 'comments'>(initialTab);
+
+  // Reset tab when dialog opens
+  useEffect(() => {
+    if (open) setViewTab(initialTab);
+  }, [open, initialTab]);
 
   const { data: reactors = [], isLoading: loadingReactors } = useQuery({
     queryKey: ['all-reactors', postIds],
@@ -97,9 +107,9 @@ export function AllReactorsPanel({ open, onOpenChange, postIds, title = 'All Eng
         const batch = postIds.slice(i, i + 50);
         const { data, error } = await supabase
           .from('post_comments')
-          .select('id, author_name, author_headline, author_profile_url, author_avatar_url, post_id')
+          .select('id, author_name, author_headline, author_profile_url, author_avatar_url, content, commented_at, post_id')
           .in('post_id', batch)
-          .order('created_at', { ascending: false });
+          .order('commented_at', { ascending: false });
         if (error) throw error;
         if (data) allComments.push(...(data as unknown as Comment[]));
       }
@@ -192,130 +202,207 @@ export function AllReactorsPanel({ open, onOpenChange, postIds, title = 'All Eng
           <DialogTitle className="flex items-center gap-2 text-base">
             <Users className="h-4 w-4 text-primary" />
             {title}
-            <span className="text-sm font-normal text-muted-foreground">
-              ({profiles.length} profiles)
-            </span>
           </DialogTitle>
         </DialogHeader>
 
-        {/* Filter chips */}
-        <div className="flex flex-wrap gap-1.5 pb-2">
+        {/* View Tab Toggle */}
+        <div className="flex border-b border-border">
           <button
-            onClick={() => setFilter(null)}
+            onClick={() => setViewTab('profiles')}
             className={cn(
-              'px-2 py-1 rounded-full text-[11px] font-medium border transition-colors',
-              !filter
-                ? 'bg-primary/10 border-primary/30 text-primary'
-                : 'bg-muted/50 border-border/50 text-muted-foreground hover:text-foreground'
+              'flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 text-xs font-medium transition-all relative',
+              viewTab === 'profiles' ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
             )}
           >
-            All ({profiles.length})
+            <Users className="h-3.5 w-3.5" />
+            Profiles ({profiles.length})
+            {viewTab === 'profiles' && <span className="absolute bottom-0 left-2 right-2 h-0.5 rounded-full bg-primary" />}
           </button>
-          {totalReactions > 0 && (
-            <button
-              onClick={() => setFilter(filter === 'reactions' ? null : 'reactions')}
-              className={cn(
-                'inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-medium border transition-colors',
-                filter === 'reactions'
-                  ? 'bg-primary/10 border-primary/30 text-primary'
-                  : 'bg-muted/50 border-border/50 text-muted-foreground hover:text-foreground'
-              )}
-            >
-              <ThumbsUp className="h-3 w-3" />
-              {totalReactions}
-            </button>
-          )}
-          {totalComments > 0 && (
-            <button
-              onClick={() => setFilter(filter === 'comments' ? null : 'comments')}
-              className={cn(
-                'inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-medium border transition-colors',
-                filter === 'comments'
-                  ? 'bg-primary/10 border-primary/30 text-primary'
-                  : 'bg-muted/50 border-border/50 text-muted-foreground hover:text-foreground'
-              )}
-            >
-              <MessageCircle className="h-3 w-3" />
-              {totalComments}
-            </button>
-          )}
-          {reactionTypeCounts.map(([type, count]) => (
-            <button
-              key={type}
-              onClick={() => setFilter(filter === type ? null : type)}
-              className={cn(
-                'inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-medium border transition-colors',
-                filter === type
-                  ? 'bg-primary/10 border-primary/30 text-primary'
-                  : 'bg-muted/50 border-border/50 text-muted-foreground hover:text-foreground'
-              )}
-            >
-              <span>{reactionEmojis[type] || '👍'}</span>
-              {count}
-            </button>
-          ))}
+          <button
+            onClick={() => setViewTab('comments')}
+            className={cn(
+              'flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 text-xs font-medium transition-all relative',
+              viewTab === 'comments' ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            <MessageCircle className="h-3.5 w-3.5" />
+            Comments ({comments.length})
+            {viewTab === 'comments' && <span className="absolute bottom-0 left-2 right-2 h-0.5 rounded-full bg-primary" />}
+          </button>
         </div>
 
-        {/* Profile list */}
-        <div className="flex-1 overflow-y-auto -mx-2 px-2 space-y-1">
-          {isLoading ? (
-            <div className="flex items-center justify-center py-10">
-              <Sparkles className="h-4 w-4 text-primary animate-pulse mr-2" />
-              <span className="text-sm text-muted-foreground">Loading profiles...</span>
-            </div>
-          ) : filtered.length === 0 ? (
-            <div className="text-center py-10 text-muted-foreground">
-              <Users className="h-8 w-8 mx-auto mb-2 opacity-30" />
-              <p className="text-sm">No engagement data available</p>
-            </div>
-          ) : (
-            filtered.map((p) => (
-              <a
-                key={p.name}
-                href={p.profileUrl || '#'}
-                target={p.profileUrl ? '_blank' : undefined}
-                rel="noopener noreferrer"
+        {viewTab === 'profiles' && (
+          <>
+            {/* Filter chips */}
+            <div className="flex flex-wrap gap-1.5 pb-2">
+              <button
+                onClick={() => setFilter(null)}
                 className={cn(
-                  'flex items-center gap-3 p-2 rounded-lg transition-all group',
-                  'hover:bg-primary/5',
-                  p.profileUrl ? 'cursor-pointer' : 'cursor-default'
+                  'px-2 py-1 rounded-full text-[11px] font-medium border transition-colors',
+                  !filter
+                    ? 'bg-primary/10 border-primary/30 text-primary'
+                    : 'bg-muted/50 border-border/50 text-muted-foreground hover:text-foreground'
                 )}
               >
-                <EngagerAvatar name={p.name} avatarUrl={p.avatarUrl} />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-sm font-medium text-foreground truncate group-hover:text-primary transition-colors">
-                      {p.name}
-                    </span>
-                    {p.profileUrl && (
-                      <ExternalLink className="h-2.5 w-2.5 text-muted-foreground/0 group-hover:text-primary/60 transition-all flex-shrink-0" />
+                All ({profiles.length})
+              </button>
+              {totalReactions > 0 && (
+                <button
+                  onClick={() => setFilter(filter === 'reactions' ? null : 'reactions')}
+                  className={cn(
+                    'inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-medium border transition-colors',
+                    filter === 'reactions'
+                      ? 'bg-primary/10 border-primary/30 text-primary'
+                      : 'bg-muted/50 border-border/50 text-muted-foreground hover:text-foreground'
+                  )}
+                >
+                  <ThumbsUp className="h-3 w-3" />
+                  {totalReactions}
+                </button>
+              )}
+              {totalComments > 0 && (
+                <button
+                  onClick={() => setFilter(filter === 'comments' ? null : 'comments')}
+                  className={cn(
+                    'inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-medium border transition-colors',
+                    filter === 'comments'
+                      ? 'bg-primary/10 border-primary/30 text-primary'
+                      : 'bg-muted/50 border-border/50 text-muted-foreground hover:text-foreground'
+                  )}
+                >
+                  <MessageCircle className="h-3 w-3" />
+                  {totalComments}
+                </button>
+              )}
+              {reactionTypeCounts.map(([type, count]) => (
+                <button
+                  key={type}
+                  onClick={() => setFilter(filter === type ? null : type)}
+                  className={cn(
+                    'inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-medium border transition-colors',
+                    filter === type
+                      ? 'bg-primary/10 border-primary/30 text-primary'
+                      : 'bg-muted/50 border-border/50 text-muted-foreground hover:text-foreground'
+                  )}
+                >
+                  <span>{reactionEmojis[type] || '👍'}</span>
+                  {count}
+                </button>
+              ))}
+            </div>
+
+            {/* Profile list */}
+            <div className="flex-1 overflow-y-auto -mx-2 px-2 space-y-1">
+              {isLoading ? (
+                <div className="flex items-center justify-center py-10">
+                  <Sparkles className="h-4 w-4 text-primary animate-pulse mr-2" />
+                  <span className="text-sm text-muted-foreground">Loading profiles...</span>
+                </div>
+              ) : filtered.length === 0 ? (
+                <div className="text-center py-10 text-muted-foreground">
+                  <Users className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                  <p className="text-sm">No engagement data available</p>
+                </div>
+              ) : (
+                filtered.map((p) => (
+                  <a
+                    key={p.name}
+                    href={p.profileUrl || '#'}
+                    target={p.profileUrl ? '_blank' : undefined}
+                    rel="noopener noreferrer"
+                    className={cn(
+                      'flex items-center gap-3 p-2 rounded-lg transition-all group',
+                      'hover:bg-primary/5',
+                      p.profileUrl ? 'cursor-pointer' : 'cursor-default'
                     )}
+                  >
+                    <EngagerAvatar name={p.name} avatarUrl={p.avatarUrl} />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-sm font-medium text-foreground truncate group-hover:text-primary transition-colors">
+                          {p.name}
+                        </span>
+                        {p.profileUrl && (
+                          <ExternalLink className="h-2.5 w-2.5 text-muted-foreground/0 group-hover:text-primary/60 transition-all flex-shrink-0" />
+                        )}
+                      </div>
+                      {p.headline && (
+                        <p className="text-[11px] text-muted-foreground truncate leading-tight">
+                          {p.headline}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      {p.reactionsCount > 0 && (
+                        <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold font-mono bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">
+                          <ThumbsUp className="h-2.5 w-2.5" />
+                          {p.reactionsCount}
+                        </span>
+                      )}
+                      {p.commentsCount > 0 && (
+                        <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold font-mono bg-accent/20 text-accent-foreground px-1.5 py-0.5 rounded-full">
+                          <MessageCircle className="h-2.5 w-2.5" />
+                          {p.commentsCount}
+                        </span>
+                      )}
+                    </div>
+                  </a>
+                ))
+              )}
+            </div>
+          </>
+        )}
+
+        {viewTab === 'comments' && (
+          <div className="flex-1 overflow-y-auto -mx-2 px-2 space-y-2">
+            {loadingComments ? (
+              <div className="flex items-center justify-center py-10">
+                <Sparkles className="h-4 w-4 text-primary animate-pulse mr-2" />
+                <span className="text-sm text-muted-foreground">Loading comments...</span>
+              </div>
+            ) : comments.length === 0 ? (
+              <div className="text-center py-10 text-muted-foreground">
+                <MessageCircle className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                <p className="text-sm">No comments data available</p>
+              </div>
+            ) : (
+              comments.map((c) => (
+                <div key={c.id} className="p-3 rounded-lg bg-muted/30 border border-border/50 hover:border-primary/20 transition-all">
+                  <div className="flex items-start gap-2.5">
+                    <EngagerAvatar name={c.author_name || 'LinkedIn Member'} avatarUrl={c.author_avatar_url} />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        {c.author_profile_url ? (
+                          <a href={c.author_profile_url} target="_blank" rel="noopener noreferrer"
+                            className="text-xs font-semibold text-foreground hover:text-primary transition-colors truncate">
+                            {c.author_name || 'LinkedIn Member'}
+                          </a>
+                        ) : (
+                          <span className="text-xs font-semibold text-foreground truncate">
+                            {c.author_name || 'LinkedIn Member'}
+                          </span>
+                        )}
+                        {c.commented_at && (
+                          <span className="text-[10px] text-muted-foreground ml-auto flex-shrink-0">
+                            {getRelativeTime(c.commented_at)}
+                          </span>
+                        )}
+                      </div>
+                      {c.author_headline && (
+                        <p className="text-[10px] text-muted-foreground truncate mt-0.5">{c.author_headline}</p>
+                      )}
+                      {c.content && (
+                        <p className="text-[11px] text-foreground mt-1.5 leading-relaxed line-clamp-4">
+                          {c.content}
+                        </p>
+                      )}
+                    </div>
                   </div>
-                  {p.headline && (
-                    <p className="text-[11px] text-muted-foreground truncate leading-tight">
-                      {p.headline}
-                    </p>
-                  )}
                 </div>
-                {/* Engagement badges */}
-                <div className="flex items-center gap-1 flex-shrink-0">
-                  {p.reactionsCount > 0 && (
-                    <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold font-mono bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">
-                      <ThumbsUp className="h-2.5 w-2.5" />
-                      {p.reactionsCount}
-                    </span>
-                  )}
-                  {p.commentsCount > 0 && (
-                    <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold font-mono bg-accent/20 text-accent-foreground px-1.5 py-0.5 rounded-full">
-                      <MessageCircle className="h-2.5 w-2.5" />
-                      {p.commentsCount}
-                    </span>
-                  )}
-                </div>
-              </a>
-            ))
-          )}
-        </div>
+              ))
+            )}
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );

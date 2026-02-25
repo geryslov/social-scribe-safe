@@ -41,6 +41,7 @@ const Posts = () => {
   const viewMode = 'feed' as const;
   const [isDocUploadOpen, setIsDocUploadOpen] = useState(false);
   const [showReactorsPanel, setShowReactorsPanel] = useState(false);
+  const [reactorsPanelTab, setReactorsPanelTab] = useState<'profiles' | 'comments'>('profiles');
   const { createDocument } = useDocuments();
   const { currentWorkspace } = useWorkspace();
   const canUseAiCreate = user?.email === 'geryslov@gmail.com';
@@ -240,7 +241,7 @@ const Posts = () => {
             </Card>
             <Card
               className="bg-card border-border/60 stat-glow cursor-pointer hover:border-destructive/40 transition-colors"
-              onClick={() => setShowReactorsPanel(true)}
+              onClick={() => { setReactorsPanelTab('profiles'); setShowReactorsPanel(true); }}
             >
               <CardContent className="p-4 flex items-center gap-3">
                 <div className="p-2.5 rounded-xl bg-destructive/10">
@@ -256,7 +257,7 @@ const Posts = () => {
             </Card>
             <Card
               className="bg-card border-border/60 stat-glow cursor-pointer hover:border-accent/40 transition-colors"
-              onClick={() => setShowReactorsPanel(true)}
+              onClick={() => { setReactorsPanelTab('comments'); setShowReactorsPanel(true); }}
             >
               <CardContent className="p-4 flex items-center gap-3">
                 <div className="p-2.5 rounded-xl bg-accent/20">
@@ -467,7 +468,8 @@ const Posts = () => {
         open={showReactorsPanel}
         onOpenChange={setShowReactorsPanel}
         postIds={publishedPostIds}
-        title={selectedPublisher ? `${selectedPublisher}'s Reactors` : 'All Reactors'}
+        title={selectedPublisher ? `${selectedPublisher}'s Engagers` : 'All Engagers'}
+        initialTab={reactorsPanelTab}
       />
 
     </div>
