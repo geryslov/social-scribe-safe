@@ -1,9 +1,10 @@
-import { useState } from 'react';
-import { ThumbsUp, MessageCircle, ExternalLink, ChevronDown, ChevronUp, Users, Sparkles } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { ThumbsUp, MessageCircle, ExternalLink, ChevronDown, ChevronUp, Users, Sparkles, BarChart3 } from 'lucide-react';
 import { usePostReactors, PostReactor } from '@/hooks/usePostReactors';
 import { usePostCommenters, PostComment } from '@/hooks/usePostCommenters';
 import { cn } from '@/lib/utils';
 import { getRelativeTime } from '@/lib/timeUtils';
+import { EngagerInsights } from '@/components/EngagerInsights';
 
 const reactionEmojis: Record<string, string> = {
   like: '👍',
@@ -72,7 +73,7 @@ function EngagerAvatar({ name, avatarUrl, size = 'sm' }: { name: string; avatarU
 
 export function PostEngagersPanel({ postId, totalReactions = 0, totalComments = 0, className }: PostEngagersPanelProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<'reactors' | 'comments'>('reactors');
+  const [activeTab, setActiveTab] = useState<'reactors' | 'comments' | 'insights'>('reactors');
   const { data: reactors = [], isLoading: loadingReactors } = usePostReactors(isOpen ? postId : undefined);
   const { data: commenters = [], isLoading: loadingComments } = usePostCommenters(isOpen ? postId : undefined);
 
@@ -152,6 +153,21 @@ export function PostEngagersPanel({ postId, totalReactions = 0, totalComments = 
                 <span className="absolute bottom-0 left-2 right-2 h-0.5 rounded-full bg-primary" />
               )}
             </button>
+            <button
+              onClick={() => setActiveTab('insights')}
+              className={cn(
+                'flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 text-xs font-medium transition-all relative',
+                activeTab === 'insights'
+                  ? 'text-primary'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              <BarChart3 className="h-3.5 w-3.5" />
+              Insights
+              {activeTab === 'insights' && (
+                <span className="absolute bottom-0 left-2 right-2 h-0.5 rounded-full bg-primary" />
+              )}
+            </button>
           </div>
 
           {/* Reactors Tab */}
@@ -215,6 +231,25 @@ export function PostEngagersPanel({ postId, totalReactions = 0, totalComments = 
                     <CommenterCard key={c.id} comment={c} />
                   ))}
                 </div>
+              )}
+            </div>
+          )}
+
+          {/* Insights Tab */}
+          {activeTab === 'insights' && (
+            <div className="p-3 max-h-80 overflow-y-auto">
+              {(loadingReactors || loadingComments) ? (
+                <div className="flex items-center justify-center py-6">
+                  <Sparkles className="h-4 w-4 text-primary animate-pulse mr-2" />
+                  <span className="text-xs text-muted-foreground">Analyzing profiles...</span>
+                </div>
+              ) : (
+                <EngagerInsights
+                  engagers={[
+                    ...reactors.map(r => ({ headline: r.actor_headline })),
+                    ...commenters.map(c => ({ headline: c.author_headline })),
+                  ]}
+                />
               )}
             </div>
           )}
