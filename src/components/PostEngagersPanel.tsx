@@ -72,7 +72,7 @@ export function PostEngagersPanel({ postId, totalReactions = 0, totalComments = 
               {loadingComments ? (
                 <p className="text-xs text-muted-foreground py-2">Loading...</p>
               ) : commenters.length === 0 ? (
-                <p className="text-xs text-muted-foreground py-2">No comment data yet. Sync to fetch.</p>
+                <p className="text-xs text-muted-foreground py-2">Comments data requires additional LinkedIn permissions.</p>
               ) : (
                 commenters.map((c) => (
                   <CommenterRow key={c.id} comment={c} />
