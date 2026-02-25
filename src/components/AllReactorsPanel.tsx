@@ -2,9 +2,8 @@ import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { ExternalLink, Sparkles, Users, ThumbsUp, MessageCircle, BarChart3 } from 'lucide-react';
+import { ExternalLink, Sparkles, Users, ThumbsUp, MessageCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { EngagerInsights } from '@/components/EngagerInsights';
 
 interface Reactor {
   id: string;
@@ -68,7 +67,6 @@ interface AllReactorsPanelProps {
 
 export function AllReactorsPanel({ open, onOpenChange, postIds, title = 'All Engagers' }: AllReactorsPanelProps) {
   const [filter, setFilter] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<'profiles' | 'insights'>('profiles');
 
   const { data: reactors = [], isLoading: loadingReactors } = useQuery({
     queryKey: ['all-reactors', postIds],
@@ -200,45 +198,6 @@ export function AllReactorsPanel({ open, onOpenChange, postIds, title = 'All Eng
           </DialogTitle>
         </DialogHeader>
 
-        {/* View mode toggle */}
-        <div className="flex gap-1 p-0.5 bg-muted/50 rounded-lg w-fit">
-          <button
-            onClick={() => setViewMode('profiles')}
-            className={cn(
-              'px-3 py-1 rounded-md text-[11px] font-medium transition-colors',
-              viewMode === 'profiles' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'
-            )}
-          >
-            <Users className="h-3 w-3 inline mr-1" />
-            Profiles
-          </button>
-          <button
-            onClick={() => setViewMode('insights')}
-            className={cn(
-              'px-3 py-1 rounded-md text-[11px] font-medium transition-colors',
-              viewMode === 'insights' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'
-            )}
-          >
-            <BarChart3 className="h-3 w-3 inline mr-1" />
-            Insights
-          </button>
-        </div>
-
-        {viewMode === 'insights' ? (
-          <div className="flex-1 overflow-y-auto -mx-2 px-2 pb-2">
-            {isLoading ? (
-              <div className="flex items-center justify-center py-10">
-                <Sparkles className="h-4 w-4 text-primary animate-pulse mr-2" />
-                <span className="text-sm text-muted-foreground">Analyzing profiles...</span>
-              </div>
-            ) : (
-              <EngagerInsights
-                engagers={profiles.map(p => ({ headline: p.headline }))}
-              />
-            )}
-          </div>
-        ) : (
-        <>
         {/* Filter chips */}
         <div className="flex flex-wrap gap-1.5 pb-2">
           <button
@@ -357,8 +316,6 @@ export function AllReactorsPanel({ open, onOpenChange, postIds, title = 'All Eng
             ))
           )}
         </div>
-        </>
-        )}
       </DialogContent>
     </Dialog>
   );
