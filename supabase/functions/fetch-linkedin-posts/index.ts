@@ -138,8 +138,8 @@ async function resolveActorNames(
     
     for (const urn of batch) {
       try {
-        // Extract person ID from URN (urn:li:person:XXXXX)
-        const personId = urn.replace('urn:li:person:', '');
+        // Extract person ID from URN (urn:li:person:XXXXX or urn:li:member:XXXXX)
+        const personId = urn.replace('urn:li:person:', '').replace('urn:li:member:', '');
         const url = `https://api.linkedin.com/rest/people/(id:${personId})`;
         
         const response = await fetch(url, {
@@ -213,15 +213,32 @@ async function fetchReactionBreakdown(
         const data = await response.json();
         const elements = data.elements || [];
         
+        // Log first element for debugging URN format
+        if (start === 0 && elements.length > 0) {
+          console.log('Raw reaction element[0]:', JSON.stringify(elements[0]));
+        }
+
         for (const element of elements) {
           const reactionType = element.reactionType?.toLowerCase();
           if (reactionType && reactionType in breakdown) {
             breakdown[reactionType as keyof typeof breakdown]++;
           }
           
-          // Collect actor URN
-          const actorUrn = element.actor;
-          if (actorUrn && typeof actorUrn === 'string' && actorUrn.startsWith('urn:li:person:')) {
+          // Collect actor URN - accept both urn:li:person: and urn:li:member: formats
+          let actorUrn: string | null = null;
+          if (element.actor && typeof element.actor === 'string') {
+            if (element.actor.startsWith('urn:li:person:') || element.actor.startsWith('urn:li:member:')) {
+              actorUrn = element.actor;
+            }
+          } else if (element.actor && typeof element.actor === 'object') {
+            // Handle nested actor format
+            const nested = element.actor.actorId || element.actor['$URN'] || element.actor.urn;
+            if (nested && typeof nested === 'string' && (nested.startsWith('urn:li:person:') || nested.startsWith('urn:li:member:'))) {
+              actorUrn = nested;
+            }
+          }
+          
+          if (actorUrn) {
             actorUrns.push(actorUrn);
             rawReactors.push({ urn: actorUrn, type: reactionType || 'like' });
           }
@@ -300,10 +317,23 @@ async function fetchPostComments(
           const commentUrn = element['$URN'] || element.commentUrn || null;
           const parentUrn = element.parentComment || null;
           
-          if (actorUrn && typeof actorUrn === 'string' && actorUrn.startsWith('urn:li:person:')) {
-            actorUrns.push(actorUrn);
+          // Accept both urn:li:person: and urn:li:member: formats
+          let resolvedUrn: string | null = null;
+          if (actorUrn && typeof actorUrn === 'string') {
+            if (actorUrn.startsWith('urn:li:person:') || actorUrn.startsWith('urn:li:member:')) {
+              resolvedUrn = actorUrn;
+            }
+          } else if (actorUrn && typeof actorUrn === 'object') {
+            const nested = (actorUrn as any).actorId || (actorUrn as any)['$URN'] || (actorUrn as any).urn;
+            if (nested && typeof nested === 'string' && (nested.startsWith('urn:li:person:') || nested.startsWith('urn:li:member:'))) {
+              resolvedUrn = nested;
+            }
+          }
+          
+          if (resolvedUrn) {
+            actorUrns.push(resolvedUrn);
             rawComments.push({
-              urn: actorUrn,
+              urn: resolvedUrn,
               content: typeof messageText === 'string' ? messageText : JSON.stringify(messageText),
               commentedAt: createdTime,
               commentUrn,
