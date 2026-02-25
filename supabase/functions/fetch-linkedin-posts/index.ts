@@ -177,6 +177,33 @@ async function resolveActorNames(
   return resolved;
 }
 
+// Extract actor URN from LinkedIn reaction element across known shapes
+function extractReactionActorUrn(element: any): string | null {
+  const directCandidates = [
+    element?.actor,
+    element?.created?.actor,
+    element?.lastModified?.actor,
+    element?.actor?.actorId,
+    element?.actor?.urn,
+    element?.actor?.['$URN'],
+  ];
+
+  for (const candidate of directCandidates) {
+    if (typeof candidate === 'string' && (candidate.startsWith('urn:li:person:') || candidate.startsWith('urn:li:member:'))) {
+      return candidate;
+    }
+  }
+
+  // Fallback: parse from reaction id e.g. urn:li:reaction:(urn:li:person:ABC,urn:li:share:XYZ)
+  const reactionId = element?.id;
+  if (typeof reactionId === 'string') {
+    const match = reactionId.match(/\((urn:li:(?:person|member):[^,]+),/);
+    if (match?.[1]) return match[1];
+  }
+
+  return null;
+}
+
 // Fetch reaction breakdown for a post AND collect reactor data
 async function fetchReactionBreakdown(
   accessToken: string,
@@ -224,23 +251,13 @@ async function fetchReactionBreakdown(
             breakdown[reactionType as keyof typeof breakdown]++;
           }
           
-          // Collect actor URN - accept both urn:li:person: and urn:li:member: formats
-          let actorUrn: string | null = null;
-          if (element.actor && typeof element.actor === 'string') {
-            if (element.actor.startsWith('urn:li:person:') || element.actor.startsWith('urn:li:member:')) {
-              actorUrn = element.actor;
-            }
-          } else if (element.actor && typeof element.actor === 'object') {
-            // Handle nested actor format
-            const nested = element.actor.actorId || element.actor['$URN'] || element.actor.urn;
-            if (nested && typeof nested === 'string' && (nested.startsWith('urn:li:person:') || nested.startsWith('urn:li:member:'))) {
-              actorUrn = nested;
-            }
-          }
-          
+          // Collect actor URN from multiple response shapes
+          const actorUrn = extractReactionActorUrn(element);
           if (actorUrn) {
             actorUrns.push(actorUrn);
             rawReactors.push({ urn: actorUrn, type: reactionType || 'like' });
+          } else if (start === 0) {
+            console.log('Could not extract reaction actor URN from element:', JSON.stringify(element));
           }
         }
         
