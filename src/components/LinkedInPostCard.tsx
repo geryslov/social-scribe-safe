@@ -7,6 +7,7 @@ import { getRelativeTime } from '@/lib/timeUtils';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { LinkedInPublishModal } from '@/components/LinkedInPublishModal';
+import { PostEngagersPanel } from '@/components/PostEngagersPanel';
 import { usePublishers } from '@/hooks/usePublishers';
 import { toast } from 'sonner';
 
@@ -228,6 +229,13 @@ export function LinkedInPostCard({
           </div>
         </div>
       )}
+
+      {/* Who Engaged Panel */}
+      <PostEngagersPanel
+        postId={post.id}
+        totalReactions={totalReactions}
+        totalComments={comments}
+      />
 
       {/* LinkedIn Publish Modal */}
       <LinkedInPublishModal

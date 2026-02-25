@@ -339,7 +339,9 @@ export type Database = {
       }
       post_comments: {
         Row: {
+          author_headline: string | null
           author_name: string | null
+          author_profile_url: string | null
           author_urn: string | null
           commented_at: string | null
           content: string | null
@@ -350,7 +352,9 @@ export type Database = {
           post_id: string
         }
         Insert: {
+          author_headline?: string | null
           author_name?: string | null
+          author_profile_url?: string | null
           author_urn?: string | null
           commented_at?: string | null
           content?: string | null
@@ -361,7 +365,9 @@ export type Database = {
           post_id: string
         }
         Update: {
+          author_headline?: string | null
           author_name?: string | null
+          author_profile_url?: string | null
           author_urn?: string | null
           commented_at?: string | null
           content?: string | null
@@ -425,6 +431,50 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "post_edit_history_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      post_reactors: {
+        Row: {
+          actor_headline: string | null
+          actor_name: string
+          actor_profile_url: string | null
+          actor_urn: string
+          created_at: string
+          id: string
+          post_id: string
+          reacted_at: string | null
+          reaction_type: string
+        }
+        Insert: {
+          actor_headline?: string | null
+          actor_name?: string
+          actor_profile_url?: string | null
+          actor_urn: string
+          created_at?: string
+          id?: string
+          post_id: string
+          reacted_at?: string | null
+          reaction_type: string
+        }
+        Update: {
+          actor_headline?: string | null
+          actor_name?: string
+          actor_profile_url?: string | null
+          actor_urn?: string
+          created_at?: string
+          id?: string
+          post_id?: string
+          reacted_at?: string | null
+          reaction_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_reactors_post_id_fkey"
             columns: ["post_id"]
             isOneToOne: false
             referencedRelation: "posts"

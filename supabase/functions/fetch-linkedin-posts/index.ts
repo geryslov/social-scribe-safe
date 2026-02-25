@@ -10,7 +10,6 @@ const LINKEDIN_CLIENT_SECRET = Deno.env.get('LINKEDIN_CLIENT_SECRET')!;
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
-// LinkedIn API version
 const LINKEDIN_VERSION = '202601';
 const LEGACY_WORKSPACE_ID = 'f26b7a85-d4ad-451e-8585-d9906d5b9f95';
 
@@ -36,13 +35,31 @@ interface PostAnalytics {
   reactions: number;
   comments: number;
   reshares: number;
-  // Reaction breakdown
   reactionLike: number;
   reactionCelebrate: number;
   reactionSupport: number;
   reactionLove: number;
   reactionInsightful: number;
   reactionCurious: number;
+}
+
+interface ReactorData {
+  actor_urn: string;
+  actor_name: string;
+  actor_headline: string | null;
+  actor_profile_url: string | null;
+  reaction_type: string;
+}
+
+interface CommentData {
+  actor_urn: string;
+  actor_name: string;
+  actor_headline: string | null;
+  actor_profile_url: string | null;
+  content: string;
+  commented_at: string | null;
+  linkedin_comment_urn: string | null;
+  parent_comment_urn: string | null;
 }
 
 // Refresh token if expired
@@ -102,56 +119,314 @@ async function refreshTokenIfNeeded(
   return newAccessToken;
 }
 
-// Fetch reaction breakdown for a post
+// Batch resolve actor URNs to names via LinkedIn People API
+async function resolveActorNames(
+  accessToken: string,
+  actorUrns: string[]
+): Promise<Map<string, { name: string; headline: string | null; profileUrl: string | null }>> {
+  const resolved = new Map<string, { name: string; headline: string | null; profileUrl: string | null }>();
+  
+  if (actorUrns.length === 0) return resolved;
+
+  // Deduplicate
+  const uniqueUrns = [...new Set(actorUrns)];
+  
+  // Process in batches of 20
+  const batchSize = 20;
+  for (let i = 0; i < uniqueUrns.length; i += batchSize) {
+    const batch = uniqueUrns.slice(i, i + batchSize);
+    
+    for (const urn of batch) {
+      try {
+        // Extract person ID from URN (urn:li:person:XXXXX)
+        const personId = urn.replace('urn:li:person:', '');
+        const url = `https://api.linkedin.com/rest/people/(id:${personId})`;
+        
+        const response = await fetch(url, {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'LinkedIn-Version': LINKEDIN_VERSION,
+            'X-Restli-Protocol-Version': '2.0.0',
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const firstName = data.firstName?.localized?.en_US || data.firstName || '';
+          const lastName = data.lastName?.localized?.en_US || data.lastName || '';
+          const name = `${firstName} ${lastName}`.trim() || 'LinkedIn Member';
+          const headline = data.headline?.localized?.en_US || data.headline || null;
+          const vanityName = data.vanityName;
+          const profileUrl = vanityName ? `https://www.linkedin.com/in/${vanityName}` : null;
+          
+          resolved.set(urn, { name, headline, profileUrl });
+        } else if (response.status === 429) {
+          console.log('Rate limited on People API, stopping batch resolution');
+          break;
+        } else {
+          console.log(`Could not resolve ${urn}: ${response.status}`);
+          resolved.set(urn, { name: 'LinkedIn Member', headline: null, profileUrl: null });
+        }
+      } catch (error) {
+        console.error(`Error resolving ${urn}:`, error);
+        resolved.set(urn, { name: 'LinkedIn Member', headline: null, profileUrl: null });
+      }
+    }
+  }
+  
+  return resolved;
+}
+
+// Fetch reaction breakdown for a post AND collect reactor data
 async function fetchReactionBreakdown(
   accessToken: string,
   postUrn: string
-): Promise<{ like: number; celebrate: number; support: number; love: number; insightful: number; curious: number }> {
+): Promise<{ 
+  breakdown: { like: number; celebrate: number; support: number; love: number; insightful: number; curious: number };
+  reactors: ReactorData[];
+}> {
   const breakdown = { like: 0, celebrate: 0, support: 0, love: 0, insightful: 0, curious: 0 };
+  const reactors: ReactorData[] = [];
   
   try {
-    // Try to get reaction breakdown using the socialActions API
     const encodedUrn = encodeURIComponent(postUrn);
-    const reactionsUrl = `https://api.linkedin.com/rest/reactions/(entity:${encodedUrn})?q=entity`;
-    
-    console.log(`Fetching reaction breakdown for ${postUrn}...`);
-    
-    const response = await fetch(reactionsUrl, {
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'LinkedIn-Version': LINKEDIN_VERSION,
-        'X-Restli-Protocol-Version': '2.0.0',
-      },
-    });
+    let start = 0;
+    const count = 100;
+    let hasMore = true;
+    const actorUrns: string[] = [];
+    const rawReactors: { urn: string; type: string }[] = [];
 
-    if (response.ok) {
-      const data = await response.json();
-      // Parse reaction types from response
-      if (data.elements) {
-        for (const element of data.elements) {
+    while (hasMore) {
+      const reactionsUrl = `https://api.linkedin.com/rest/reactions/(entity:${encodedUrn})?q=entity&start=${start}&count=${count}`;
+      
+      console.log(`Fetching reactions for ${postUrn} (start=${start})...`);
+      
+      const response = await fetch(reactionsUrl, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'LinkedIn-Version': LINKEDIN_VERSION,
+          'X-Restli-Protocol-Version': '2.0.0',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const elements = data.elements || [];
+        
+        for (const element of elements) {
           const reactionType = element.reactionType?.toLowerCase();
           if (reactionType && reactionType in breakdown) {
             breakdown[reactionType as keyof typeof breakdown]++;
           }
+          
+          // Collect actor URN
+          const actorUrn = element.actor;
+          if (actorUrn && typeof actorUrn === 'string' && actorUrn.startsWith('urn:li:person:')) {
+            actorUrns.push(actorUrn);
+            rawReactors.push({ urn: actorUrn, type: reactionType || 'like' });
+          }
         }
+        
+        hasMore = elements.length === count;
+        start += count;
+      } else {
+        const errorText = await response.text();
+        console.log(`Could not fetch reactions: ${response.status} - ${errorText}`);
+        hasMore = false;
       }
-      console.log('Reaction breakdown:', breakdown);
-    } else {
-      const errorText = await response.text();
-      console.log(`Could not fetch reaction breakdown: ${response.status} - ${errorText}`);
     }
+
+    console.log(`Collected ${rawReactors.length} reactors, resolving names...`);
+    
+    // Batch resolve names (limit to first 50 to avoid rate limits)
+    const urnsToResolve = actorUrns.slice(0, 50);
+    const resolvedNames = await resolveActorNames(accessToken, urnsToResolve);
+    
+    for (const raw of rawReactors) {
+      const info = resolvedNames.get(raw.urn) || { name: 'LinkedIn Member', headline: null, profileUrl: null };
+      reactors.push({
+        actor_urn: raw.urn,
+        actor_name: info.name,
+        actor_headline: info.headline,
+        actor_profile_url: info.profileUrl,
+        reaction_type: raw.type,
+      });
+    }
+
+    console.log('Reaction breakdown:', breakdown);
   } catch (error) {
     console.error('Error fetching reaction breakdown:', error);
   }
   
-  return breakdown;
+  return { breakdown, reactors };
 }
 
-// Fetch analytics for a single post URN using memberCreatorPostAnalytics API
+// Fetch comments for a post
+async function fetchPostComments(
+  accessToken: string,
+  postUrn: string
+): Promise<CommentData[]> {
+  const comments: CommentData[] = [];
+  
+  try {
+    const encodedUrn = encodeURIComponent(postUrn);
+    let start = 0;
+    const count = 50;
+    let hasMore = true;
+    const actorUrns: string[] = [];
+    const rawComments: { urn: string; content: string; commentedAt: string | null; commentUrn: string | null; parentUrn: string | null }[] = [];
+
+    while (hasMore) {
+      const commentsUrl = `https://api.linkedin.com/rest/socialActions/${encodedUrn}/comments?start=${start}&count=${count}`;
+      
+      console.log(`Fetching comments for ${postUrn} (start=${start})...`);
+      
+      const response = await fetch(commentsUrl, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'LinkedIn-Version': LINKEDIN_VERSION,
+          'X-Restli-Protocol-Version': '2.0.0',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const elements = data.elements || [];
+        
+        for (const element of elements) {
+          const actorUrn = element.actor;
+          const messageText = element.message?.text || element.message || '';
+          const createdTime = element.created?.time ? new Date(element.created.time).toISOString() : null;
+          const commentUrn = element['$URN'] || element.commentUrn || null;
+          const parentUrn = element.parentComment || null;
+          
+          if (actorUrn && typeof actorUrn === 'string' && actorUrn.startsWith('urn:li:person:')) {
+            actorUrns.push(actorUrn);
+            rawComments.push({
+              urn: actorUrn,
+              content: typeof messageText === 'string' ? messageText : JSON.stringify(messageText),
+              commentedAt: createdTime,
+              commentUrn,
+              parentUrn,
+            });
+          }
+        }
+        
+        hasMore = elements.length === count;
+        start += count;
+      } else {
+        const errorText = await response.text();
+        console.log(`Could not fetch comments: ${response.status} - ${errorText}`);
+        hasMore = false;
+      }
+    }
+
+    console.log(`Collected ${rawComments.length} comments, resolving names...`);
+    
+    // Resolve names (limit to 50)
+    const urnsToResolve = [...new Set(actorUrns)].slice(0, 50);
+    const resolvedNames = await resolveActorNames(accessToken, urnsToResolve);
+    
+    for (const raw of rawComments) {
+      const info = resolvedNames.get(raw.urn) || { name: 'LinkedIn Member', headline: null, profileUrl: null };
+      comments.push({
+        actor_urn: raw.urn,
+        actor_name: info.name,
+        actor_headline: info.headline,
+        actor_profile_url: info.profileUrl,
+        content: raw.content,
+        commented_at: raw.commentedAt,
+        linkedin_comment_urn: raw.commentUrn,
+        parent_comment_urn: raw.parentUrn,
+      });
+    }
+  } catch (error) {
+    console.error('Error fetching post comments:', error);
+  }
+  
+  return comments;
+}
+
+// Store reactors in database
+async function storeReactors(
+  supabase: any,
+  postId: string,
+  reactors: ReactorData[]
+): Promise<void> {
+  if (reactors.length === 0) return;
+  
+  try {
+    const rows = reactors.map(r => ({
+      post_id: postId,
+      actor_urn: r.actor_urn,
+      actor_name: r.actor_name,
+      actor_headline: r.actor_headline,
+      actor_profile_url: r.actor_profile_url,
+      reaction_type: r.reaction_type,
+    }));
+
+    // Upsert in batches of 50
+    for (let i = 0; i < rows.length; i += 50) {
+      const batch = rows.slice(i, i + 50);
+      const { error } = await supabase
+        .from('post_reactors')
+        .upsert(batch, { onConflict: 'post_id,actor_urn' });
+
+      if (error) {
+        console.error('Failed to upsert reactors batch:', error);
+      }
+    }
+    console.log(`Stored ${rows.length} reactors for post ${postId}`);
+  } catch (error) {
+    console.error('Error storing reactors:', error);
+  }
+}
+
+// Store comments in database
+async function storeComments(
+  supabase: any,
+  postId: string,
+  comments: CommentData[]
+): Promise<void> {
+  if (comments.length === 0) return;
+  
+  try {
+    const rows = comments.map(c => ({
+      post_id: postId,
+      author_urn: c.actor_urn,
+      author_name: c.actor_name,
+      author_headline: c.actor_headline,
+      author_profile_url: c.actor_profile_url,
+      content: c.content,
+      commented_at: c.commented_at,
+      linkedin_comment_urn: c.linkedin_comment_urn,
+    }));
+
+    // Upsert by linkedin_comment_urn if available, otherwise insert
+    for (const row of rows) {
+      if (row.linkedin_comment_urn) {
+        const { error } = await supabase
+          .from('post_comments')
+          .upsert(row, { onConflict: 'linkedin_comment_urn' });
+        if (error) {
+          // Fallback: try insert ignoring conflict
+          await supabase.from('post_comments').insert(row);
+        }
+      } else {
+        await supabase.from('post_comments').insert(row);
+      }
+    }
+    console.log(`Stored ${rows.length} comments for post ${postId}`);
+  } catch (error) {
+    console.error('Error storing comments:', error);
+  }
+}
+
+// Fetch analytics for a single post URN
 async function fetchPostAnalytics(
   accessToken: string,
   postUrn: string
-): Promise<PostAnalytics> {
+): Promise<PostAnalytics & { reactors: ReactorData[] }> {
   const analytics: PostAnalytics = {
     impressions: 0,
     uniqueImpressions: 0,
@@ -165,17 +440,16 @@ async function fetchPostAnalytics(
     reactionInsightful: 0,
     reactionCurious: 0,
   };
+  let reactors: ReactorData[] = [];
 
-  // The URN format should be: urn:li:ugcPost:xxx or urn:li:share:xxx
   const isUgcPost = postUrn.includes('ugcPost');
   const isShare = postUrn.includes('share');
   
   if (!isUgcPost && !isShare) {
     console.log(`Unknown URN format: ${postUrn}, skipping analytics`);
-    return analytics;
+    return { ...analytics, reactors };
   }
 
-  // Format: (ugcPost:urn:li:ugcPost:xxx) or (share:urn:li:share:xxx)
   const entityType = isUgcPost ? 'ugcPost' : 'share';
   const entityParam = `(${entityType}:${encodeURIComponent(postUrn)})`;
 
@@ -200,44 +474,35 @@ async function fetchPostAnalytics(
         const count = data.elements?.[0]?.count || 0;
         
         switch (metric) {
-          case 'IMPRESSION':
-            analytics.impressions = count;
-            break;
-          case 'MEMBERS_REACHED':
-            analytics.uniqueImpressions = count;
-            break;
-          case 'REACTION':
-            analytics.reactions = count;
-            break;
-          case 'COMMENT':
-            analytics.comments = count;
-            break;
-          case 'RESHARE':
-            analytics.reshares = count;
-            break;
+          case 'IMPRESSION': analytics.impressions = count; break;
+          case 'MEMBERS_REACHED': analytics.uniqueImpressions = count; break;
+          case 'REACTION': analytics.reactions = count; break;
+          case 'COMMENT': analytics.comments = count; break;
+          case 'RESHARE': analytics.reshares = count; break;
         }
         console.log(`${metric}: ${count}`);
       } else {
         const errorText = await response.text();
-        console.log(`Could not fetch ${metric} for ${postUrn}: ${response.status} - ${errorText}`);
+        console.log(`Could not fetch ${metric}: ${response.status} - ${errorText}`);
       }
     } catch (metricError) {
-      console.error(`Error fetching ${metric} for ${postUrn}:`, metricError);
+      console.error(`Error fetching ${metric}:`, metricError);
     }
   }
 
-  // Fetch reaction breakdown if we have reactions
+  // Fetch reaction breakdown AND reactor identities
   if (analytics.reactions > 0) {
-    const breakdown = await fetchReactionBreakdown(accessToken, postUrn);
+    const { breakdown, reactors: fetchedReactors } = await fetchReactionBreakdown(accessToken, postUrn);
     analytics.reactionLike = breakdown.like;
     analytics.reactionCelebrate = breakdown.celebrate;
     analytics.reactionSupport = breakdown.support;
     analytics.reactionLove = breakdown.love;
     analytics.reactionInsightful = breakdown.insightful;
     analytics.reactionCurious = breakdown.curious;
+    reactors = fetchedReactors;
   }
 
-  return analytics;
+  return { ...analytics, reactors };
 }
 
 // Save analytics snapshot for trend tracking
@@ -249,7 +514,6 @@ async function saveAnalyticsSnapshot(
   const today = new Date().toISOString().split('T')[0];
   
   try {
-    // Upsert the snapshot for today
     const { error } = await supabase
       .from('post_analytics_history')
       .upsert({
@@ -274,7 +538,7 @@ async function saveAnalyticsSnapshot(
   }
 }
 
-// Fetch follower history using time-bound memberFollowersCount API
+// Fetch follower history
 async function fetchFollowerHistory(
   accessToken: string,
   publisherId: string,
@@ -283,7 +547,6 @@ async function fetchFollowerHistory(
   let latestCount = 0;
 
   try {
-    // Calculate 90-day lookback window
     const endDate = new Date();
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - 90);
@@ -292,7 +555,6 @@ async function fetchFollowerHistory(
     const url = `https://api.linkedin.com/rest/memberFollowersCount?q=dateRange&dateRange=${dateRangeParam}`;
 
     console.log(`Fetching follower history for publisher ${publisherId}...`);
-    console.log(`URL: ${url}`);
 
     const response = await fetch(url, {
       headers: {
@@ -310,22 +572,15 @@ async function fetchFollowerHistory(
 
     const data = await response.json();
     const elements = data.elements || [];
-    console.log(`Got ${elements.length} follower history data points`);
 
-    if (elements.length === 0) {
-      return latestCount;
-    }
+    if (elements.length === 0) return latestCount;
 
-    // Prepare upsert data
     const upsertRows = [];
     for (const element of elements) {
       const count = element.memberFollowersCount ?? element.followerCount ?? 0;
       const dateRange = element.dateRange;
 
-      if (!dateRange?.start) {
-        console.log('Skipping element with no date range:', element);
-        continue;
-      }
+      if (!dateRange?.start) continue;
 
       const { year, month, day } = dateRange.start;
       const snapshotDate = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
@@ -336,23 +591,16 @@ async function fetchFollowerHistory(
         follower_count: count,
       });
 
-      // Track the latest count
-      if (count > latestCount) {
-        latestCount = count;
-      }
+      if (count > latestCount) latestCount = count;
     }
 
     if (upsertRows.length > 0) {
-      console.log(`Upserting ${upsertRows.length} follower history rows...`);
       const { error } = await supabase
         .from('follower_history')
         .upsert(upsertRows, { onConflict: 'publisher_id,snapshot_date' });
 
-      if (error) {
-        console.error('Failed to upsert follower history:', error);
-      } else {
-        console.log(`Successfully upserted ${upsertRows.length} follower history rows`);
-      }
+      if (error) console.error('Failed to upsert follower history:', error);
+      else console.log(`Upserted ${upsertRows.length} follower history rows`);
     }
   } catch (error) {
     console.error('Error fetching follower history:', error);
@@ -380,7 +628,6 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // Get publisher with LinkedIn credentials
     const { data: publisher, error: publisherError } = await supabase
       .from('publishers')
       .select('id, name, workspace_id, linkedin_member_id, linkedin_access_token, linkedin_refresh_token, linkedin_token_expires_at')
@@ -388,7 +635,6 @@ Deno.serve(async (req) => {
       .single();
 
     if (publisherError || !publisher) {
-      console.error('Publisher not found:', publisherError);
       return new Response(
         JSON.stringify({ error: 'Publisher not found' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -402,10 +648,8 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Refresh token if needed
     const accessToken = await refreshTokenIfNeeded(publisher as PublisherData, supabase);
 
-    // Query posts that were published via the app (have linkedin_post_urn set)
     const { data: appPosts, error: postsError } = await supabase
       .from('posts')
       .select('id, linkedin_post_urn, publisher_name, content, published_at')
@@ -415,7 +659,6 @@ Deno.serve(async (req) => {
       .order('published_at', { ascending: false });
 
     if (postsError) {
-      console.error('Error fetching app posts:', postsError);
       return new Response(
         JSON.stringify({ error: 'Failed to fetch app-published posts' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -423,32 +666,25 @@ Deno.serve(async (req) => {
     }
 
     if (!appPosts || appPosts.length === 0) {
-      console.log('No app-published posts found for publisher:', publisher.name);
       return new Response(
-        JSON.stringify({ 
-          success: true, 
-          syncedCount: 0, 
-          message: 'No app-published posts found to sync analytics for' 
-        }),
+        JSON.stringify({ success: true, syncedCount: 0, message: 'No app-published posts found' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     console.log(`Found ${appPosts.length} app-published posts to fetch analytics for`);
 
-    // Fetch analytics for each post and update the posts table
     let syncedCount = 0;
     for (const post of appPosts) {
       try {
-        const analytics = await fetchPostAnalytics(accessToken, post.linkedin_post_urn);
+        const analyticsWithReactors = await fetchPostAnalytics(accessToken, post.linkedin_post_urn);
+        const { reactors, ...analytics } = analyticsWithReactors;
         
-        // Calculate engagement rate
         const totalEngagements = analytics.reactions + analytics.comments + analytics.reshares;
         const engagementRate = analytics.impressions > 0 
           ? parseFloat(((totalEngagements / analytics.impressions) * 100).toFixed(2))
           : null;
 
-        // Update the post with analytics including reaction breakdown
         const { error: updateError } = await supabase
           .from('posts')
           .update({
@@ -472,10 +708,16 @@ Deno.serve(async (req) => {
           console.error(`Failed to update analytics for post ${post.id}:`, updateError);
         } else {
           syncedCount++;
-          console.log(`Updated analytics for post ${post.id}: impressions=${analytics.impressions}, reactions=${analytics.reactions}`);
+          console.log(`Updated analytics for post ${post.id}`);
           
-          // Save snapshot for trend tracking
           await saveAnalyticsSnapshot(supabase, post.id, analytics);
+          
+          // Store reactors
+          await storeReactors(supabase, post.id, reactors);
+          
+          // Fetch and store comments
+          const postComments = await fetchPostComments(accessToken, post.linkedin_post_urn);
+          await storeComments(supabase, post.id, postComments);
         }
       } catch (error) {
         console.error(`Error processing post ${post.id}:`, error);
@@ -484,41 +726,27 @@ Deno.serve(async (req) => {
 
     console.log(`Successfully synced analytics for ${syncedCount} posts`);
 
-    // Fetch follower history only for Legacy Data workspace publishers
+    // Fetch follower history for legacy workspace
     let followerCount = null;
     if (publisher.workspace_id === LEGACY_WORKSPACE_ID) {
-      console.log('Legacy Data workspace publisher - fetching follower history...');
       try {
         followerCount = await fetchFollowerHistory(accessToken, publisher.id, supabase);
-        
         if (followerCount > 0) {
-          const { error: followerUpdateError } = await supabase
+          await supabase
             .from('publishers')
             .update({
               followers_count: followerCount,
               profile_analytics_fetched_at: new Date().toISOString(),
             })
             .eq('id', publisher.id);
-
-          if (followerUpdateError) {
-            console.error('Failed to update follower count:', followerUpdateError);
-          } else {
-            console.log('Follower count updated:', followerCount);
-          }
         }
       } catch (followerError) {
         console.error('Error fetching follower history:', followerError);
-        // Don't fail the whole sync for follower data
       }
     }
 
     return new Response(
-      JSON.stringify({ 
-        success: true, 
-        syncedCount,
-        followerCount,
-        message: `Synced analytics for ${syncedCount} posts`
-      }),
+      JSON.stringify({ success: true, syncedCount, followerCount, message: `Synced analytics for ${syncedCount} posts` }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
