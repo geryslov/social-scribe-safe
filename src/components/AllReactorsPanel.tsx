@@ -71,18 +71,11 @@ export function AllReactorsPanel({ open, onOpenChange, postIds, title = 'All Rea
     enabled: open && postIds.length > 0,
   });
 
-  // Deduplicate by actor name (same person may react to multiple posts)
-  const uniqueReactors = reactors.reduce((acc, r) => {
-    const key = r.actor_name;
-    if (!acc.has(key)) {
-      acc.set(key, { ...r, postCount: 1 });
-    } else {
-      acc.get(key)!.postCount += 1;
-    }
+  // Count engagements per person
+  const engagementCounts = reactors.reduce((acc, r) => {
+    acc[r.actor_name] = (acc[r.actor_name] || 0) + 1;
     return acc;
-  }, new Map<string, Reactor & { postCount: number }>());
-
-  const reactorList = Array.from(uniqueReactors.values());
+  }, {} as Record<string, number>);
 
   // Group by reaction type for filter chips
   const typeCounts = reactors.reduce((acc, r) => {
@@ -92,10 +85,10 @@ export function AllReactorsPanel({ open, onOpenChange, postIds, title = 'All Rea
   }, {} as Record<string, number>);
 
   const sortedTypes = Object.entries(typeCounts).sort((a, b) => b[1] - a[1]);
-
+  const uniqueCount = Object.keys(engagementCounts).length;
   const filtered = filter
-    ? reactorList.filter(r => r.reaction_type === filter)
-    : reactorList;
+    ? reactors.filter(r => r.reaction_type === filter)
+    : reactors;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -105,7 +98,7 @@ export function AllReactorsPanel({ open, onOpenChange, postIds, title = 'All Rea
             <Users className="h-4 w-4 text-primary" />
             {title}
             <span className="text-sm font-normal text-muted-foreground">
-              ({reactorList.length} unique)
+              ({uniqueCount} unique, {reactors.length} total)
             </span>
           </DialogTitle>
         </DialogHeader>
@@ -184,11 +177,9 @@ export function AllReactorsPanel({ open, onOpenChange, postIds, title = 'All Rea
                     </p>
                   )}
                 </div>
-                {r.postCount > 1 && (
-                  <span className="text-[10px] text-muted-foreground font-mono bg-muted/50 px-1.5 py-0.5 rounded">
-                    {r.postCount} posts
-                  </span>
-                )}
+                <span className="text-[10px] text-primary font-mono bg-primary/10 px-1.5 py-0.5 rounded-full font-semibold flex-shrink-0">
+                  ×{engagementCounts[r.actor_name] || 1}
+                </span>
               </a>
             ))
           )}
