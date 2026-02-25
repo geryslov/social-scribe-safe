@@ -48,6 +48,7 @@ interface ReactorData {
   actor_name: string;
   actor_headline: string | null;
   actor_profile_url: string | null;
+  actor_avatar_url: string | null;
   reaction_type: string;
 }
 
@@ -56,6 +57,7 @@ interface CommentData {
   actor_name: string;
   actor_headline: string | null;
   actor_profile_url: string | null;
+  actor_avatar_url: string | null;
   content: string;
   commented_at: string | null;
   linkedin_comment_urn: string | null;
@@ -123,8 +125,8 @@ async function refreshTokenIfNeeded(
 async function resolveActorNames(
   accessToken: string,
   actorUrns: string[]
-): Promise<Map<string, { name: string; headline: string | null; profileUrl: string | null }>> {
-  const resolved = new Map<string, { name: string; headline: string | null; profileUrl: string | null }>();
+): Promise<Map<string, { name: string; headline: string | null; profileUrl: string | null; avatarUrl: string | null }>> {
+  const resolved = new Map<string, { name: string; headline: string | null; profileUrl: string | null; avatarUrl: string | null }>();
   
   if (actorUrns.length === 0) return resolved;
 
@@ -152,24 +154,68 @@ async function resolveActorNames(
 
         if (response.ok) {
           const data = await response.json();
-          const firstName = data.firstName?.localized?.en_US || data.firstName || '';
-          const lastName = data.lastName?.localized?.en_US || data.lastName || '';
+          
+          // Handle localized names - extract first available locale value
+          const extractLocalized = (field: any): string => {
+            if (!field) return '';
+            if (typeof field === 'string') return field;
+            if (field.localized) {
+              // Get first available locale
+              const locales = Object.keys(field.localized);
+              if (locales.length > 0) return field.localized[locales[0]];
+            }
+            return '';
+          };
+          
+          const firstName = extractLocalized(data.firstName);
+          const lastName = extractLocalized(data.lastName);
           const name = `${firstName} ${lastName}`.trim() || 'LinkedIn Member';
-          const headline = data.headline?.localized?.en_US || data.headline || null;
+          const rawHeadline = extractLocalized(data.headline);
+          const headline = rawHeadline || null;
           const vanityName = data.vanityName;
           const profileUrl = vanityName ? `https://www.linkedin.com/in/${vanityName}` : null;
           
-          resolved.set(urn, { name, headline, profileUrl });
+          // Extract profile picture URL
+          let avatarUrl: string | null = null;
+          const profilePic = data.profilePicture || data.profilePictureV2;
+          if (profilePic) {
+            // Try expanded displayImage~ first (contains actual URLs)
+            const displayImageExpanded = profilePic['displayImage~'];
+            if (displayImageExpanded?.elements?.length > 0) {
+              const elements = displayImageExpanded.elements;
+              for (let ei = elements.length - 1; ei >= 0; ei--) {
+                const identifiers = elements[ei]?.identifiers;
+                if (identifiers?.length > 0) {
+                  const httpUrl = identifiers.find((id: any) => typeof id.identifier === 'string' && id.identifier.startsWith('http'));
+                  if (httpUrl) {
+                    avatarUrl = httpUrl.identifier;
+                    break;
+                  }
+                }
+              }
+            }
+            // Try direct URL fields
+            if (!avatarUrl && typeof profilePic.displayImage === 'string' && profilePic.displayImage.startsWith('http')) {
+              avatarUrl = profilePic.displayImage;
+            }
+          }
+          
+          // Log first resolved profile for debugging
+          if (i === 0 && batch[0] === urn) {
+            console.log('Sample resolved profile:', JSON.stringify({ name, headline, profileUrl, avatarUrl, hasProfilePic: !!profilePic }));
+          }
+          
+          resolved.set(urn, { name, headline, profileUrl, avatarUrl });
         } else if (response.status === 429) {
           console.log('Rate limited on People API, stopping batch resolution');
           break;
         } else {
           console.log(`Could not resolve ${urn}: ${response.status}`);
-          resolved.set(urn, { name: 'LinkedIn Member', headline: null, profileUrl: null });
+          resolved.set(urn, { name: 'LinkedIn Member', headline: null, profileUrl: null, avatarUrl: null });
         }
       } catch (error) {
         console.error(`Error resolving ${urn}:`, error);
-        resolved.set(urn, { name: 'LinkedIn Member', headline: null, profileUrl: null });
+        resolved.set(urn, { name: 'LinkedIn Member', headline: null, profileUrl: null, avatarUrl: null });
       }
     }
   }
@@ -277,12 +323,13 @@ async function fetchReactionBreakdown(
     const resolvedNames = await resolveActorNames(accessToken, urnsToResolve);
     
     for (const raw of rawReactors) {
-      const info = resolvedNames.get(raw.urn) || { name: 'LinkedIn Member', headline: null, profileUrl: null };
+      const info = resolvedNames.get(raw.urn) || { name: 'LinkedIn Member', headline: null, profileUrl: null, avatarUrl: null };
       reactors.push({
         actor_urn: raw.urn,
         actor_name: info.name,
         actor_headline: info.headline,
         actor_profile_url: info.profileUrl,
+        actor_avatar_url: info.avatarUrl,
         reaction_type: raw.type,
       });
     }
@@ -375,12 +422,13 @@ async function fetchPostComments(
     const resolvedNames = await resolveActorNames(accessToken, urnsToResolve);
     
     for (const raw of rawComments) {
-      const info = resolvedNames.get(raw.urn) || { name: 'LinkedIn Member', headline: null, profileUrl: null };
+      const info = resolvedNames.get(raw.urn) || { name: 'LinkedIn Member', headline: null, profileUrl: null, avatarUrl: null };
       comments.push({
         actor_urn: raw.urn,
         actor_name: info.name,
         actor_headline: info.headline,
         actor_profile_url: info.profileUrl,
+        actor_avatar_url: info.avatarUrl,
         content: raw.content,
         commented_at: raw.commentedAt,
         linkedin_comment_urn: raw.commentUrn,
@@ -409,6 +457,7 @@ async function storeReactors(
       actor_name: r.actor_name,
       actor_headline: r.actor_headline,
       actor_profile_url: r.actor_profile_url,
+      actor_avatar_url: r.actor_avatar_url,
       reaction_type: r.reaction_type,
     }));
 
@@ -444,6 +493,7 @@ async function storeComments(
       author_name: c.actor_name,
       author_headline: c.actor_headline,
       author_profile_url: c.actor_profile_url,
+      author_avatar_url: c.actor_avatar_url,
       content: c.content,
       commented_at: c.commented_at,
       linkedin_comment_urn: c.linkedin_comment_urn,

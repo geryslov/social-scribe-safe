@@ -8,6 +8,7 @@ export interface PostReactor {
   actor_name: string;
   actor_headline: string | null;
   actor_profile_url: string | null;
+  actor_avatar_url: string | null;
   reaction_type: string;
   reacted_at: string | null;
 }
