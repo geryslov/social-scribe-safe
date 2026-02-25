@@ -1,50 +1,82 @@
 
-## Make AI Post Generation Available to All Workspaces (Admin-Only)
 
-### Current Behavior
-The "AI Create" button in the document upload modal is gated by `isLegacyWorkspace` — a hardcoded check comparing `currentWorkspace?.id` to a specific workspace UUID. This means AI generation is only available inside the single "Legacy Data" workspace.
+## Plan: Add "Who Reacted" and "Who Commented" to Post Analytics
 
-### Goal
-Make AI generation available in **every** workspace, but only when the logged-in user is `geryslov@gmail.com`. All other users continue to see the greyed-out, disabled "AI Create" card.
+### Context
 
-### Implementation Approach
+The LinkedIn Reactions API already returns individual reaction elements with an `actor` URN (e.g., `urn:li:person:rboDhL7Xsf`) and `reactionType`. The Comments API at `/rest/socialActions/{postUrn}/comments` returns comments with `actor` URN and `message.text`. However, resolving actor URNs to full names requires the People API (`r_liteprofile` or similar), which we already have in our scopes (`r_basicprofile`, `r_liteprofile`).
 
-The simplest and most maintainable approach is to change the `showAiCreate` flag from being based on workspace identity to being based on user identity. The `user` object is already available from `useAuth()` in both `Posts.tsx` and `DocumentLibrary.tsx`.
+### What Changes
 
-No database changes, no new tables, no migrations required — the email check is purely a client-side gate on the UI element, which is appropriate here because:
-- The underlying `create-document` edge function is already protected and there is no security risk in showing/hiding a UI button
-- The user is already authenticated via Supabase Auth, so `user.email` is trustworthy (it comes from the verified session, not from client-side storage)
+**1. Database: New tables for reactor/commenter data**
 
-### Files to Modify
+- Create a `post_reactors` table: `id`, `post_id`, `actor_urn`, `actor_name`, `actor_headline`, `actor_profile_url`, `reaction_type`, `reacted_at`, `created_at`
+- Extend existing `post_comments` table to ensure it stores `author_name`, `author_headline`, `author_profile_url`, `content`, `commented_at` (most columns exist, add `author_headline` and `author_profile_url`)
 
-**1. `src/pages/Posts.tsx`**
-- Import `useAuth` (already imported)
-- Replace `isLegacyWorkspace` with `canUseAiCreate` based on `user?.email === 'geryslov@gmail.com'`
-- Pass `canUseAiCreate` as `showAiCreate` to `DocumentUploadModal`
+**2. Edge Function: `fetch-linkedin-posts/index.ts`**
 
-**2. `src/pages/DocumentLibrary.tsx`**
-- Import `useAuth` (need to add)
-- Replace `isLegacyWorkspace` check with `canUseAiCreate` based on `user?.email === 'geryslov@gmail.com'`
-- Pass `canUseAiCreate` as `showAiCreate` to `DocumentUploadModal`
+- In `fetchReactionBreakdown()`, already iterating over reaction elements — extract `actor` URN, `reactionType`, and resolve actor name via People API batch decoration (`/rest/people?ids=List(...)`)
+- Store each reactor in `post_reactors` table (upsert by `post_id` + `actor_urn`)
+- Add new function `fetchPostComments()` that calls `/rest/socialActions/{postUrn}/comments` to get commenters with their actor URN + message text
+- Resolve commenter names via the same People API decoration
+- Upsert into `post_comments` table
+
+**3. Frontend: Display who reacted and commented**
+
+- **ReactionBreakdown tooltip** — extend to show a list of reactor names grouped by reaction type (e.g., "👍 Like: John Smith, Jane Doe")
+- **PostRow / LinkedInPostCard** — add expandable section showing recent commenters with their name, comment snippet, and reaction type
+- Create a new `PostEngagersPanel` component showing:
+  - Reactors list with name, headline, reaction type emoji
+  - Commenters list with name, comment preview, timestamp
+  - Each entry links to their LinkedIn profile
+
+**4. Hooks**
+
+- Add `usePostReactors(postId)` hook querying `post_reactors` table
+- Add `usePostCommenters(postId)` hook querying `post_comments` table
 
 ### Technical Details
 
-The change in both files is straightforward:
+```text
+LinkedIn API Calls (per post during sync):
+┌─────────────────────────────────────────┐
+│ GET /rest/reactions/(entity:{urn})      │ ← already called, extend to store actors
+│   → elements[].actor (person URN)      │
+│   → elements[].reactionType            │
+├─────────────────────────────────────────┤
+│ GET /rest/socialActions/{urn}/comments  │ ← NEW call
+│   → elements[].actor (person URN)      │
+│   → elements[].message.text            │
+│   → elements[].created.time            │
+├─────────────────────────────────────────┤
+│ GET /rest/people?ids=List(urn1,urn2,..) │ ← NEW: batch resolve names
+│   → firstName, lastName, headline      │
+└─────────────────────────────────────────┘
 
-```typescript
-// Before
-const LEGACY_WORKSPACE_ID = 'f26b7a85-d4ad-451e-8585-d9906d5b9f95';
-const isLegacyWorkspace = currentWorkspace?.id === LEGACY_WORKSPACE_ID;
-// ... showAiCreate={isLegacyWorkspace}
+Database:
+post_reactors (NEW)
+├── post_id (uuid)
+├── actor_urn (text)
+├── actor_name (text)
+├── actor_headline (text, nullable)
+├── actor_profile_url (text, nullable)
+├── reaction_type (text)
+├── reacted_at (timestamptz, nullable)
+└── unique on (post_id, actor_urn)
 
-// After
-const { user } = useAuth();
-const canUseAiCreate = user?.email === 'geryslov@gmail.com';
-// ... showAiCreate={canUseAiCreate}
+post_comments (UPDATE)
+├── + author_headline (text, nullable)
+└── + author_profile_url (text, nullable)
 ```
 
-The `LEGACY_WORKSPACE_ID` constant can be removed entirely from both files (it is not used for anything else in Posts.tsx; in DocumentLibrary.tsx and Analytics.tsx it may still be needed for other features — those will be checked and left untouched).
+- Actor name resolution: Use LinkedIn's People API decoration endpoint to batch-resolve URNs to names. If resolution fails (restricted access), store the URN as fallback and show "LinkedIn Member" as name.
+- Rate limiting: LinkedIn has API rate limits, so we'll process reactors/commenters in batches and handle 429 responses gracefully.
+- The reactions API may paginate — we'll follow `start`/`count` pagination to capture all reactors.
 
-### What Users See
-- **geryslov@gmail.com**: The "AI Create" card is fully active and clickable in the document modal, regardless of which workspace is currently active.
-- **All other users**: The "AI Create" card remains greyed out with "Not available" text, exactly as before.
+### Scope
+
+- ~1 new DB migration (new table + alter existing)
+- ~1 edge function update (fetch-linkedin-posts)
+- ~3 new frontend components/hooks
+- ~2 existing component updates (ReactionBreakdown, PostRow)
+
