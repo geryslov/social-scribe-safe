@@ -8,6 +8,7 @@ export interface PostComment {
   author_name: string | null;
   author_headline: string | null;
   author_profile_url: string | null;
+  author_avatar_url: string | null;
   content: string | null;
   commented_at: string | null;
   linkedin_comment_urn: string | null;

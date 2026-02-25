@@ -339,6 +339,7 @@ export type Database = {
       }
       post_comments: {
         Row: {
+          author_avatar_url: string | null
           author_headline: string | null
           author_name: string | null
           author_profile_url: string | null
@@ -352,6 +353,7 @@ export type Database = {
           post_id: string
         }
         Insert: {
+          author_avatar_url?: string | null
           author_headline?: string | null
           author_name?: string | null
           author_profile_url?: string | null
@@ -365,6 +367,7 @@ export type Database = {
           post_id: string
         }
         Update: {
+          author_avatar_url?: string | null
           author_headline?: string | null
           author_name?: string | null
           author_profile_url?: string | null
@@ -440,6 +443,7 @@ export type Database = {
       }
       post_reactors: {
         Row: {
+          actor_avatar_url: string | null
           actor_headline: string | null
           actor_name: string
           actor_profile_url: string | null
@@ -451,6 +455,7 @@ export type Database = {
           reaction_type: string
         }
         Insert: {
+          actor_avatar_url?: string | null
           actor_headline?: string | null
           actor_name?: string
           actor_profile_url?: string | null
@@ -462,6 +467,7 @@ export type Database = {
           reaction_type: string
         }
         Update: {
+          actor_avatar_url?: string | null
           actor_headline?: string | null
           actor_name?: string
           actor_profile_url?: string | null
