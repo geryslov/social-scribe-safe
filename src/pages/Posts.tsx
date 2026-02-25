@@ -109,8 +109,8 @@ const Posts = () => {
   const currentPublisher = selectedPublisher ? publishers.find(p => p.name === selectedPublisher) : null;
   const currentDbPublisher = selectedPublisher ? dbPublishers.find(p => p.name === selectedPublisher) : null;
 
-  // Get aggregated analytics stats
-  const { stats: analyticsStats, isLoading: analyticsLoading } = useAnalytics(null, '30d');
+  // Get analytics stats - filtered by selected publisher or all
+  const { stats: analyticsStats, isLoading: analyticsLoading } = useAnalytics(selectedPublisher, '30d');
 
   const handleEdit = (post: Post) => {
     setEditingPost(post);
