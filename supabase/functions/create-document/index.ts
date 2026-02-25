@@ -732,7 +732,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    if (referenceContent) userMessage += `\n\n--- REFERENCE: Uploaded Document ---\nUse the following document content as context and source material for the posts. Extract relevant data, insights, and messaging:\n\n${referenceContent.substring(0, 15000)}`;
+    if (referenceContent) userMessage += `\n\n--- REFERENCE: Uploaded Document ---\nUse the following document content as context and source material for the posts. Extract relevant data, insights, and messaging:\n\n${referenceContent}`;
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',

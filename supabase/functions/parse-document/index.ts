@@ -73,7 +73,7 @@ async function parsePdf(arrayBuffer: ArrayBuffer): Promise<string> {
     console.log('Native PDF extraction yielded little text, using Anthropic Claude for extraction');
     const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY');
     if (ANTHROPIC_API_KEY) {
-      const base64 = btoa(String.fromCharCode(...bytes.slice(0, 500000)));
+      const base64 = btoa(String.fromCharCode(...bytes));
       
       try {
         const aiResponse = await fetch('https://api.anthropic.com/v1/messages', {
