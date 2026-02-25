@@ -21,6 +21,7 @@ import { useAnalytics } from '@/hooks/useAnalytics';
 import { CountUp } from '@/components/CountUp';
 import { Card, CardContent } from '@/components/ui/card';
 import { PublisherAvatar } from '@/components/PublisherAvatar';
+import { AllReactorsPanel } from '@/components/AllReactorsPanel';
 import { toast } from 'sonner';
 
 const Posts = () => {
@@ -39,6 +40,7 @@ const Posts = () => {
   const [preselectedPublisher, setPreselectedPublisher] = useState<string | null>(null);
   const viewMode = 'feed' as const;
   const [isDocUploadOpen, setIsDocUploadOpen] = useState(false);
+  const [showReactorsPanel, setShowReactorsPanel] = useState(false);
   const { createDocument } = useDocuments();
   const { currentWorkspace } = useWorkspace();
   const canUseAiCreate = user?.email === 'geryslov@gmail.com';
@@ -110,7 +112,12 @@ const Posts = () => {
   const currentDbPublisher = selectedPublisher ? dbPublishers.find(p => p.name === selectedPublisher) : null;
 
   // Get analytics stats - filtered by selected publisher or all
-  const { stats: analyticsStats, isLoading: analyticsLoading } = useAnalytics(selectedPublisher, '30d');
+  const { stats: analyticsStats, posts: analyticsPosts, isLoading: analyticsLoading } = useAnalytics(selectedPublisher, '30d');
+
+  // Post IDs for reactor panel
+  const publishedPostIds = useMemo(() => {
+    return publishedPosts.map(p => p.id);
+  }, [publishedPosts]);
 
   const handleEdit = (post: Post) => {
     setEditingPost(post);
@@ -231,7 +238,10 @@ const Posts = () => {
                 </div>
               </CardContent>
             </Card>
-            <Card className="bg-card border-border/60 stat-glow">
+            <Card
+              className="bg-card border-border/60 stat-glow cursor-pointer hover:border-destructive/40 transition-colors"
+              onClick={() => setShowReactorsPanel(true)}
+            >
               <CardContent className="p-4 flex items-center gap-3">
                 <div className="p-2.5 rounded-xl bg-destructive/10">
                   <Heart className="h-5 w-5 text-destructive" />
@@ -240,7 +250,7 @@ const Posts = () => {
                   <p className="text-2xl font-bold font-mono tabular-nums data-value">
                     <CountUp end={analyticsStats.totalReactions} />
                   </p>
-                  <p className="text-xs text-muted-foreground">Reactions</p>
+                  <p className="text-xs text-muted-foreground">Reactions <span className="text-primary/60">→ view</span></p>
                 </div>
               </CardContent>
             </Card>
@@ -423,6 +433,12 @@ const Posts = () => {
         onOpenChange={setIsDocUploadOpen}
         onSave={handleCreateDocument}
         showAiCreate={canUseAiCreate}
+      />
+      <AllReactorsPanel
+        open={showReactorsPanel}
+        onOpenChange={setShowReactorsPanel}
+        postIds={publishedPostIds}
+        title={selectedPublisher ? `${selectedPublisher}'s Reactors` : 'All Reactors'}
       />
 
     </div>
