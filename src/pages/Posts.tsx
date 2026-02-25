@@ -16,7 +16,7 @@ import { useDocuments } from '@/hooks/useDocuments';
 import { useWorkspace } from '@/hooks/useWorkspace';
 
 import { Button } from '@/components/ui/button';
-import { Plus, Inbox, ExternalLink, Loader2, Upload, Users, Eye, Heart, TrendingUp } from 'lucide-react';
+import { Plus, Inbox, ExternalLink, Loader2, Upload, Users, Eye, Heart, TrendingUp, MessageCircle, Repeat2 } from 'lucide-react';
 import { useAnalytics } from '@/hooks/useAnalytics';
 import { CountUp } from '@/components/CountUp';
 import { Card, CardContent } from '@/components/ui/card';
@@ -211,7 +211,7 @@ const Posts = () => {
         <main className="flex-1 overflow-y-auto h-[calc(100vh-73px)]">
           <div className="p-8">
           {/* Summary Stats - Aggregated Analytics */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
             <Card className="bg-card border-border/60 stat-glow">
               <CardContent className="p-4 flex items-center gap-3">
                 <div className="p-2.5 rounded-xl bg-info/10">
@@ -251,6 +251,35 @@ const Posts = () => {
                     <CountUp end={analyticsStats.totalReactions} />
                   </p>
                   <p className="text-xs text-muted-foreground">Reactions <span className="text-primary/60">→ view</span></p>
+                </div>
+              </CardContent>
+            </Card>
+            <Card
+              className="bg-card border-border/60 stat-glow cursor-pointer hover:border-accent/40 transition-colors"
+              onClick={() => setShowReactorsPanel(true)}
+            >
+              <CardContent className="p-4 flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-accent/20">
+                  <MessageCircle className="h-5 w-5 text-accent-foreground" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold font-mono tabular-nums data-value">
+                    <CountUp end={analyticsStats.totalComments} />
+                  </p>
+                  <p className="text-xs text-muted-foreground">Comments <span className="text-primary/60">→ view</span></p>
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="bg-card border-border/60 stat-glow">
+              <CardContent className="p-4 flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-muted">
+                  <Repeat2 className="h-5 w-5 text-muted-foreground" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold font-mono tabular-nums data-value">
+                    <CountUp end={analyticsStats.totalReshares} />
+                  </p>
+                  <p className="text-xs text-muted-foreground">Reshares</p>
                 </div>
               </CardContent>
             </Card>
