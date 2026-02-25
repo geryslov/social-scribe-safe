@@ -62,6 +62,7 @@ Hook patterns:
 **CLOSE (Final 40-60 words)**
 - Reframe the insight with fresh language
 - Provide clear, actionable takeaway
+- Before the URL, include a natural connection to the brand the post is about — explain WHY using this brand matters, how it relates to the topic, or highlight a relevant feature. Keep it classy and insightful, never salesy or promotional. It should feel like a logical conclusion, not an ad.
 - End with statement, not question
 - Avoid generic inspiration
 
@@ -216,6 +217,7 @@ Every piece of content follows these structural elements:
 ### Close (Final 60 words)
 → Reframe the insight
 → Provide clear takeaway
+→ Before the URL, weave in a natural, classy connection to the brand — why it matters, how it relates, or a relevant feature. Never salesy, always insightful.
 → End with strong statement (not question)
 → Add URL and hashtags
 
