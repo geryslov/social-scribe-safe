@@ -193,6 +193,34 @@ export function usePublishers() {
     },
   });
 
+  const refreshAllAvatars = useMutation({
+    mutationFn: async () => {
+      const connectedPubs = publishers.filter(p => p.linkedin_connected);
+      if (connectedPubs.length === 0) throw new Error('No connected publishers');
+      
+      const results: string[] = [];
+      for (const pub of connectedPubs) {
+        try {
+          const { error } = await supabase.functions.invoke('fetch-linkedin-posts', {
+            body: { publisherId: pub.id }
+          });
+          if (!error) results.push(pub.name);
+        } catch (err) {
+          console.error(`Failed to refresh avatar for ${pub.name}:`, err);
+        }
+      }
+      return results;
+    },
+    onSuccess: (names) => {
+      queryClient.invalidateQueries({ queryKey: ['publishers'] });
+      toast.success(`Avatars refreshed for ${names.length} publisher${names.length !== 1 ? 's' : ''}`);
+    },
+    onError: (error) => {
+      console.error('Error refreshing avatars:', error);
+      toast.error('Failed to refresh avatars');
+    },
+  });
+
   return {
     publishers,
     isLoading,
@@ -201,5 +229,6 @@ export function usePublishers() {
     fetchLinkedInPhoto,
     deletePublisher,
     getPublisherByName,
+    refreshAllAvatars,
   };
 }

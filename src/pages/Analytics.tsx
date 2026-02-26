@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Eye, Users, Heart, MessageCircle, Share2, TrendingUp, Loader2 } from 'lucide-react';
+import { Eye, Users, Heart, MessageCircle, Share2, TrendingUp, Loader2, RefreshCw } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { useAuth } from '@/hooks/useAuth';
 import { useAnalytics } from '@/hooks/useAnalytics';
 import { usePublishers } from '@/hooks/usePublishers';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { useAutoSync } from '@/hooks/useAutoSync';
+import { Button } from '@/components/ui/button';
 import { CyberCard, CyberCardContent, CyberCardHeader, CyberCardTitle } from '@/components/ui/cyber-card';
 import { PerformanceChart } from '@/components/PerformanceChart';
 import { TopPostsLeaderboard } from '@/components/TopPostsLeaderboard';
@@ -21,7 +22,7 @@ import { format } from 'date-fns';
 const Analytics = () => {
   const navigate = useNavigate();
   const { user, isLoading: authLoading } = useAuth();
-  const { publishers: dbPublishers } = usePublishers();
+  const { publishers: dbPublishers, refreshAllAvatars } = usePublishers();
   
   const [timeRange, setTimeRange] = useState<'7d' | '30d' | '90d'>('30d');
   
@@ -187,6 +188,16 @@ const Analytics = () => {
                 <Users className="h-4 w-4 text-info" />
                 PUBLISHER RANKINGS
               </CyberCardTitle>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => refreshAllAvatars.mutate()}
+                disabled={refreshAllAvatars.isPending}
+                className="text-xs gap-1"
+              >
+                <RefreshCw className={cn("h-3 w-3", refreshAllAvatars.isPending && "animate-spin")} />
+                {refreshAllAvatars.isPending ? 'Refreshing...' : 'Refresh Photos'}
+              </Button>
             </CyberCardHeader>
             <CyberCardContent>
               <div className="space-y-2">

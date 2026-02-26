@@ -34,6 +34,45 @@ const LINKEDIN_CLIENT_SECRET = Deno.env.get('LINKEDIN_CLIENT_SECRET')!;
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
+// Download a LinkedIn avatar image and store it in our own storage bucket
+async function persistAvatarToStorage(
+  supabase: any,
+  publisherId: string,
+  linkedinAvatarUrl: string
+): Promise<string | null> {
+  try {
+    console.log('Downloading LinkedIn avatar to persist in storage...');
+    const response = await fetch(linkedinAvatarUrl);
+    if (!response.ok) {
+      console.error('Failed to download LinkedIn avatar:', response.status);
+      return null;
+    }
+    const blob = await response.arrayBuffer();
+    const contentType = response.headers.get('content-type') || 'image/jpeg';
+    const ext = contentType.includes('png') ? 'png' : 'jpg';
+    const filePath = `avatars/${publisherId}.${ext}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('publisher-avatars')
+      .upload(filePath, blob, { contentType, upsert: true });
+
+    if (uploadError) {
+      console.error('Failed to upload avatar to storage:', uploadError);
+      return null;
+    }
+
+    const { data: { publicUrl } } = supabase.storage
+      .from('publisher-avatars')
+      .getPublicUrl(filePath);
+
+    console.log('Avatar persisted to storage:', publicUrl);
+    return publicUrl;
+  } catch (err) {
+    console.error('Error persisting avatar:', err);
+    return null;
+  }
+}
+
 // Redirect URIs for different flows
 const REDIRECT_URI = `${SUPABASE_URL}/functions/v1/linkedin-auth/callback`;
 const SSO_REDIRECT_URI = `${SUPABASE_URL}/functions/v1/linkedin-auth/callback-sso`;
@@ -220,7 +259,9 @@ Deno.serve(async (req) => {
       const linkedinMemberId = userInfo.sub;
       const email = userInfo.email;
       const name = userInfo.name || userInfo.given_name || 'LinkedIn User';
-      const avatarUrl = userInfo.picture;
+      const linkedinAvatarUrl = userInfo.picture;
+      // We'll persist the avatar after we know the publisher ID
+      let avatarUrl = linkedinAvatarUrl;
 
       // Fetch additional profile data (headline) from the /v2/me endpoint
       let headline: string | null = null;
@@ -354,6 +395,13 @@ Deno.serve(async (req) => {
       if (existingPublisher) {
         // Update existing publisher
         console.log('Updating existing publisher:', existingPublisher.id);
+        
+        // Persist avatar to our own storage
+        if (linkedinAvatarUrl) {
+          const storedUrl = await persistAvatarToStorage(supabase, existingPublisher.id, linkedinAvatarUrl);
+          if (storedUrl) avatarUrl = storedUrl;
+        }
+        
         const updateData: Record<string, unknown> = {
           linkedin_access_token: accessToken,
           linkedin_refresh_token: refreshToken || null,
@@ -387,11 +435,20 @@ Deno.serve(async (req) => {
             }, { onConflict: 'workspace_id,user_id' });
         }
       } else {
-        // Create new publisher
+        // Create new publisher - generate a temporary ID to use for storage path
+        const newPublisherId = crypto.randomUUID();
         console.log('Creating new publisher for user:', userId);
+        
+        // Persist avatar to our own storage
+        if (linkedinAvatarUrl) {
+          const storedUrl = await persistAvatarToStorage(supabase, newPublisherId, linkedinAvatarUrl);
+          if (storedUrl) avatarUrl = storedUrl;
+        }
+        
         const { error: insertError } = await supabase
           .from('publishers')
           .insert({
+            id: newPublisherId,
             name: name,
             user_id: userId,
             linkedin_access_token: accessToken,
