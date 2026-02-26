@@ -67,9 +67,17 @@ interface AllReactorsPanelProps {
   postIds: string[];
   title?: string;
   initialTab?: 'profiles' | 'comments';
+  expectedCommentsCount?: number;
 }
 
-export function AllReactorsPanel({ open, onOpenChange, postIds, title = 'All Engagers', initialTab = 'profiles' }: AllReactorsPanelProps) {
+export function AllReactorsPanel({
+  open,
+  onOpenChange,
+  postIds,
+  title = 'All Engagers',
+  initialTab = 'profiles',
+  expectedCommentsCount,
+}: AllReactorsPanelProps) {
   const [filter, setFilter] = useState<string | null>(null);
   const [viewTab, setViewTab] = useState<'profiles' | 'comments'>(initialTab);
 
@@ -186,6 +194,7 @@ export function AllReactorsPanel({ open, onOpenChange, postIds, title = 'All Eng
   // Chip data
   const totalReactions = reactors.length;
   const totalComments = comments.length;
+  const displayedCommentsCount = Math.max(totalComments, expectedCommentsCount ?? 0);
   const reactionTypeCounts = useMemo(() => {
     const acc: Record<string, number> = {};
     for (const r of reactors) {
@@ -226,7 +235,7 @@ export function AllReactorsPanel({ open, onOpenChange, postIds, title = 'All Eng
             )}
           >
             <MessageCircle className="h-3.5 w-3.5" />
-            Comments ({comments.length})
+            Comments ({displayedCommentsCount})
             {viewTab === 'comments' && <span className="absolute bottom-0 left-2 right-2 h-0.5 rounded-full bg-primary" />}
           </button>
         </div>
@@ -363,7 +372,11 @@ export function AllReactorsPanel({ open, onOpenChange, postIds, title = 'All Eng
             ) : comments.length === 0 ? (
               <div className="text-center py-10 text-muted-foreground">
                 <MessageCircle className="h-8 w-8 mx-auto mb-2 opacity-30" />
-                <p className="text-sm">No comments data available</p>
+                {displayedCommentsCount > 0 ? (
+                  <p className="text-sm">{displayedCommentsCount} comment{displayedCommentsCount === 1 ? '' : 's'} found in analytics, but text wasn’t imported yet.</p>
+                ) : (
+                  <p className="text-sm">No comments data available</p>
+                )}
               </div>
             ) : (
               comments.map((c) => (
