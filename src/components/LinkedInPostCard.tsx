@@ -139,6 +139,29 @@ export function LinkedInPostCard({
         )}
       </div>
 
+      {/* Media Preview */}
+      {post.mediaUrl && (
+        <div className="px-3 pb-2">
+          {post.postType === 'video' ? (
+            <div className="relative rounded-lg overflow-hidden bg-muted/50 border border-border/50 aspect-video flex items-center justify-center">
+              <video
+                src={post.mediaUrl}
+                className="w-full h-full object-cover"
+                controls
+                preload="metadata"
+              />
+            </div>
+          ) : (
+            <img
+              src={post.mediaUrl}
+              alt="Post attachment"
+              className="w-full rounded-lg border border-border/50 max-h-80 object-cover"
+              loading="lazy"
+            />
+          )}
+        </div>
+      )}
+
       {/* Engagement Summary - Clickable reactions */}
       {(totalReactions > 0 || comments > 0 || reshares > 0) && (
         <div className="px-3 py-1.5 border-t border-border/50">
