@@ -1,27 +1,24 @@
 
 
-## Plan: Add Comments Stat Card to the Posts Page
+## Current State
 
-### What's Missing
+The platform **already supports** image attachments on posts:
+- **PostModal**: Has image/video upload UI → uploads to `post-media` storage bucket
+- **linkedin-post edge function**: Already implements LinkedIn's `registerUpload` API to upload images with posts
+- **LinkedInPublishModal**: Already passes `mediaUrl` to the edge function
+- **usePosts hook**: Already fetches and maps `media_url` from the database
 
-The Posts page currently shows 4 summary stat cards: **Total Reach**, **Impressions**, **Reactions**, and **Avg Engagement**. The `totalComments` value is already calculated in `useAnalytics` but is not displayed anywhere on this page.
+## What's Missing
 
-### Changes
+The **LinkedInPostCard** (feed view) never renders the attached image. Users attach images but can't see them in the post feed.
 
-**File: `src/pages/Posts.tsx`**
+## Implementation Steps
 
-Add a 5th stat card for **Comments** in the stats grid (between Reactions and Avg Engagement). This card will:
+1. **Update LinkedInPostCard** — Add image/video preview between the post content and the engagement summary section. If `post.mediaUrl` exists:
+   - For images: render an `<img>` tag with rounded corners and max height
+   - For videos: show a video indicator badge (matching existing pattern)
 
-- Show the `MessageCircle` icon with an appropriate color theme
-- Display `analyticsStats.totalComments` using the existing `CountUp` animation
-- Be clickable (like the Reactions card) to open the `AllReactorsPanel`, which already aggregates both reactors and commenters
-- Update the grid from `grid-cols-2 md:grid-cols-4` to `grid-cols-2 md:grid-cols-5` to accommodate the new card
+2. **Update LinkedInPublishModal** — The modal already shows a small media preview. No changes needed; it already sends `mediaUrl` to the edge function.
 
-Additionally, add a **Reshares** stat card since that data (`totalReshares`) is also already available in `analyticsStats` but not shown. This brings the grid to 6 cards (`grid-cols-2 md:grid-cols-3 lg:grid-cols-6`).
-
-### Technical Details
-
-The stat values `analyticsStats.totalComments` and `analyticsStats.totalReshares` are already computed in `useAnalytics.tsx` (lines 96-97). No backend changes or new queries are needed -- this is purely a UI addition using existing data.
-
-The Comments card will reuse the `MessageCircle` icon from lucide-react (already imported in other components) and the Reshares card will use the `Repeat2` icon.
+That's it — one component change. The entire upload → store → publish-to-LinkedIn pipeline is already functional.
 
