@@ -23,3 +23,6 @@ verify_jwt = false
 
 [functions.fetch-linkedin-posts]
 verify_jwt = false
+
+[functions.rewrite-section]
+verify_jwt = false

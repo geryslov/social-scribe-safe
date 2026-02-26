@@ -17,6 +17,7 @@ import { DocumentEditHistory } from '@/components/DocumentEditHistory';
 import { DocumentSectionCard } from '@/components/DocumentSectionCard';
 import { DocumentPublisherSelect } from '@/components/DocumentPublisherSelect';
 import { useDocument, useDocuments, useDocumentComments, useDocumentPosts, useDocumentSections } from '@/hooks/useDocuments';
+import { useWorkspace } from '@/hooks/useWorkspace';
 import { usePosts } from '@/hooks/usePosts';
 import { DocumentStatus } from '@/types/document';
 import { format } from 'date-fns';
@@ -39,6 +40,7 @@ export default function DocumentEditor() {
   const { posts } = useDocumentPosts(id || '');
   const { sections, updateSection, deleteSection } = useDocumentSections(id || '');
   const { createPost } = usePosts();
+  const { currentWorkspace } = useWorkspace();
 
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
@@ -311,12 +313,13 @@ export default function DocumentEditor() {
                       />
                     </div>
                     <div className="flex-1">
-                      <DocumentSectionCard
+                    <DocumentSectionCard
                         section={section}
                         onUpdate={(id, content) => updateSection.mutate({ id, content })}
                         onDelete={(id) => deleteSection.mutate(id)}
                         onApprove={(id) => updateSection.mutate({ id, status: 'approved' })}
                         onPublisherChange={(id, publisherId) => updateSection.mutate({ id, publisherId })}
+                        workspaceSystemPrompt={currentWorkspace?.systemPrompt || undefined}
                       />
                     </div>
                   </div>
