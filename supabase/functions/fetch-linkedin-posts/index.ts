@@ -706,6 +706,83 @@ async function fetchFollowerHistory(
   return latestCount;
 }
 
+// Download a LinkedIn avatar and store it in our own storage bucket
+async function persistAvatarToStorage(
+  supabase: any,
+  publisherId: string,
+  linkedinAvatarUrl: string
+): Promise<string | null> {
+  try {
+    console.log('Downloading LinkedIn avatar to persist in storage...');
+    const response = await fetch(linkedinAvatarUrl);
+    if (!response.ok) {
+      console.error('Failed to download LinkedIn avatar:', response.status);
+      return null;
+    }
+    const blob = await response.arrayBuffer();
+    const contentType = response.headers.get('content-type') || 'image/jpeg';
+    const ext = contentType.includes('png') ? 'png' : 'jpg';
+    const filePath = `avatars/${publisherId}.${ext}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('publisher-avatars')
+      .upload(filePath, blob, { contentType, upsert: true });
+
+    if (uploadError) {
+      console.error('Failed to upload avatar to storage:', uploadError);
+      return null;
+    }
+
+    const { data: { publicUrl } } = supabase.storage
+      .from('publisher-avatars')
+      .getPublicUrl(filePath);
+
+    console.log('Avatar persisted to storage:', publicUrl);
+    return publicUrl;
+  } catch (err) {
+    console.error('Error persisting avatar:', err);
+    return null;
+  }
+}
+
+// Refresh publisher avatar from LinkedIn API
+async function refreshPublisherAvatar(
+  accessToken: string,
+  publisherId: string,
+  supabase: any
+): Promise<void> {
+  try {
+    // Fetch current profile picture from LinkedIn userinfo
+    const response = await fetch('https://api.linkedin.com/v2/userinfo', {
+      headers: { 'Authorization': `Bearer ${accessToken}` },
+    });
+
+    if (!response.ok) {
+      console.log('Could not fetch userinfo for avatar refresh:', response.status);
+      return;
+    }
+
+    const userInfo = await response.json();
+    const linkedinAvatarUrl = userInfo.picture;
+
+    if (!linkedinAvatarUrl) {
+      console.log('No avatar URL in LinkedIn profile');
+      return;
+    }
+
+    const storedUrl = await persistAvatarToStorage(supabase, publisherId, linkedinAvatarUrl);
+    if (storedUrl) {
+      await supabase
+        .from('publishers')
+        .update({ avatar_url: storedUrl })
+        .eq('id', publisherId);
+      console.log('Publisher avatar refreshed and stored');
+    }
+  } catch (err) {
+    console.error('Error refreshing publisher avatar:', err);
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -840,6 +917,25 @@ Deno.serve(async (req) => {
       } catch (followerError) {
         console.error('Error fetching follower history:', followerError);
       }
+    }
+
+    // Refresh publisher avatar (check if current avatar is a LinkedIn CDN URL that may expire)
+    try {
+      const { data: currentPub } = await supabase
+        .from('publishers')
+        .select('avatar_url')
+        .eq('id', publisher.id)
+        .single();
+      
+      const currentAvatar = currentPub?.avatar_url || '';
+      const isLinkedInCdnUrl = currentAvatar.includes('media.licdn.com') || currentAvatar.includes('linkedin.com');
+      const hasNoAvatar = !currentAvatar;
+      
+      if (isLinkedInCdnUrl || hasNoAvatar) {
+        await refreshPublisherAvatar(accessToken, publisher.id, supabase);
+      }
+    } catch (avatarError) {
+      console.error('Error refreshing avatar:', avatarError);
     }
 
     return new Response(
