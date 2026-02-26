@@ -470,6 +470,7 @@ const Posts = () => {
         postIds={publishedPostIds}
         title={selectedPublisher ? `${selectedPublisher}'s Engagers` : 'All Engagers'}
         initialTab={reactorsPanelTab}
+        expectedCommentsCount={analyticsStats.totalComments}
       />
 
     </div>
