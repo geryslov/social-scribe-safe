@@ -27,37 +27,44 @@ Deno.serve(async (req) => {
     }
 
     const toneInstructions: Record<string, string> = {
-      professional: 'Use a polished, professional tone. Formal but approachable.',
-      casual: 'Use a relaxed, conversational tone. Write like talking to a friend.',
-      bold: 'Use a bold, provocative tone. Be direct, challenge assumptions.',
-      storytelling: 'Use a narrative, storytelling tone. Start with a personal anecdote or vivid scenario.',
-      data_driven: 'Use a data-driven, analytical tone. Lead with numbers, stats, and evidence.',
-      inspirational: 'Use an inspirational, motivational tone. Uplift and empower the reader.',
-      humorous: 'Use a witty, humorous tone. Be clever and entertaining while delivering value.',
-      contrarian: 'Use a contrarian tone. Challenge conventional wisdom and popular opinions.',
+      professional: 'Tone: Polished and professional. Formal but approachable. Authoritative without being stiff.',
+      casual: 'Tone: Relaxed and conversational. Write like talking to a smart friend over coffee.',
+      bold: 'Tone: Bold and provocative. Be direct, challenge assumptions, take a strong stance.',
+      storytelling: 'Tone: Narrative and immersive. Open with a vivid personal anecdote or scenario that pulls the reader in.',
+      data_driven: 'Tone: Analytical and evidence-based. Lead with numbers, stats, and concrete proof points.',
+      inspirational: 'Tone: Uplifting and motivational. Empower the reader, spark ambition.',
+      humorous: 'Tone: Witty and clever. Be entertaining while delivering real value.',
+      contrarian: 'Tone: Contrarian and thought-provoking. Challenge conventional wisdom and popular opinions head-on.',
     };
 
     const lengthInstructions: Record<string, string> = {
-      short: 'Keep it concise: 80-120 words. Punchy and to the point.',
-      medium: 'Medium length: 150-250 words. Balanced detail and readability.',
-      long: 'Longer form: 300-450 words. Detailed, thorough, with depth.',
+      short: 'Length: 80-120 words. Punchy and to the point.',
+      medium: 'Length: 150-250 words. Balanced detail and readability.',
+      long: 'Length: 300-450 words. Detailed, thorough, with depth.',
     };
 
     const toneInstruction = toneInstructions[tone] || toneInstructions.professional;
     const lengthInstruction = lengthInstructions[length] || lengthInstructions.medium;
 
-    const systemPrompt = `You are a LinkedIn content rewriter. Rewrite the given post with the specified tone and length.
+    const systemPrompt = `You are a LinkedIn content rewriter following the ThoughtOS Content Framework.
 
 ${toneInstruction}
 ${lengthInstruction}
 
-Rules:
+## Writing Structure (always follow):
+1. Hook-driven opening — the first line MUST stop the scroll. Use a bold claim, surprising stat, or provocative question.
+2. Micro-paragraphs only — max 3 sentences per paragraph. One idea per block.
+3. Empty line between EVERY paragraph for mobile readability.
+4. Randomize list symbols across posts — pick from: -  //  →  (never use * or •)
+5. Use proper Unicode characters (never ASCII like '-->')
+6. Do NOT use bold or italic markdown formatting (no ** or *)
+7. Add relevant emojis sparingly — max 3-4 per post, never at the start of every line.
+8. End with a thought-provoking question or clear call-to-action.
+
+## Rules:
 - Keep the core message and key insights intact
-- Use proper Unicode characters (never ASCII like '-->')
-- Include empty lines between paragraphs for mobile readability
-- Do NOT use bold or italic markdown formatting
-- Add relevant emojis sparingly
-- End with a call-to-action or thought-provoking question when suitable
+- Never improvise data — if the original has stats, keep them accurate
+- Writing must feel natural and human, not AI-generated
 - Return ONLY the rewritten post text, nothing else
 
 ${workspaceSystemPrompt ? `\nAdditional workspace guidelines:\n${workspaceSystemPrompt}` : ''}`;
