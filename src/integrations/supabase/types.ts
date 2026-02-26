@@ -490,6 +490,10 @@ export type Database = {
       }
       posts: {
         Row: {
+          ad_account_id: string | null
+          ad_campaign_id: string | null
+          ad_creative_id: string | null
+          ad_spend: number | null
           analytics_fetched_at: string | null
           avg_reply_depth: number | null
           click_through_rate: number | null
@@ -501,6 +505,7 @@ export type Database = {
           engagement_rate: number | null
           id: string
           impressions: number | null
+          is_sponsored: boolean | null
           labels: string[] | null
           link_clicks: number | null
           linkedin_post_url: string | null
@@ -508,6 +513,11 @@ export type Database = {
           linkedin_url: string | null
           media_url: string | null
           media_urns: string[] | null
+          paid_clicks: number | null
+          paid_comments: number | null
+          paid_impressions: number | null
+          paid_reactions: number | null
+          paid_reshares: number | null
           post_type: string | null
           publish_method: string | null
           published_at: string | null
@@ -537,6 +547,10 @@ export type Database = {
           workspace_id: string | null
         }
         Insert: {
+          ad_account_id?: string | null
+          ad_campaign_id?: string | null
+          ad_creative_id?: string | null
+          ad_spend?: number | null
           analytics_fetched_at?: string | null
           avg_reply_depth?: number | null
           click_through_rate?: number | null
@@ -548,6 +562,7 @@ export type Database = {
           engagement_rate?: number | null
           id?: string
           impressions?: number | null
+          is_sponsored?: boolean | null
           labels?: string[] | null
           link_clicks?: number | null
           linkedin_post_url?: string | null
@@ -555,6 +570,11 @@ export type Database = {
           linkedin_url?: string | null
           media_url?: string | null
           media_urns?: string[] | null
+          paid_clicks?: number | null
+          paid_comments?: number | null
+          paid_impressions?: number | null
+          paid_reactions?: number | null
+          paid_reshares?: number | null
           post_type?: string | null
           publish_method?: string | null
           published_at?: string | null
@@ -584,6 +604,10 @@ export type Database = {
           workspace_id?: string | null
         }
         Update: {
+          ad_account_id?: string | null
+          ad_campaign_id?: string | null
+          ad_creative_id?: string | null
+          ad_spend?: number | null
           analytics_fetched_at?: string | null
           avg_reply_depth?: number | null
           click_through_rate?: number | null
@@ -595,6 +619,7 @@ export type Database = {
           engagement_rate?: number | null
           id?: string
           impressions?: number | null
+          is_sponsored?: boolean | null
           labels?: string[] | null
           link_clicks?: number | null
           linkedin_post_url?: string | null
@@ -602,6 +627,11 @@ export type Database = {
           linkedin_url?: string | null
           media_url?: string | null
           media_urns?: string[] | null
+          paid_clicks?: number | null
+          paid_comments?: number | null
+          paid_impressions?: number | null
+          paid_reactions?: number | null
+          paid_reshares?: number | null
           post_type?: string | null
           publish_method?: string | null
           published_at?: string | null
