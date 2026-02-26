@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Check, Trash2, User, Linkedin } from 'lucide-react';
+import { Check, Trash2, User, Linkedin, RefreshCw, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
@@ -11,6 +11,36 @@ import { LinkedInPublishModal } from './LinkedInPublishModal';
 import { Post } from '@/types/post';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+
+const TONE_OPTIONS = [
+  { value: 'professional', label: '💼 Professional' },
+  { value: 'casual', label: '😊 Casual' },
+  { value: 'bold', label: '🔥 Bold' },
+  { value: 'storytelling', label: '📖 Storytelling' },
+  { value: 'data_driven', label: '📊 Data-Driven' },
+  { value: 'inspirational', label: '✨ Inspirational' },
+  { value: 'humorous', label: '😄 Humorous' },
+  { value: 'contrarian', label: '🤔 Contrarian' },
+];
+
+const LENGTH_OPTIONS = [
+  { value: 'short', label: 'Short (80-120 words)' },
+  { value: 'medium', label: 'Medium (150-250 words)' },
+  { value: 'long', label: 'Long (300-450 words)' },
+];
 
 interface DocumentSectionCardProps {
   section: DocumentSection;
@@ -18,6 +48,7 @@ interface DocumentSectionCardProps {
   onDelete: (id: string) => void;
   onApprove: (id: string) => void;
   onPublisherChange: (id: string, publisherId: string | null) => void;
+  workspaceSystemPrompt?: string;
 }
 
 export function DocumentSectionCard({ 
@@ -25,11 +56,16 @@ export function DocumentSectionCard({
   onUpdate, 
   onDelete,
   onApprove,
-  onPublisherChange
+  onPublisherChange,
+  workspaceSystemPrompt
 }: DocumentSectionCardProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(section.content);
   const [showLinkedInModal, setShowLinkedInModal] = useState(false);
+  const [isRewriting, setIsRewriting] = useState(false);
+  const [redoTone, setRedoTone] = useState('professional');
+  const [redoLength, setRedoLength] = useState('medium');
+  const [redoOpen, setRedoOpen] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { publishers } = usePublishers();
   const queryClient = useQueryClient();
@@ -58,6 +94,39 @@ export function DocumentSectionCard({
   const handleContentClick = () => {
     if (!isEditing) {
       setIsEditing(true);
+    }
+  };
+
+  const handleRewrite = async () => {
+    setIsRewriting(true);
+    setRedoOpen(false);
+    try {
+      const { data, error } = await supabase.functions.invoke('rewrite-section', {
+        body: {
+          content: section.content,
+          tone: redoTone,
+          length: redoLength,
+          workspaceSystemPrompt: workspaceSystemPrompt || '',
+        },
+      });
+
+      if (error) {
+        console.error('Rewrite error:', error);
+        toast.error('Failed to rewrite post');
+        return;
+      }
+
+      if (data?.success && data.content) {
+        onUpdate(section.id, data.content);
+        toast.success('Post rewritten successfully');
+      } else {
+        toast.error(data?.error || 'Failed to rewrite post');
+      }
+    } catch (err) {
+      console.error('Rewrite error:', err);
+      toast.error('Failed to rewrite post');
+    } finally {
+      setIsRewriting(false);
     }
   };
 
@@ -109,6 +178,65 @@ export function DocumentSectionCard({
           </div>
           
           <div className="flex items-center gap-1">
+            {/* Redo with AI */}
+            <Popover open={redoOpen} onOpenChange={setRedoOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-xs gap-1"
+                  disabled={isRewriting}
+                >
+                  {isRewriting ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-3.5 w-3.5" />
+                  )}
+                  {isRewriting ? 'Rewriting...' : 'Redo'}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-64 space-y-3" align="end">
+                <p className="text-sm font-medium">Rewrite with AI</p>
+                
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">Tone</label>
+                  <Select value={redoTone} onValueChange={setRedoTone}>
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {TONE_OPTIONS.map(t => (
+                        <SelectItem key={t.value} value={t.value} className="text-xs">
+                          {t.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">Length</label>
+                  <Select value={redoLength} onValueChange={setRedoLength}>
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {LENGTH_OPTIONS.map(l => (
+                        <SelectItem key={l.value} value={l.value} className="text-xs">
+                          {l.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <Button size="sm" className="w-full" onClick={handleRewrite}>
+                  <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+                  Rewrite
+                </Button>
+              </PopoverContent>
+            </Popover>
+
             {/* Push to LinkedIn button */}
             {assignedPublisher && (
               <Button
