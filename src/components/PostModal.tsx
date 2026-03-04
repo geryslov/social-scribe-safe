@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { UserPlus, Loader2, Upload, X, Image, Film } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { usePublishers } from '@/hooks/usePublishers';
 import { supabase } from '@/integrations/supabase/client';
 import { useWorkspace } from '@/hooks/useWorkspace';
@@ -140,9 +141,14 @@ export function PostModal({
     }
   };
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const [isDragging, setIsDragging] = useState(false);
+
+  const processFile = (file: File) => {
+    const acceptedTypes = ACCEPTED_TYPES.split(',');
+    if (!acceptedTypes.includes(file.type)) {
+      toast.error('Unsupported file type. Use JPEG, PNG, GIF, or MP4.');
+      return;
+    }
 
     const isVideo = file.type.startsWith('video/');
     const maxSize = isVideo ? MAX_VIDEO_SIZE : MAX_IMAGE_SIZE;
@@ -156,6 +162,29 @@ export function PostModal({
     setExistingMediaUrl(null);
     const url = URL.createObjectURL(file);
     setMediaPreview(url);
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    processFile(file);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) processFile(file);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
   };
 
   const handleRemoveMedia = () => {
@@ -349,10 +378,18 @@ export function PostModal({
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="w-full flex items-center justify-center gap-2 rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground hover:border-primary/40 hover:text-primary transition-colors"
+                onDrop={handleDrop}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                className={cn(
+                  "w-full flex items-center justify-center gap-2 rounded-lg border border-dashed p-4 text-sm transition-colors",
+                  isDragging
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-border text-muted-foreground hover:border-primary/40 hover:text-primary"
+                )}
               >
                 <Upload className="h-4 w-4" />
-                Click to upload (images up to 5MB, videos up to 20MB)
+                {isDragging ? 'Drop file here' : 'Click or drag & drop (images up to 5MB, videos up to 20MB)'}
               </button>
             )}
             <input
