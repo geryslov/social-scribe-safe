@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ThumbsUp, MessageCircle, Repeat2, Send, ExternalLink, Eye, Users, TrendingUp, Linkedin, ChevronRight } from 'lucide-react';
+import { ThumbsUp, MessageCircle, Repeat2, Send, ExternalLink, Eye, Users, TrendingUp, Linkedin, ChevronRight, Pencil } from 'lucide-react';
 import { Post, ReactionBreakdown } from '@/types/post';
 import { PublisherAvatar } from '@/components/PublisherAvatar';
 import { CountUp } from '@/components/CountUp';
@@ -18,6 +18,7 @@ interface LinkedInPostCardProps {
   className?: string;
   publisherHeadline?: string | null;
   publisherCompany?: string | null;
+  onEdit?: (post: Post) => void;
 }
 
 // Reaction type to emoji mapping
@@ -48,6 +49,7 @@ export function LinkedInPostCard({
   className,
   publisherHeadline,
   publisherCompany,
+  onEdit,
 }: LinkedInPostCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [showLinkedInModal, setShowLinkedInModal] = useState(false);
@@ -223,6 +225,17 @@ export function LinkedInPostCard({
           <ActionButton icon={MessageCircle} label="Comment" />
           <ActionButton icon={Repeat2} label="Repost" />
           <ActionButton icon={Send} label="Send" />
+          {onEdit && post.status !== 'done' && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 hover:bg-muted text-xs gap-1"
+              onClick={() => onEdit(post)}
+            >
+              <Pencil className="h-3.5 w-3.5" />
+              Edit
+            </Button>
+          )}
           {post.status !== 'done' && (
             <Button
               variant="ghost"

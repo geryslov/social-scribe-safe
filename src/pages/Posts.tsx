@@ -406,6 +406,7 @@ const Posts = () => {
                         variant="feed"
                         publisherHeadline={publisher?.headline}
                         publisherCompany={publisher?.company_name}
+                        onEdit={handleEdit}
                       />
                     );
                   })}
