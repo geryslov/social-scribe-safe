@@ -27,9 +27,14 @@ import { toast } from 'sonner';
 
 const Posts = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { user, isAdmin, isLoading: authLoading } = useAuth();
   const { posts, isLoading: postsLoading, createPost, updatePost, deletePost, updateStatus, updateLabels } = usePosts();
   const { publishers: dbPublishers } = usePublishers();
+
+  const handleMediaUpdate = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['posts'] });
+  }, [queryClient]);
   
   // Auto-sync LinkedIn analytics on login
   const { isSyncing: isAutoSyncing } = useAutoSync(dbPublishers, user?.id);
