@@ -94,6 +94,67 @@ export function LinkedInPostCard({
         .sort((a, b) => b[1] - a[1])
     : [];
 
+  const isEditable = post.status !== 'done';
+
+  const handleInlineMediaUpload = async (file: File) => {
+    const acceptedTypes = ['image/jpeg', 'image/png', 'image/gif'];
+    if (!acceptedTypes.includes(file.type)) {
+      toast.error('Use JPEG, PNG, or GIF images.');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image too large. Max 5MB.');
+      return;
+    }
+    if (!currentWorkspace) {
+      toast.error('No workspace selected');
+      return;
+    }
+
+    setIsUploadingMedia(true);
+    try {
+      const ext = file.name.split('.').pop();
+      const path = `${currentWorkspace.id}/${post.id}/${Date.now()}.${ext}`;
+      const { error: uploadError } = await supabase.storage
+        .from('post-media')
+        .upload(path, file);
+      if (uploadError) throw uploadError;
+
+      const { data: publicUrlData } = supabase.storage
+        .from('post-media')
+        .getPublicUrl(path);
+      const mediaUrl = publicUrlData.publicUrl;
+
+      const { error: updateError } = await supabase
+        .from('posts')
+        .update({ media_url: mediaUrl })
+        .eq('id', post.id);
+      if (updateError) throw updateError;
+
+      onMediaUpdate?.(post.id, mediaUrl);
+      toast.success('Image attached!');
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to upload image');
+    } finally {
+      setIsUploadingMedia(false);
+    }
+  };
+
+  const handleRemoveMedia = async () => {
+    try {
+      const { error } = await supabase
+        .from('posts')
+        .update({ media_url: null })
+        .eq('id', post.id);
+      if (error) throw error;
+      onMediaUpdate?.(post.id, null);
+      toast.success('Image removed');
+    } catch {
+      toast.error('Failed to remove image');
+    }
+  };
+
   return (
     <div className={cn(
       "bg-card border border-border rounded-lg overflow-hidden transition-all duration-200",
