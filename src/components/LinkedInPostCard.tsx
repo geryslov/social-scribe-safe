@@ -21,6 +21,7 @@ interface LinkedInPostCardProps {
   publisherHeadline?: string | null;
   publisherCompany?: string | null;
   onEdit?: (post: Post) => void;
+  onDelete?: (postId: string) => void;
   onMediaUpdate?: (postId: string, mediaUrl: string | null) => void;
 }
 
