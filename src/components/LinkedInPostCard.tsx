@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { ThumbsUp, MessageCircle, Repeat2, Send, ExternalLink, Eye, Users, TrendingUp, Linkedin, ChevronRight, Pencil, ImagePlus, X, Loader2 } from 'lucide-react';
+import { ExternalLink, Eye, Users, TrendingUp, Linkedin, ChevronRight, Pencil, ImagePlus, X, Loader2 } from 'lucide-react';
 import { Post, ReactionBreakdown } from '@/types/post';
 import { PublisherAvatar } from '@/components/PublisherAvatar';
 import { CountUp } from '@/components/CountUp';
@@ -157,59 +157,102 @@ export function LinkedInPostCard({
 
   return (
     <div className={cn(
-      "bg-card border border-border rounded-lg overflow-hidden transition-all duration-200",
-      "hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5",
+      "bg-card border border-border rounded-xl overflow-hidden transition-all duration-200",
+      "hover:border-primary/20 hover:shadow-md",
       className
     )}>
-      {/* Post Header - Compact */}
-      <div className="px-3 pt-3 pb-1.5">
-        <div className="flex items-center gap-2.5">
-          <PublisherAvatar 
-            name={post.publisherName} 
-            size="sm" 
-            className="w-9 h-9 ring-1 ring-border"
-          />
-          
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center justify-between">
-              <div className="min-w-0">
-                <h3 className="text-sm font-semibold text-foreground leading-tight truncate">
-                  {post.publisherName}
-                </h3>
-                {displaySubtitle && (
-                  <p className="text-[11px] text-muted-foreground line-clamp-1 leading-tight">
-                    {displaySubtitle}
-                  </p>
-                )}
-              </div>
-              <div className="flex items-center gap-1.5 text-muted-foreground flex-shrink-0 ml-2">
-                <span className="text-[10px]">
-                  {publishedDate ? getRelativeTime(publishedDate) : 'Draft'}
-                </span>
-                <Linkedin className="h-3.5 w-3.5 text-[#0A66C2]" />
-              </div>
-            </div>
+      {/* Header Row */}
+      <div className="flex items-center gap-2 px-3.5 pt-3 pb-1">
+        <PublisherAvatar 
+          name={post.publisherName} 
+          size="sm" 
+          className="w-8 h-8 ring-1 ring-border flex-shrink-0"
+        />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1.5">
+            <span className="text-[13px] font-semibold text-foreground truncate">
+              {post.publisherName}
+            </span>
+            <span className="text-[11px] text-muted-foreground">·</span>
+            <span className="text-[11px] text-muted-foreground flex-shrink-0">
+              {publishedDate ? getRelativeTime(publishedDate) : 'Draft'}
+            </span>
           </div>
+          {displaySubtitle && (
+            <p className="text-[11px] text-muted-foreground truncate leading-tight">
+              {displaySubtitle}
+            </p>
+          )}
         </div>
+        <Linkedin className="h-3.5 w-3.5 text-[#0A66C2] flex-shrink-0" />
       </div>
 
-      {/* Post Content - Compact */}
-      <div className="px-3 pb-2">
-        <p className="text-sm text-foreground whitespace-pre-wrap leading-snug">
-          {displayContent}
-          {shouldTruncate && !isExpanded && '...'}
-        </p>
-        {shouldTruncate && (
-          <button
-            onClick={() => setIsExpanded(!isExpanded)}
-            className="text-muted-foreground hover:text-primary text-xs font-medium mt-0.5"
-          >
-            {isExpanded ? 'show less' : '...more'}
-          </button>
+      {/* Content + Media Row */}
+      <div className={cn(
+        "px-3.5 pb-2",
+        post.mediaUrl && !post.postType?.includes('video') && "flex gap-3"
+      )}>
+        {/* Text Content */}
+        <div className={cn("flex-1 min-w-0", post.mediaUrl && !post.postType?.includes('video') && "flex-[2]")}>
+          <p className="text-[13px] text-foreground whitespace-pre-wrap leading-relaxed">
+            {displayContent}
+            {shouldTruncate && !isExpanded && (
+              <button
+                onClick={() => setIsExpanded(true)}
+                className="text-primary hover:text-primary/80 text-[13px] font-medium ml-0.5"
+              >
+                ...more
+              </button>
+            )}
+          </p>
+          {isExpanded && shouldTruncate && (
+            <button
+              onClick={() => setIsExpanded(false)}
+              className="text-muted-foreground hover:text-primary text-[11px] font-medium mt-0.5"
+            >
+              show less
+            </button>
+          )}
+        </div>
+
+        {/* Inline Image Thumbnail (beside text) */}
+        {post.mediaUrl && !post.postType?.includes('video') && (
+          <div className="relative flex-1 max-w-[140px] flex-shrink-0 group">
+            <img
+              src={post.mediaUrl}
+              alt="Post attachment"
+              className="w-full h-24 rounded-lg border border-border/50 object-cover"
+              loading="lazy"
+            />
+            {isEditable && (
+              <Button
+                variant="secondary"
+                size="sm"
+                className="absolute top-1 right-1 h-5 w-5 p-0 opacity-0 group-hover:opacity-100 transition-opacity bg-background/80 backdrop-blur-sm"
+                onClick={handleRemoveMedia}
+              >
+                <X className="h-3 w-3" />
+              </Button>
+            )}
+          </div>
         )}
       </div>
 
-      {/* Hidden file input for inline upload */}
+      {/* Video (full width below text) */}
+      {post.mediaUrl && post.postType === 'video' && (
+        <div className="px-3.5 pb-2">
+          <div className="relative rounded-lg overflow-hidden bg-muted/50 border border-border/50 aspect-video">
+            <video
+              src={post.mediaUrl}
+              className="w-full h-full object-cover"
+              controls
+              preload="metadata"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Hidden file input */}
       <input
         ref={mediaInputRef}
         type="file"
@@ -222,41 +265,9 @@ export function LinkedInPostCard({
         }}
       />
 
-      {/* Media Preview or Attach Zone */}
-      {post.mediaUrl ? (
-        <div className="px-3 pb-2 relative group">
-          {post.postType === 'video' ? (
-            <div className="relative rounded-lg overflow-hidden bg-muted/50 border border-border/50 aspect-video flex items-center justify-center">
-              <video
-                src={post.mediaUrl}
-                className="w-full h-full object-cover"
-                controls
-                preload="metadata"
-              />
-            </div>
-          ) : (
-            <div className="relative">
-              <img
-                src={post.mediaUrl}
-                alt="Post attachment"
-                className="w-full rounded-lg border border-border/50 max-h-80 object-cover"
-                loading="lazy"
-              />
-              {isEditable && (
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  className="absolute top-2 right-2 h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity bg-background/80 backdrop-blur-sm"
-                  onClick={handleRemoveMedia}
-                >
-                  <X className="h-3.5 w-3.5" />
-                </Button>
-              )}
-            </div>
-          )}
-        </div>
-      ) : isEditable ? (
-        <div className="px-3 pb-2">
+      {/* Image attach zone (for posts without media) */}
+      {!post.mediaUrl && isEditable && (
+        <div className="px-3.5 pb-2">
           <button
             onClick={() => mediaInputRef.current?.click()}
             disabled={isUploadingMedia}
@@ -267,68 +278,58 @@ export function LinkedInPostCard({
             }}
             onDragOver={(e) => e.preventDefault()}
             className={cn(
-              "w-full flex items-center justify-center gap-2 py-3 rounded-lg border-2 border-dashed border-border/60 text-muted-foreground text-xs",
+              "w-full flex items-center justify-center gap-1.5 py-2 rounded-lg border border-dashed border-border/60 text-muted-foreground text-[11px]",
               "hover:border-primary/40 hover:text-primary hover:bg-primary/5 transition-colors cursor-pointer",
               isUploadingMedia && "opacity-50 cursor-wait"
             )}
           >
             {isUploadingMedia ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
             ) : (
-              <ImagePlus className="h-4 w-4" />
+              <ImagePlus className="h-3.5 w-3.5" />
             )}
-            {isUploadingMedia ? 'Uploading...' : 'Drop image here or click to attach'}
+            {isUploadingMedia ? 'Uploading...' : 'Attach image'}
           </button>
         </div>
-      ) : null}
+      )}
 
-      {/* Engagement Summary - Clickable reactions */}
+      {/* Engagement Row */}
       {(totalReactions > 0 || comments > 0 || reshares > 0) && (
-        <div className="px-3 py-1.5 border-t border-border/50">
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
+        <div className="px-3.5 py-1 border-t border-border/40">
+          <div className="flex items-center justify-between text-[11px] text-muted-foreground">
             <button
               onClick={() => setShowReactionBreakdown(!showReactionBreakdown)}
-              className="flex items-center gap-1 hover:text-foreground transition-colors group"
+              className="flex items-center gap-1 hover:text-foreground transition-colors"
             >
-              <div className="flex -space-x-1">
+              <div className="flex -space-x-0.5">
                 {topReactions.map((emoji, idx) => (
-                  <span 
-                    key={idx} 
-                    className="text-sm bg-background rounded-full p-px border border-border/50"
-                    style={{ zIndex: 3 - idx }}
-                  >
+                  <span key={idx} className="text-xs" style={{ zIndex: 3 - idx }}>
                     {emoji}
                   </span>
                 ))}
               </div>
-              <span className="ml-0.5 font-medium">{totalReactions.toLocaleString()}</span>
+              <span className="font-medium tabular-nums">{totalReactions.toLocaleString()}</span>
               <ChevronRight className={cn(
-                "h-3 w-3 transition-transform duration-200",
+                "h-2.5 w-2.5 transition-transform duration-200",
                 showReactionBreakdown && "rotate-90"
               )} />
             </button>
-            
-            <div className="flex items-center gap-2.5">
-              {comments > 0 && (
-                <span>{comments} comment{comments !== 1 ? 's' : ''}</span>
-              )}
-              {reshares > 0 && (
-                <span>{reshares} repost{reshares !== 1 ? 's' : ''}</span>
-              )}
+            <div className="flex items-center gap-2">
+              {comments > 0 && <span>{comments} comment{comments !== 1 ? 's' : ''}</span>}
+              {reshares > 0 && <span>{reshares} repost{reshares !== 1 ? 's' : ''}</span>}
             </div>
           </div>
 
-          {/* Reaction Breakdown Slide-in */}
           {showReactionBreakdown && breakdownEntries.length > 0 && (
-            <div className="mt-2 flex flex-wrap gap-1.5 animate-fade-in pb-1">
+            <div className="mt-1.5 flex flex-wrap gap-1 animate-fade-in pb-0.5">
               {breakdownEntries.map(([type, count]) => (
                 <span
                   key={type}
-                  className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-muted/50 border border-border/50 text-[11px] font-medium"
+                  className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-muted/40 text-[10px] font-medium"
                 >
-                  <span className="text-sm">{reactionEmojis[type as keyof ReactionBreakdown] || '👍'}</span>
+                  <span className="text-xs">{reactionEmojis[type as keyof ReactionBreakdown] || '👍'}</span>
                   <span className="capitalize text-foreground">{type}</span>
-                  <span className="text-muted-foreground font-mono">{count}</span>
+                  <span className="text-muted-foreground font-mono tabular-nums">{count}</span>
                 </span>
               ))}
             </div>
@@ -336,57 +337,45 @@ export function LinkedInPostCard({
         </div>
       )}
 
-      {/* Action Buttons - Compact */}
-      <div className="px-1 py-0.5 border-t border-border/50">
-        <div className="flex items-center justify-around">
-          <ActionButton icon={ThumbsUp} label="Like" />
-          <ActionButton icon={MessageCircle} label="Comment" />
-          <ActionButton icon={Repeat2} label="Repost" />
-          <ActionButton icon={Send} label="Send" />
-          {onEdit && post.status !== 'done' && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 px-2 hover:bg-muted text-xs gap-1"
-              onClick={() => onEdit(post)}
-            >
-              <Pencil className="h-3.5 w-3.5" />
-              Edit
-            </Button>
-          )}
-          {post.status !== 'done' && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 px-2 hover:bg-[#0077b5]/10 hover:text-[#0077b5] text-xs gap-1"
-              onClick={() => setShowLinkedInModal(true)}
-            >
-              <Linkedin className="h-3.5 w-3.5" />
-              Push
-            </Button>
-          )}
-        </div>
+      {/* Action Bar */}
+      <div className="flex items-center border-t border-border/40 divide-x divide-border/40">
+        {onEdit && post.status !== 'done' && (
+          <button
+            onClick={() => onEdit(post)}
+            className="flex-1 flex items-center justify-center gap-1.5 py-1.5 text-[11px] font-medium text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
+          >
+            <Pencil className="h-3 w-3" />
+            Edit
+          </button>
+        )}
+        {post.status !== 'done' && (
+          <button
+            onClick={() => setShowLinkedInModal(true)}
+            className="flex-1 flex items-center justify-center gap-1.5 py-1.5 text-[11px] font-medium text-[#0A66C2] hover:bg-[#0A66C2]/8 transition-colors"
+          >
+            <Linkedin className="h-3 w-3" />
+            Push to LinkedIn
+          </button>
+        )}
+        {linkedInUrl && (
+          <a
+            href={linkedInUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex-1 flex items-center justify-center gap-1.5 py-1.5 text-[11px] font-medium text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
+          >
+            <ExternalLink className="h-3 w-3" />
+            View
+          </a>
+        )}
       </div>
 
-      {/* Analytics Panel - Compact */}
+      {/* Analytics Strip */}
       {showAnalytics && impressions > 0 && (
-        <div className="px-3 py-2 bg-muted/30 border-t border-border">
-          <div className="grid grid-cols-4 gap-1.5">
-            <AnalyticsStat icon={Eye} value={impressions} label="Impressions" />
-            <AnalyticsStat icon={Users} value={reach} label="Reach" />
-            <AnalyticsStat icon={TrendingUp} value={engagementRate} label="Engage" isPercentage />
-            {linkedInUrl && (
-              <a
-                href={linkedInUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex flex-col items-center justify-center p-1.5 rounded-lg bg-primary/10 hover:bg-primary/20 transition-colors group"
-              >
-                <ExternalLink className="h-3.5 w-3.5 text-primary group-hover:scale-110 transition-transform" />
-                <span className="text-[9px] text-muted-foreground mt-0.5">View</span>
-              </a>
-            )}
-          </div>
+        <div className="flex items-center justify-around px-3.5 py-1.5 bg-muted/20 border-t border-border/40 text-[10px]">
+          <AnalyticsStat icon={Eye} value={impressions} label="Impressions" />
+          <AnalyticsStat icon={Users} value={reach} label="Reach" />
+          <AnalyticsStat icon={TrendingUp} value={engagementRate} label="Engage" isPercentage />
         </div>
       )}
 
@@ -416,15 +405,6 @@ export function LinkedInPostCard({
   );
 }
 
-function ActionButton({ icon: Icon, label }: { icon: typeof ThumbsUp; label: string }) {
-  return (
-    <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-colors">
-      <Icon className="h-3.5 w-3.5" />
-      <span className="text-xs font-medium hidden sm:inline">{label}</span>
-    </button>
-  );
-}
-
 function AnalyticsStat({ 
   icon: Icon, 
   value, 
@@ -437,16 +417,16 @@ function AnalyticsStat({
   isPercentage?: boolean;
 }) {
   return (
-    <div className="flex flex-col items-center p-1.5 rounded-lg bg-background/50">
-      <Icon className="h-3.5 w-3.5 text-muted-foreground mb-0.5" />
-      <span className="text-xs font-bold font-mono tabular-nums">
+    <div className="flex items-center gap-1.5 text-muted-foreground">
+      <Icon className="h-3 w-3" />
+      <span className="text-[11px] font-semibold font-mono tabular-nums text-foreground">
         <CountUp 
           end={value} 
           decimals={isPercentage ? 1 : 0}
           suffix={isPercentage ? '%' : ''}
         />
       </span>
-      <span className="text-[9px] text-muted-foreground">{label}</span>
+      <span className="text-[10px]">{label}</span>
     </div>
   );
 }
