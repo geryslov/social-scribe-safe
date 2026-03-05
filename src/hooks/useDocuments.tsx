@@ -187,7 +187,17 @@ function parsePostSections(content: string): string[] {
     sections.push(currentSection.join('\n').trim());
   }
 
-  return sections.filter(s => s.length > 0);
+  const result = sections.filter(s => s.length > 0);
+
+  // If no "Post N" markers were found, treat the entire content as a single section
+  if (result.length === 0) {
+    const trimmed = content.trim();
+    if (trimmed.length > 0) {
+      return [trimmed];
+    }
+  }
+
+  return result;
 }
 
   const updateDocument = useMutation({
