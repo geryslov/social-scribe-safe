@@ -53,11 +53,15 @@ export function LinkedInPostCard({
   publisherHeadline,
   publisherCompany,
   onEdit,
+  onMediaUpdate,
 }: LinkedInPostCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [showLinkedInModal, setShowLinkedInModal] = useState(false);
   const [showReactionBreakdown, setShowReactionBreakdown] = useState(false);
+  const [isUploadingMedia, setIsUploadingMedia] = useState(false);
+  const mediaInputRef = useRef<HTMLInputElement>(null);
   const { publishers } = usePublishers();
+  const { currentWorkspace } = useWorkspace();
   
   // Find the publisher for this post
   const publisher = publishers.find(p => p.name === post.publisherName);
