@@ -23,9 +23,10 @@ interface PublishedPostRowProps {
   post: Post;
   publisherHeadline?: string | null;
   publisherCompany?: string | null;
+  isEven?: boolean;
 }
 
-export function PublishedPostRow({ post, publisherHeadline }: PublishedPostRowProps) {
+export function PublishedPostRow({ post, publisherHeadline, isEven }: PublishedPostRowProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
   const totalReactions = post.reactions || 0;
@@ -44,7 +45,10 @@ export function PublishedPostRow({ post, publisherHeadline }: PublishedPostRowPr
     : post.content;
 
   return (
-    <div className="group bg-card/50 border border-border/40 rounded-lg hover:border-border hover:bg-card transition-all duration-150">
+    <div className={cn(
+      "group border border-border/40 rounded-lg hover:border-border transition-all duration-150",
+      isEven ? "bg-card/50" : "bg-muted/20"
+    )}>
       <div className="flex items-start gap-3 p-3">
         {/* Avatar */}
         <PublisherAvatar
