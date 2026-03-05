@@ -435,15 +435,13 @@ const Posts = () => {
                   <div className="h-px flex-1 bg-border" />
                 </div>
                 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
                     {publishedPosts.map((post) => {
                       const publisher = dbPublishers.find(p => p.name === post.publisherName);
                       return (
-                        <LinkedInPostCard
+                        <PublishedPostRow
                           key={post.id}
                           post={post}
-                          showAnalytics={true}
-                          variant="feed"
                           publisherHeadline={publisher?.headline}
                           publisherCompany={publisher?.company_name}
                         />
