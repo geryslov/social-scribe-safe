@@ -23,9 +23,10 @@ interface PublishedPostRowProps {
   post: Post;
   publisherHeadline?: string | null;
   publisherCompany?: string | null;
+  isEven?: boolean;
 }
 
-export function PublishedPostRow({ post, publisherHeadline }: PublishedPostRowProps) {
+export function PublishedPostRow({ post, publisherHeadline, isEven }: PublishedPostRowProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
   const totalReactions = post.reactions || 0;
