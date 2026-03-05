@@ -405,15 +405,6 @@ export function LinkedInPostCard({
   );
 }
 
-function ActionButton({ icon: Icon, label }: { icon: typeof ThumbsUp; label: string }) {
-  return (
-    <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-colors">
-      <Icon className="h-3.5 w-3.5" />
-      <span className="text-xs font-medium hidden sm:inline">{label}</span>
-    </button>
-  );
-}
-
 function AnalyticsStat({ 
   icon: Icon, 
   value, 
@@ -426,16 +417,16 @@ function AnalyticsStat({
   isPercentage?: boolean;
 }) {
   return (
-    <div className="flex flex-col items-center p-1.5 rounded-lg bg-background/50">
-      <Icon className="h-3.5 w-3.5 text-muted-foreground mb-0.5" />
-      <span className="text-xs font-bold font-mono tabular-nums">
+    <div className="flex items-center gap-1.5 text-muted-foreground">
+      <Icon className="h-3 w-3" />
+      <span className="text-[11px] font-semibold font-mono tabular-nums text-foreground">
         <CountUp 
           end={value} 
           decimals={isPercentage ? 1 : 0}
           suffix={isPercentage ? '%' : ''}
         />
       </span>
-      <span className="text-[9px] text-muted-foreground">{label}</span>
+      <span className="text-[10px]">{label}</span>
     </div>
   );
 }
