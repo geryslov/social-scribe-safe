@@ -54,6 +54,7 @@ export function LinkedInPostCard({
   publisherHeadline,
   publisherCompany,
   onEdit,
+  onDelete,
   onMediaUpdate,
 }: LinkedInPostCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
