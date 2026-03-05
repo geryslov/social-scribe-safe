@@ -413,6 +413,7 @@ const Posts = () => {
                         publisherHeadline={publisher?.headline}
                         publisherCompany={publisher?.company_name}
                         onEdit={handleEdit}
+                        onMediaUpdate={handleMediaUpdate}
                       />
                     );
                   })}
