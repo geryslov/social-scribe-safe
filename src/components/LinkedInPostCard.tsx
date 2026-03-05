@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { ThumbsUp, MessageCircle, Repeat2, Send, ExternalLink, Eye, Users, TrendingUp, Linkedin, ChevronRight, Pencil } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { ThumbsUp, MessageCircle, Repeat2, Send, ExternalLink, Eye, Users, TrendingUp, Linkedin, ChevronRight, Pencil, ImagePlus, X, Loader2 } from 'lucide-react';
 import { Post, ReactionBreakdown } from '@/types/post';
 import { PublisherAvatar } from '@/components/PublisherAvatar';
 import { CountUp } from '@/components/CountUp';
@@ -9,6 +9,8 @@ import { Button } from '@/components/ui/button';
 import { LinkedInPublishModal } from '@/components/LinkedInPublishModal';
 import { PostEngagersPanel } from '@/components/PostEngagersPanel';
 import { usePublishers } from '@/hooks/usePublishers';
+import { useWorkspace } from '@/hooks/useWorkspace';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 interface LinkedInPostCardProps {
@@ -19,6 +21,7 @@ interface LinkedInPostCardProps {
   publisherHeadline?: string | null;
   publisherCompany?: string | null;
   onEdit?: (post: Post) => void;
+  onMediaUpdate?: (postId: string, mediaUrl: string | null) => void;
 }
 
 // Reaction type to emoji mapping
@@ -50,11 +53,15 @@ export function LinkedInPostCard({
   publisherHeadline,
   publisherCompany,
   onEdit,
+  onMediaUpdate,
 }: LinkedInPostCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [showLinkedInModal, setShowLinkedInModal] = useState(false);
   const [showReactionBreakdown, setShowReactionBreakdown] = useState(false);
+  const [isUploadingMedia, setIsUploadingMedia] = useState(false);
+  const mediaInputRef = useRef<HTMLInputElement>(null);
   const { publishers } = usePublishers();
+  const { currentWorkspace } = useWorkspace();
   
   // Find the publisher for this post
   const publisher = publishers.find(p => p.name === post.publisherName);
@@ -86,6 +93,67 @@ export function LinkedInPostCard({
         .filter(([_, count]) => count > 0)
         .sort((a, b) => b[1] - a[1])
     : [];
+
+  const isEditable = post.status !== 'done';
+
+  const handleInlineMediaUpload = async (file: File) => {
+    const acceptedTypes = ['image/jpeg', 'image/png', 'image/gif'];
+    if (!acceptedTypes.includes(file.type)) {
+      toast.error('Use JPEG, PNG, or GIF images.');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image too large. Max 5MB.');
+      return;
+    }
+    if (!currentWorkspace) {
+      toast.error('No workspace selected');
+      return;
+    }
+
+    setIsUploadingMedia(true);
+    try {
+      const ext = file.name.split('.').pop();
+      const path = `${currentWorkspace.id}/${post.id}/${Date.now()}.${ext}`;
+      const { error: uploadError } = await supabase.storage
+        .from('post-media')
+        .upload(path, file);
+      if (uploadError) throw uploadError;
+
+      const { data: publicUrlData } = supabase.storage
+        .from('post-media')
+        .getPublicUrl(path);
+      const mediaUrl = publicUrlData.publicUrl;
+
+      const { error: updateError } = await supabase
+        .from('posts')
+        .update({ media_url: mediaUrl })
+        .eq('id', post.id);
+      if (updateError) throw updateError;
+
+      onMediaUpdate?.(post.id, mediaUrl);
+      toast.success('Image attached!');
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to upload image');
+    } finally {
+      setIsUploadingMedia(false);
+    }
+  };
+
+  const handleRemoveMedia = async () => {
+    try {
+      const { error } = await supabase
+        .from('posts')
+        .update({ media_url: null })
+        .eq('id', post.id);
+      if (error) throw error;
+      onMediaUpdate?.(post.id, null);
+      toast.success('Image removed');
+    } catch {
+      toast.error('Failed to remove image');
+    }
+  };
 
   return (
     <div className={cn(
@@ -141,9 +209,22 @@ export function LinkedInPostCard({
         )}
       </div>
 
-      {/* Media Preview */}
-      {post.mediaUrl && (
-        <div className="px-3 pb-2">
+      {/* Hidden file input for inline upload */}
+      <input
+        ref={mediaInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/gif"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) handleInlineMediaUpload(file);
+          e.target.value = '';
+        }}
+      />
+
+      {/* Media Preview or Attach Zone */}
+      {post.mediaUrl ? (
+        <div className="px-3 pb-2 relative group">
           {post.postType === 'video' ? (
             <div className="relative rounded-lg overflow-hidden bg-muted/50 border border-border/50 aspect-video flex items-center justify-center">
               <video
@@ -154,15 +235,52 @@ export function LinkedInPostCard({
               />
             </div>
           ) : (
-            <img
-              src={post.mediaUrl}
-              alt="Post attachment"
-              className="w-full rounded-lg border border-border/50 max-h-80 object-cover"
-              loading="lazy"
-            />
+            <div className="relative">
+              <img
+                src={post.mediaUrl}
+                alt="Post attachment"
+                className="w-full rounded-lg border border-border/50 max-h-80 object-cover"
+                loading="lazy"
+              />
+              {isEditable && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="absolute top-2 right-2 h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity bg-background/80 backdrop-blur-sm"
+                  onClick={handleRemoveMedia}
+                >
+                  <X className="h-3.5 w-3.5" />
+                </Button>
+              )}
+            </div>
           )}
         </div>
-      )}
+      ) : isEditable ? (
+        <div className="px-3 pb-2">
+          <button
+            onClick={() => mediaInputRef.current?.click()}
+            disabled={isUploadingMedia}
+            onDrop={(e) => {
+              e.preventDefault();
+              const file = e.dataTransfer.files?.[0];
+              if (file) handleInlineMediaUpload(file);
+            }}
+            onDragOver={(e) => e.preventDefault()}
+            className={cn(
+              "w-full flex items-center justify-center gap-2 py-3 rounded-lg border-2 border-dashed border-border/60 text-muted-foreground text-xs",
+              "hover:border-primary/40 hover:text-primary hover:bg-primary/5 transition-colors cursor-pointer",
+              isUploadingMedia && "opacity-50 cursor-wait"
+            )}
+          >
+            {isUploadingMedia ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <ImagePlus className="h-4 w-4" />
+            )}
+            {isUploadingMedia ? 'Uploading...' : 'Drop image here or click to attach'}
+          </button>
+        </div>
+      ) : null}
 
       {/* Engagement Summary - Clickable reactions */}
       {(totalReactions > 0 || comments > 0 || reshares > 0) && (

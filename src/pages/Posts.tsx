@@ -1,4 +1,5 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { Post } from '@/types/post';
 import { useAuth } from '@/hooks/useAuth';
@@ -26,9 +27,14 @@ import { toast } from 'sonner';
 
 const Posts = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { user, isAdmin, isLoading: authLoading } = useAuth();
   const { posts, isLoading: postsLoading, createPost, updatePost, deletePost, updateStatus, updateLabels } = usePosts();
   const { publishers: dbPublishers } = usePublishers();
+
+  const handleMediaUpdate = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['posts'] });
+  }, [queryClient]);
   
   // Auto-sync LinkedIn analytics on login
   const { isSyncing: isAutoSyncing } = useAutoSync(dbPublishers, user?.id);
@@ -407,6 +413,7 @@ const Posts = () => {
                         publisherHeadline={publisher?.headline}
                         publisherCompany={publisher?.company_name}
                         onEdit={handleEdit}
+                        onMediaUpdate={handleMediaUpdate}
                       />
                     );
                   })}
