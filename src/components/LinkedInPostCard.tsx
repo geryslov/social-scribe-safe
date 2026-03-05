@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { ThumbsUp, MessageCircle, Repeat2, Send, ExternalLink, Eye, Users, TrendingUp, Linkedin, ChevronRight, Pencil, ImagePlus, X, Loader2 } from 'lucide-react';
+import { ExternalLink, Eye, Users, TrendingUp, Linkedin, ChevronRight, Pencil, ImagePlus, X, Loader2 } from 'lucide-react';
 import { Post, ReactionBreakdown } from '@/types/post';
 import { PublisherAvatar } from '@/components/PublisherAvatar';
 import { CountUp } from '@/components/CountUp';
