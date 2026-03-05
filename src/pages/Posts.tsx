@@ -414,6 +414,7 @@ const Posts = () => {
                         publisherHeadline={publisher?.headline}
                         publisherCompany={publisher?.company_name}
                         onEdit={handleEdit}
+                        onDelete={isAdmin ? handleDelete : undefined}
                         onMediaUpdate={handleMediaUpdate}
                       />
                     );

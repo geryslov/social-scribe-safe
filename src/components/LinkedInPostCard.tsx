@@ -359,6 +359,15 @@ export function LinkedInPostCard({
             Push to LinkedIn
           </button>
         )}
+        {onDelete && post.status !== 'done' && (
+          <button
+            onClick={() => onDelete(post.id)}
+            className="flex-1 flex items-center justify-center gap-1.5 py-1.5 text-[11px] font-medium text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+          >
+            <Trash2 className="h-3 w-3" />
+            Delete
+          </button>
+        )}
         {linkedInUrl && (
           <a
             href={linkedInUrl}
