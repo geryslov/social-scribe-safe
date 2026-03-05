@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { ThumbsUp, MessageCircle, Repeat2, Send, ExternalLink, Eye, Users, TrendingUp, Linkedin, ChevronRight, Pencil } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { ThumbsUp, MessageCircle, Repeat2, Send, ExternalLink, Eye, Users, TrendingUp, Linkedin, ChevronRight, Pencil, ImagePlus, X, Loader2 } from 'lucide-react';
 import { Post, ReactionBreakdown } from '@/types/post';
 import { PublisherAvatar } from '@/components/PublisherAvatar';
 import { CountUp } from '@/components/CountUp';
@@ -9,6 +9,8 @@ import { Button } from '@/components/ui/button';
 import { LinkedInPublishModal } from '@/components/LinkedInPublishModal';
 import { PostEngagersPanel } from '@/components/PostEngagersPanel';
 import { usePublishers } from '@/hooks/usePublishers';
+import { useWorkspace } from '@/hooks/useWorkspace';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 interface LinkedInPostCardProps {
