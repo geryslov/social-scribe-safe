@@ -21,6 +21,7 @@ interface LinkedInPostCardProps {
   publisherHeadline?: string | null;
   publisherCompany?: string | null;
   onEdit?: (post: Post) => void;
+  onMediaUpdate?: (postId: string, mediaUrl: string | null) => void;
 }
 
 // Reaction type to emoji mapping
