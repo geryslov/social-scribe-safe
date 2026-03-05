@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { ExternalLink, Eye, Users, TrendingUp, Linkedin, ChevronRight, Pencil, ImagePlus, X, Loader2 } from 'lucide-react';
+import { ExternalLink, Eye, Users, TrendingUp, Linkedin, ChevronRight, Pencil, ImagePlus, X, Loader2, Trash2 } from 'lucide-react';
 import { Post, ReactionBreakdown } from '@/types/post';
 import { PublisherAvatar } from '@/components/PublisherAvatar';
 import { CountUp } from '@/components/CountUp';
@@ -21,6 +21,7 @@ interface LinkedInPostCardProps {
   publisherHeadline?: string | null;
   publisherCompany?: string | null;
   onEdit?: (post: Post) => void;
+  onDelete?: (postId: string) => void;
   onMediaUpdate?: (postId: string, mediaUrl: string | null) => void;
 }
 
@@ -53,6 +54,7 @@ export function LinkedInPostCard({
   publisherHeadline,
   publisherCompany,
   onEdit,
+  onDelete,
   onMediaUpdate,
 }: LinkedInPostCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -355,6 +357,15 @@ export function LinkedInPostCard({
           >
             <Linkedin className="h-3 w-3" />
             Push to LinkedIn
+          </button>
+        )}
+        {onDelete && post.status !== 'done' && (
+          <button
+            onClick={() => onDelete(post.id)}
+            className="flex-1 flex items-center justify-center gap-1.5 py-1.5 text-[11px] font-medium text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+          >
+            <Trash2 className="h-3 w-3" />
+            Delete
           </button>
         )}
         {linkedInUrl && (
