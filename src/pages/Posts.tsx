@@ -423,11 +423,16 @@ const Posts = () => {
 
             {/* Published Posts Section */}
             {publishedPosts.length > 0 && (
-              <div className="space-y-4 mt-10">
-                <h3 className="text-lg font-semibold text-foreground">
-                  Published
-                  <span className="ml-2 text-sm font-normal text-muted-foreground">({publishedPosts.length})</span>
-                </h3>
+              <div className="mt-10">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="h-px flex-1 bg-border" />
+                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-success/10 border border-success/20">
+                    <div className="h-2 w-2 rounded-full bg-success" />
+                    <span className="text-sm font-medium text-success">Published</span>
+                    <span className="text-xs text-success/70">({publishedPosts.length})</span>
+                  </div>
+                  <div className="h-px flex-1 bg-border" />
+                </div>
                 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                     {publishedPosts.map((post) => {
