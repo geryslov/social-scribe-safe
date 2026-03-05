@@ -11,6 +11,7 @@ import { PublisherSidebar } from '@/components/PublisherSidebar';
 import { PostRow } from '@/components/PostRow';
 import { PostModal } from '@/components/PostModal';
 import { LinkedInPostCard } from '@/components/LinkedInPostCard';
+import { PublishedPostRow } from '@/components/PublishedPostRow';
 import { BulkUploadModal } from '@/components/BulkUploadModal';
 import { DocumentUploadModal } from '@/components/DocumentUploadModal';
 import { useDocuments } from '@/hooks/useDocuments';
