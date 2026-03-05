@@ -209,9 +209,22 @@ export function LinkedInPostCard({
         )}
       </div>
 
-      {/* Media Preview */}
-      {post.mediaUrl && (
-        <div className="px-3 pb-2">
+      {/* Hidden file input for inline upload */}
+      <input
+        ref={mediaInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/gif"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) handleInlineMediaUpload(file);
+          e.target.value = '';
+        }}
+      />
+
+      {/* Media Preview or Attach Zone */}
+      {post.mediaUrl ? (
+        <div className="px-3 pb-2 relative group">
           {post.postType === 'video' ? (
             <div className="relative rounded-lg overflow-hidden bg-muted/50 border border-border/50 aspect-video flex items-center justify-center">
               <video
@@ -222,15 +235,52 @@ export function LinkedInPostCard({
               />
             </div>
           ) : (
-            <img
-              src={post.mediaUrl}
-              alt="Post attachment"
-              className="w-full rounded-lg border border-border/50 max-h-80 object-cover"
-              loading="lazy"
-            />
+            <div className="relative">
+              <img
+                src={post.mediaUrl}
+                alt="Post attachment"
+                className="w-full rounded-lg border border-border/50 max-h-80 object-cover"
+                loading="lazy"
+              />
+              {isEditable && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="absolute top-2 right-2 h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity bg-background/80 backdrop-blur-sm"
+                  onClick={handleRemoveMedia}
+                >
+                  <X className="h-3.5 w-3.5" />
+                </Button>
+              )}
+            </div>
           )}
         </div>
-      )}
+      ) : isEditable ? (
+        <div className="px-3 pb-2">
+          <button
+            onClick={() => mediaInputRef.current?.click()}
+            disabled={isUploadingMedia}
+            onDrop={(e) => {
+              e.preventDefault();
+              const file = e.dataTransfer.files?.[0];
+              if (file) handleInlineMediaUpload(file);
+            }}
+            onDragOver={(e) => e.preventDefault()}
+            className={cn(
+              "w-full flex items-center justify-center gap-2 py-3 rounded-lg border-2 border-dashed border-border/60 text-muted-foreground text-xs",
+              "hover:border-primary/40 hover:text-primary hover:bg-primary/5 transition-colors cursor-pointer",
+              isUploadingMedia && "opacity-50 cursor-wait"
+            )}
+          >
+            {isUploadingMedia ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <ImagePlus className="h-4 w-4" />
+            )}
+            {isUploadingMedia ? 'Uploading...' : 'Drop image here or click to attach'}
+          </button>
+        </div>
+      ) : null}
 
       {/* Engagement Summary - Clickable reactions */}
       {(totalReactions > 0 || comments > 0 || reshares > 0) && (
