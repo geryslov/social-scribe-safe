@@ -436,7 +436,7 @@ const Posts = () => {
                 </div>
                 
                 <div className="space-y-1.5">
-                    {publishedPosts.map((post) => {
+                    {publishedPosts.map((post, index) => {
                       const publisher = dbPublishers.find(p => p.name === post.publisherName);
                       return (
                         <PublishedPostRow
@@ -444,6 +444,7 @@ const Posts = () => {
                           post={post}
                           publisherHeadline={publisher?.headline}
                           publisherCompany={publisher?.company_name}
+                          isEven={index % 2 === 0}
                         />
                       );
                     })}
