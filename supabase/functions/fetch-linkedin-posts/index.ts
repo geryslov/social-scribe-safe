@@ -109,13 +109,13 @@ async function refreshTokenIfNeeded(
   const newExpiresAt = new Date(Date.now() + expiresIn * 1000).toISOString();
 
   await supabase
-    .from('publishers')
-    .update({
+    .from('publisher_tokens')
+    .upsert({
+      publisher_id: publisher.id,
       linkedin_access_token: newAccessToken,
       linkedin_refresh_token: newRefreshToken,
       linkedin_token_expires_at: newExpiresAt,
-    })
-    .eq('id', publisher.id);
+    }, { onConflict: 'publisher_id' });
 
   console.log('Token refreshed successfully');
   return newAccessToken;
