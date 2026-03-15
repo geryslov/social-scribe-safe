@@ -337,8 +337,17 @@ Deno.serve(async (req) => {
           ? `${SUPABASE_URL}/auth/v1/verify?token=${linkData.properties.hashed_token}&type=magiclink&redirect_to=${encodeURIComponent(stateData.returnUrl || '/')}`
           : linkData.properties?.action_link || '';
       } else {
+        // New user - only allow creation via invite link
+        if (!stateData.inviteToken || !workspaceId) {
+          console.error('New user attempted signup without invite token:', email);
+          return new Response(
+            `<html><body><script>window.opener?.postMessage({ type: 'linkedin-sso-error', error: 'You need an invite link to create an account. Please contact your workspace admin.' }, '*'); window.close();</script></body></html>`,
+            { headers: { 'Content-Type': 'text/html' } }
+          );
+        }
+
         // Create new user
-        console.log('Creating new user for email:', email);
+        console.log('Creating new user for email:', email, 'via invite to workspace:', workspaceId);
         const { data: newUser, error: createError } = await supabase.auth.admin.createUser({
           email: email,
           email_confirm: true,
