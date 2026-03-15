@@ -53,11 +53,12 @@ async function refreshTokenIfNeeded(publisherData: PublisherTokenData): Promise<
   const tokenData = await tokenResponse.json();
   const newExpiresAt = new Date(Date.now() + tokenData.expires_in * 1000).toISOString();
 
-  await supabase.from('publishers').update({
+  await supabase.from('publisher_tokens').upsert({
+    publisher_id: publisherData.id,
     linkedin_access_token: tokenData.access_token,
     linkedin_refresh_token: tokenData.refresh_token || publisherData.linkedin_refresh_token,
     linkedin_token_expires_at: newExpiresAt,
-  } as Record<string, unknown>).eq('id', publisherData.id);
+  } as Record<string, unknown>, { onConflict: 'publisher_id' });
 
   return tokenData.access_token;
 }
