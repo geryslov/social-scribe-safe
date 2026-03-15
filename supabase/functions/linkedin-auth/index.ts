@@ -412,15 +412,32 @@ Deno.serve(async (req) => {
         }
         
         const updateData: Record<string, unknown> = {
-          linkedin_access_token: accessToken,
-          linkedin_refresh_token: refreshToken || null,
-          linkedin_token_expires_at: expiresAt,
           linkedin_member_id: linkedinMemberId,
           linkedin_connected: true,
           avatar_url: avatarUrl || undefined,
           headline: headline || undefined,
           company_name: companyName || undefined,
         };
+        
+        // Assign to workspace if invite token was used and publisher not already in a workspace
+        if (workspaceId) {
+          updateData.workspace_id = workspaceId;
+        }
+        
+        await supabase
+          .from('publishers')
+          .update(updateData)
+          .eq('id', existingPublisher.id);
+
+        // Store tokens in secure table
+        await supabase
+          .from('publisher_tokens')
+          .upsert({
+            publisher_id: existingPublisher.id,
+            linkedin_access_token: accessToken,
+            linkedin_refresh_token: refreshToken || null,
+            linkedin_token_expires_at: expiresAt,
+          }, { onConflict: 'publisher_id' });
         
         // Assign to workspace if invite token was used and publisher not already in a workspace
         if (workspaceId) {
