@@ -139,7 +139,7 @@ Deno.serve(async (req) => {
 
     const { data: publisher, error: publisherError } = await supabase
       .from('publishers')
-      .select('id, name, linkedin_access_token, linkedin_refresh_token, linkedin_token_expires_at, linkedin_member_id, linkedin_connected')
+      .select('id, name, linkedin_member_id, linkedin_connected')
       .eq('id', publisherId)
       .single();
 
@@ -151,7 +151,14 @@ Deno.serve(async (req) => {
       );
     }
 
-    if (!publisher.linkedin_connected || !publisher.linkedin_access_token || !publisher.linkedin_member_id) {
+    // Fetch tokens from secure table
+    const { data: tokens } = await supabase
+      .from('publisher_tokens')
+      .select('linkedin_access_token, linkedin_refresh_token, linkedin_token_expires_at')
+      .eq('publisher_id', publisherId)
+      .single();
+
+    if (!publisher.linkedin_connected || !tokens?.linkedin_access_token || !publisher.linkedin_member_id) {
       return new Response(
         JSON.stringify({ error: 'LinkedIn is not connected for this publisher' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -160,9 +167,9 @@ Deno.serve(async (req) => {
 
     const accessToken = await refreshTokenIfNeeded({
       id: publisher.id,
-      linkedin_access_token: publisher.linkedin_access_token,
-      linkedin_refresh_token: publisher.linkedin_refresh_token,
-      linkedin_token_expires_at: publisher.linkedin_token_expires_at,
+      linkedin_access_token: tokens.linkedin_access_token,
+      linkedin_refresh_token: tokens.linkedin_refresh_token,
+      linkedin_token_expires_at: tokens.linkedin_token_expires_at,
     });
 
     const personUrn = `urn:li:person:${publisher.linkedin_member_id}`;
