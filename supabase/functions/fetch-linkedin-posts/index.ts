@@ -837,7 +837,7 @@ Deno.serve(async (req) => {
       linkedin_token_expires_at: tokens.linkedin_token_expires_at,
     };
 
-    const accessToken = await refreshTokenIfNeeded(publisher as PublisherData, supabase);
+    const accessToken = await refreshTokenIfNeeded(publisherData, supabase);
 
     const { data: appPosts, error: postsError } = await supabase
       .from('posts')
