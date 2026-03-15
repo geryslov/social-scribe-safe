@@ -38,18 +38,29 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       const workspaceIds = memberData?.map(m => m.workspace_id) || [];
       
       if (workspaceIds.length === 0) {
-        // Check if user is admin - admins can see all workspaces
-        const { data: allWorkspaces, error: allError } = await supabase
-          .from('workspaces')
-          .select('*')
-          .order('name');
+        // Check if user is admin - only admins can see all workspaces
+        const { data: roleData } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', user.id)
+          .eq('role', 'admin')
+          .maybeSingle();
         
-        if (allError) {
-          console.error('Error fetching all workspaces:', allError);
-          return [];
+        if (roleData) {
+          const { data: allWorkspaces, error: allError } = await supabase
+            .from('workspaces')
+            .select('*')
+            .order('name');
+          
+          if (allError) {
+            console.error('Error fetching all workspaces:', allError);
+            return [];
+          }
+          
+          return (allWorkspaces as DbWorkspace[]).map(mapDbToWorkspace);
         }
         
-        return (allWorkspaces as DbWorkspace[]).map(mapDbToWorkspace);
+        return [];
       }
       
       // Fetch workspaces
