@@ -696,13 +696,16 @@ Deno.serve(async (req) => {
       const { error: updateError } = await supabase
         .from('publishers')
         .update({
-          linkedin_access_token: null,
-          linkedin_refresh_token: null,
-          linkedin_token_expires_at: null,
           linkedin_member_id: null,
           linkedin_connected: false,
         })
         .eq('id', publisherId);
+
+      // Delete tokens from secure table
+      await supabase
+        .from('publisher_tokens')
+        .delete()
+        .eq('publisher_id', publisherId);
 
       if (updateError) {
         console.error('Failed to disconnect:', updateError);
