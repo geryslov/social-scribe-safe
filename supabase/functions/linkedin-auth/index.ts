@@ -737,9 +737,9 @@ Deno.serve(async (req) => {
       
       // Get current refresh token
       const { data: publisher, error: fetchError } = await supabase
-        .from('publishers')
+        .from('publisher_tokens')
         .select('linkedin_refresh_token')
-        .eq('id', publisherId)
+        .eq('publisher_id', publisherId)
         .single();
 
       if (fetchError || !publisher?.linkedin_refresh_token) {
