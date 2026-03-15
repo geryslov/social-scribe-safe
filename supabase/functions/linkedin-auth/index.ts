@@ -412,15 +412,32 @@ Deno.serve(async (req) => {
         }
         
         const updateData: Record<string, unknown> = {
-          linkedin_access_token: accessToken,
-          linkedin_refresh_token: refreshToken || null,
-          linkedin_token_expires_at: expiresAt,
           linkedin_member_id: linkedinMemberId,
           linkedin_connected: true,
           avatar_url: avatarUrl || undefined,
           headline: headline || undefined,
           company_name: companyName || undefined,
         };
+        
+        // Assign to workspace if invite token was used and publisher not already in a workspace
+        if (workspaceId) {
+          updateData.workspace_id = workspaceId;
+        }
+        
+        await supabase
+          .from('publishers')
+          .update(updateData)
+          .eq('id', existingPublisher.id);
+
+        // Store tokens in secure table
+        await supabase
+          .from('publisher_tokens')
+          .upsert({
+            publisher_id: existingPublisher.id,
+            linkedin_access_token: accessToken,
+            linkedin_refresh_token: refreshToken || null,
+            linkedin_token_expires_at: expiresAt,
+          }, { onConflict: 'publisher_id' });
         
         // Assign to workspace if invite token was used and publisher not already in a workspace
         if (workspaceId) {
@@ -460,9 +477,6 @@ Deno.serve(async (req) => {
             id: newPublisherId,
             name: name,
             user_id: userId,
-            linkedin_access_token: accessToken,
-            linkedin_refresh_token: refreshToken || null,
-            linkedin_token_expires_at: expiresAt,
             linkedin_member_id: linkedinMemberId,
             linkedin_connected: true,
             avatar_url: avatarUrl || null,
@@ -473,7 +487,16 @@ Deno.serve(async (req) => {
 
         if (insertError) {
           console.error('Failed to create publisher:', insertError);
-          // Don't fail the SSO - user is still created
+        } else {
+          // Store tokens in secure table
+          await supabase
+            .from('publisher_tokens')
+            .insert({
+              publisher_id: newPublisherId,
+              linkedin_access_token: accessToken,
+              linkedin_refresh_token: refreshToken || null,
+              linkedin_token_expires_at: expiresAt,
+            });
         }
         
         // Add to workspace_members if invite token was used
@@ -626,13 +649,20 @@ Deno.serve(async (req) => {
       const { error: updateError } = await supabase
         .from('publishers')
         .update({
-          linkedin_access_token: accessToken,
-          linkedin_refresh_token: refreshToken || null,
-          linkedin_token_expires_at: expiresAt,
           linkedin_member_id: linkedinMemberId,
           linkedin_connected: true,
         })
         .eq('id', stateData.publisherId);
+
+      // Store tokens in secure table
+      await supabase
+        .from('publisher_tokens')
+        .upsert({
+          publisher_id: stateData.publisherId,
+          linkedin_access_token: accessToken,
+          linkedin_refresh_token: refreshToken || null,
+          linkedin_token_expires_at: expiresAt,
+        }, { onConflict: 'publisher_id' });
 
       if (updateError) {
         console.error('Failed to save tokens:', updateError);
@@ -666,13 +696,16 @@ Deno.serve(async (req) => {
       const { error: updateError } = await supabase
         .from('publishers')
         .update({
-          linkedin_access_token: null,
-          linkedin_refresh_token: null,
-          linkedin_token_expires_at: null,
           linkedin_member_id: null,
           linkedin_connected: false,
         })
         .eq('id', publisherId);
+
+      // Delete tokens from secure table
+      await supabase
+        .from('publisher_tokens')
+        .delete()
+        .eq('publisher_id', publisherId);
 
       if (updateError) {
         console.error('Failed to disconnect:', updateError);
@@ -704,9 +737,9 @@ Deno.serve(async (req) => {
       
       // Get current refresh token
       const { data: publisher, error: fetchError } = await supabase
-        .from('publishers')
+        .from('publisher_tokens')
         .select('linkedin_refresh_token')
-        .eq('id', publisherId)
+        .eq('publisher_id', publisherId)
         .single();
 
       if (fetchError || !publisher?.linkedin_refresh_token) {
@@ -748,13 +781,13 @@ Deno.serve(async (req) => {
       const expiresAt = new Date(Date.now() + tokenData.expires_in * 1000).toISOString();
 
       await supabase
-        .from('publishers')
-        .update({
+        .from('publisher_tokens')
+        .upsert({
+          publisher_id: publisherId,
           linkedin_access_token: tokenData.access_token,
           linkedin_refresh_token: tokenData.refresh_token || publisher.linkedin_refresh_token,
           linkedin_token_expires_at: expiresAt,
-        })
-        .eq('id', publisherId);
+        }, { onConflict: 'publisher_id' });
 
       return new Response(
         JSON.stringify({ success: true }),

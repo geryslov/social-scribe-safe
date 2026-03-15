@@ -109,13 +109,13 @@ async function refreshTokenIfNeeded(
   const newExpiresAt = new Date(Date.now() + expiresIn * 1000).toISOString();
 
   await supabase
-    .from('publishers')
-    .update({
+    .from('publisher_tokens')
+    .upsert({
+      publisher_id: publisher.id,
       linkedin_access_token: newAccessToken,
       linkedin_refresh_token: newRefreshToken,
       linkedin_token_expires_at: newExpiresAt,
-    })
-    .eq('id', publisher.id);
+    }, { onConflict: 'publisher_id' });
 
   console.log('Token refreshed successfully');
   return newAccessToken;
@@ -804,7 +804,7 @@ Deno.serve(async (req) => {
 
     const { data: publisher, error: publisherError } = await supabase
       .from('publishers')
-      .select('id, name, workspace_id, linkedin_member_id, linkedin_access_token, linkedin_refresh_token, linkedin_token_expires_at')
+      .select('id, name, workspace_id, linkedin_member_id')
       .eq('id', publisherId)
       .single();
 
@@ -815,14 +815,29 @@ Deno.serve(async (req) => {
       );
     }
 
-    if (!publisher.linkedin_member_id || !publisher.linkedin_access_token) {
+    // Fetch tokens from secure table
+    const { data: tokens, error: tokensError } = await supabase
+      .from('publisher_tokens')
+      .select('linkedin_access_token, linkedin_refresh_token, linkedin_token_expires_at')
+      .eq('publisher_id', publisherId)
+      .single();
+
+    if (!publisher.linkedin_member_id || !tokens?.linkedin_access_token) {
       return new Response(
         JSON.stringify({ error: 'Publisher not connected to LinkedIn' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const accessToken = await refreshTokenIfNeeded(publisher as PublisherData, supabase);
+    const publisherData: PublisherData = {
+      id: publisher.id,
+      linkedin_member_id: publisher.linkedin_member_id,
+      linkedin_access_token: tokens.linkedin_access_token,
+      linkedin_refresh_token: tokens.linkedin_refresh_token,
+      linkedin_token_expires_at: tokens.linkedin_token_expires_at,
+    };
+
+    const accessToken = await refreshTokenIfNeeded(publisherData, supabase);
 
     const { data: appPosts, error: postsError } = await supabase
       .from('posts')
