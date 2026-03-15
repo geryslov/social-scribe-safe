@@ -781,13 +781,13 @@ Deno.serve(async (req) => {
       const expiresAt = new Date(Date.now() + tokenData.expires_in * 1000).toISOString();
 
       await supabase
-        .from('publishers')
-        .update({
+        .from('publisher_tokens')
+        .upsert({
+          publisher_id: publisherId,
           linkedin_access_token: tokenData.access_token,
           linkedin_refresh_token: tokenData.refresh_token || publisher.linkedin_refresh_token,
           linkedin_token_expires_at: expiresAt,
-        })
-        .eq('id', publisherId);
+        }, { onConflict: 'publisher_id' });
 
       return new Response(
         JSON.stringify({ success: true }),
