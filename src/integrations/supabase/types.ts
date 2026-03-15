@@ -677,6 +677,41 @@ export type Database = {
           },
         ]
       }
+      publisher_tokens: {
+        Row: {
+          id: string
+          linkedin_access_token: string | null
+          linkedin_refresh_token: string | null
+          linkedin_token_expires_at: string | null
+          publisher_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          linkedin_access_token?: string | null
+          linkedin_refresh_token?: string | null
+          linkedin_token_expires_at?: string | null
+          publisher_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          linkedin_access_token?: string | null
+          linkedin_refresh_token?: string | null
+          linkedin_token_expires_at?: string | null
+          publisher_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "publisher_tokens_publisher_id_fkey"
+            columns: ["publisher_id"]
+            isOneToOne: true
+            referencedRelation: "publishers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       publishers: {
         Row: {
           avatar_url: string | null
