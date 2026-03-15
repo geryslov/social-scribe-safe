@@ -477,9 +477,6 @@ Deno.serve(async (req) => {
             id: newPublisherId,
             name: name,
             user_id: userId,
-            linkedin_access_token: accessToken,
-            linkedin_refresh_token: refreshToken || null,
-            linkedin_token_expires_at: expiresAt,
             linkedin_member_id: linkedinMemberId,
             linkedin_connected: true,
             avatar_url: avatarUrl || null,
@@ -490,7 +487,16 @@ Deno.serve(async (req) => {
 
         if (insertError) {
           console.error('Failed to create publisher:', insertError);
-          // Don't fail the SSO - user is still created
+        } else {
+          // Store tokens in secure table
+          await supabase
+            .from('publisher_tokens')
+            .insert({
+              publisher_id: newPublisherId,
+              linkedin_access_token: accessToken,
+              linkedin_refresh_token: refreshToken || null,
+              linkedin_token_expires_at: expiresAt,
+            });
         }
         
         // Add to workspace_members if invite token was used
