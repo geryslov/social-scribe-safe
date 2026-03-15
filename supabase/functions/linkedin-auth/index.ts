@@ -649,13 +649,20 @@ Deno.serve(async (req) => {
       const { error: updateError } = await supabase
         .from('publishers')
         .update({
-          linkedin_access_token: accessToken,
-          linkedin_refresh_token: refreshToken || null,
-          linkedin_token_expires_at: expiresAt,
           linkedin_member_id: linkedinMemberId,
           linkedin_connected: true,
         })
         .eq('id', stateData.publisherId);
+
+      // Store tokens in secure table
+      await supabase
+        .from('publisher_tokens')
+        .upsert({
+          publisher_id: stateData.publisherId,
+          linkedin_access_token: accessToken,
+          linkedin_refresh_token: refreshToken || null,
+          linkedin_token_expires_at: expiresAt,
+        }, { onConflict: 'publisher_id' });
 
       if (updateError) {
         console.error('Failed to save tokens:', updateError);
