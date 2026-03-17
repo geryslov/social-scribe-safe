@@ -519,11 +519,65 @@ async function storeComments(
   }
 }
 
+// Resolve an activity URN to a share/ugcPost URN via LinkedIn API
+async function resolveActivityUrn(
+  accessToken: string,
+  activityUrn: string
+): Promise<string | null> {
+  try {
+    const activityId = activityUrn.replace('urn:li:activity:', '');
+    
+    // Try as share first (most common for personal posts)
+    const shareUrn = `urn:li:share:${activityId}`;
+    const shareUrl = `https://api.linkedin.com/rest/posts/${encodeURIComponent(shareUrn)}`;
+    
+    console.log(`Resolving activity URN: trying as share ${shareUrn}...`);
+    
+    const shareResponse = await fetch(shareUrl, {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'LinkedIn-Version': LINKEDIN_VERSION,
+        'X-Restli-Protocol-Version': '2.0.0',
+      },
+    });
+    
+    if (shareResponse.ok) {
+      console.log(`Activity ${activityId} resolved as share`);
+      return shareUrn;
+    }
+    
+    // Try as ugcPost
+    const ugcUrn = `urn:li:ugcPost:${activityId}`;
+    const ugcUrl = `https://api.linkedin.com/rest/posts/${encodeURIComponent(ugcUrn)}`;
+    
+    console.log(`Trying as ugcPost ${ugcUrn}...`);
+    
+    const ugcResponse = await fetch(ugcUrl, {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'LinkedIn-Version': LINKEDIN_VERSION,
+        'X-Restli-Protocol-Version': '2.0.0',
+      },
+    });
+    
+    if (ugcResponse.ok) {
+      console.log(`Activity ${activityId} resolved as ugcPost`);
+      return ugcUrn;
+    }
+    
+    console.log(`Could not resolve activity URN ${activityUrn}: share=${shareResponse.status}, ugc=${ugcResponse.status}`);
+    return null;
+  } catch (error) {
+    console.error(`Error resolving activity URN ${activityUrn}:`, error);
+    return null;
+  }
+}
+
 // Fetch analytics for a single post URN
 async function fetchPostAnalytics(
   accessToken: string,
   postUrn: string
-): Promise<PostAnalytics & { reactors: ReactorData[] }> {
+): Promise<PostAnalytics & { reactors: ReactorData[]; resolvedUrn?: string }> {
   const analytics: PostAnalytics = {
     impressions: 0,
     uniqueImpressions: 0,
@@ -539,10 +593,20 @@ async function fetchPostAnalytics(
   };
   let reactors: ReactorData[] = [];
 
+  let resolvedUrn = postUrn;
+  const isActivity = postUrn.includes('activity');
   const isUgcPost = postUrn.includes('ugcPost');
   const isShare = postUrn.includes('share');
   
-  if (!isUgcPost && !isShare) {
+  // Resolve activity URNs to share/ugcPost URNs
+  if (isActivity && !isUgcPost && !isShare) {
+    const resolved = await resolveActivityUrn(accessToken, postUrn);
+    if (!resolved) {
+      console.log(`Could not resolve activity URN: ${postUrn}, skipping analytics`);
+      return { ...analytics, reactors };
+    }
+    resolvedUrn = resolved;
+  } else if (!isUgcPost && !isShare) {
     console.log(`Unknown URN format: ${postUrn}, skipping analytics`);
     return { ...analytics, reactors };
   }
