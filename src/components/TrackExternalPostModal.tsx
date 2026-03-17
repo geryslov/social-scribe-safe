@@ -117,6 +117,7 @@ export function TrackExternalPostModal({ open, onOpenChange }: TrackExternalPost
       queryClient.invalidateQueries({ queryKey: ['posts'] });
       toast.success('Post added for tracking! Analytics will sync shortly.');
       setUrl('');
+      setPostContent('');
       setSelectedPublisher('');
       onOpenChange(false);
     } catch (err) {
