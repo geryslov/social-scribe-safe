@@ -611,8 +611,9 @@ async function fetchPostAnalytics(
     return { ...analytics, reactors };
   }
 
-  const entityType = isUgcPost ? 'ugcPost' : 'share';
-  const entityParam = `(${entityType}:${encodeURIComponent(postUrn)})`;
+  const resolvedIsUgc = resolvedUrn.includes('ugcPost');
+  const entityType = resolvedIsUgc ? 'ugcPost' : 'share';
+  const entityParam = `(${entityType}:${encodeURIComponent(resolvedUrn)})`;
 
   const metrics = ['IMPRESSION', 'MEMBERS_REACHED', 'REACTION', 'COMMENT', 'RESHARE'];
 
@@ -620,7 +621,7 @@ async function fetchPostAnalytics(
     try {
       const analyticsUrl = `https://api.linkedin.com/rest/memberCreatorPostAnalytics?q=entity&entity=${entityParam}&queryType=${metric}&aggregation=TOTAL`;
       
-      console.log(`Fetching ${metric} for ${postUrn}...`);
+      console.log(`Fetching ${metric} for ${resolvedUrn}...`);
       
       const response = await fetch(analyticsUrl, {
         headers: {
@@ -653,7 +654,7 @@ async function fetchPostAnalytics(
 
   // Fetch reaction breakdown AND reactor identities
   if (analytics.reactions > 0) {
-    const { breakdown, reactors: fetchedReactors } = await fetchReactionBreakdown(accessToken, postUrn);
+    const { breakdown, reactors: fetchedReactors } = await fetchReactionBreakdown(accessToken, resolvedUrn);
     analytics.reactionLike = breakdown.like;
     analytics.reactionCelebrate = breakdown.celebrate;
     analytics.reactionSupport = breakdown.support;
