@@ -843,7 +843,6 @@ Deno.serve(async (req) => {
       .from('posts')
       .select('id, linkedin_post_urn, publisher_name, content, published_at')
       .eq('publisher_name', publisher.name)
-      .eq('publish_method', 'linkedin_api')
       .not('linkedin_post_urn', 'is', null)
       .order('published_at', { ascending: false });
 
