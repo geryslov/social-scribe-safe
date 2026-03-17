@@ -519,60 +519,6 @@ async function storeComments(
   }
 }
 
-// Resolve an activity URN to a share/ugcPost URN via LinkedIn API
-async function resolveActivityUrn(
-  accessToken: string,
-  activityUrn: string
-): Promise<string | null> {
-  try {
-    const activityId = activityUrn.replace('urn:li:activity:', '');
-    
-    // Try as share first (most common for personal posts)
-    const shareUrn = `urn:li:share:${activityId}`;
-    const shareUrl = `https://api.linkedin.com/rest/posts/${encodeURIComponent(shareUrn)}`;
-    
-    console.log(`Resolving activity URN: trying as share ${shareUrn}...`);
-    
-    const shareResponse = await fetch(shareUrl, {
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'LinkedIn-Version': LINKEDIN_VERSION,
-        'X-Restli-Protocol-Version': '2.0.0',
-      },
-    });
-    
-    if (shareResponse.ok) {
-      console.log(`Activity ${activityId} resolved as share`);
-      return shareUrn;
-    }
-    
-    // Try as ugcPost
-    const ugcUrn = `urn:li:ugcPost:${activityId}`;
-    const ugcUrl = `https://api.linkedin.com/rest/posts/${encodeURIComponent(ugcUrn)}`;
-    
-    console.log(`Trying as ugcPost ${ugcUrn}...`);
-    
-    const ugcResponse = await fetch(ugcUrl, {
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'LinkedIn-Version': LINKEDIN_VERSION,
-        'X-Restli-Protocol-Version': '2.0.0',
-      },
-    });
-    
-    if (ugcResponse.ok) {
-      console.log(`Activity ${activityId} resolved as ugcPost`);
-      return ugcUrn;
-    }
-    
-    console.log(`Could not resolve activity URN ${activityUrn}: share=${shareResponse.status}, ugc=${ugcResponse.status}`);
-    return null;
-  } catch (error) {
-    console.error(`Error resolving activity URN ${activityUrn}:`, error);
-    return null;
-  }
-}
-
 // Fetch analytics for a single post URN
 async function fetchPostAnalytics(
   accessToken: string,
@@ -598,14 +544,51 @@ async function fetchPostAnalytics(
   const isUgcPost = postUrn.includes('ugcPost');
   const isShare = postUrn.includes('share');
   
-  // Resolve activity URNs to share/ugcPost URNs
+  // Activity URNs share the same numeric ID as share/ugcPost URNs
+  // Try both formats against the analytics API to find which works
   if (isActivity && !isUgcPost && !isShare) {
-    const resolved = await resolveActivityUrn(accessToken, postUrn);
-    if (!resolved) {
+    const activityId = postUrn.replace('urn:li:activity:', '');
+    const candidates = [
+      `urn:li:share:${activityId}`,
+      `urn:li:ugcPost:${activityId}`,
+    ];
+    
+    let found = false;
+    for (const candidate of candidates) {
+      const candidateIsUgc = candidate.includes('ugcPost');
+      const eType = candidateIsUgc ? 'ugcPost' : 'share';
+      const eParam = `(${eType}:${encodeURIComponent(candidate)})`;
+      const testUrl = `https://api.linkedin.com/rest/memberCreatorPostAnalytics?q=entity&entity=${eParam}&queryType=IMPRESSION&aggregation=TOTAL`;
+      
+      console.log(`Trying activity ID ${activityId} as ${eType}...`);
+      
+      const testResponse = await fetch(testUrl, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'LinkedIn-Version': LINKEDIN_VERSION,
+          'X-Restli-Protocol-Version': '2.0.0',
+        },
+      });
+      
+      if (testResponse.ok) {
+        const testData = await testResponse.json();
+        const count = testData.elements?.[0]?.count || 0;
+        if (testData.elements?.length > 0) {
+          console.log(`Activity ${activityId} resolved as ${eType} (impressions: ${count})`);
+          resolvedUrn = candidate;
+          analytics.impressions = count;
+          found = true;
+          break;
+        }
+      } else {
+        console.log(`${eType} attempt failed: ${testResponse.status}`);
+      }
+    }
+    
+    if (!found) {
       console.log(`Could not resolve activity URN: ${postUrn}, skipping analytics`);
       return { ...analytics, reactors };
     }
-    resolvedUrn = resolved;
   } else if (!isUgcPost && !isShare) {
     console.log(`Unknown URN format: ${postUrn}, skipping analytics`);
     return { ...analytics, reactors };
