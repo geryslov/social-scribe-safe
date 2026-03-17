@@ -586,8 +586,8 @@ async function fetchPostAnalytics(
     }
     
     if (!found) {
-      console.log(`Could not resolve activity URN: ${postUrn}, skipping analytics`);
-      return { ...analytics, reactors };
+      console.log(`Could not resolve activity URN: ${postUrn}, skipping analytics but will try content fetch`);
+      return { ...analytics, reactors, unresolvedActivity: true, activityUrn: postUrn };
     }
   } else if (!isUgcPost && !isShare) {
     console.log(`Unknown URN format: ${postUrn}, skipping analytics`);
@@ -917,8 +917,36 @@ Deno.serve(async (req) => {
     for (const post of appPosts) {
       try {
         const analyticsWithReactors = await fetchPostAnalytics(accessToken, post.linkedin_post_urn);
-        const { reactors, resolvedUrn, ...analytics } = analyticsWithReactors;
+        const { reactors, resolvedUrn, unresolvedActivity, activityUrn, ...analytics } = analyticsWithReactors;
         
+        // If activity URN couldn't be resolved, still try to fetch content
+        if (unresolvedActivity && post.content === '[Tracked external post]') {
+          const urn = activityUrn || post.linkedin_post_urn;
+          try {
+            const postUrl = `https://api.linkedin.com/rest/posts/${encodeURIComponent(urn)}`;
+            const postResponse = await fetch(postUrl, {
+              headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'LinkedIn-Version': LINKEDIN_VERSION,
+                'X-Restli-Protocol-Version': '2.0.0',
+              },
+            });
+            if (postResponse.ok) {
+              const postData = await postResponse.json();
+              const commentary = postData.commentary || postData.specificContent?.['com.linkedin.ugc.ShareContent']?.shareCommentary?.text;
+              if (commentary) {
+                await supabase.from('posts').update({ content: commentary }).eq('id', post.id);
+                console.log(`Fetched content for unresolved tracked post ${post.id}`);
+              }
+            } else {
+              console.log(`Could not fetch content for unresolved post: ${postResponse.status}`);
+            }
+          } catch (contentErr) {
+            console.log('Content fetch failed for unresolved post:', contentErr);
+          }
+          continue; // Skip analytics update since we couldn't resolve the URN
+        }
+
         const totalEngagements = analytics.reactions + analytics.comments + analytics.reshares;
         const engagementRate = analytics.impressions > 0 
           ? parseFloat(((totalEngagements / analytics.impressions) * 100).toFixed(2))
