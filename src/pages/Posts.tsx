@@ -382,7 +382,11 @@ const Posts = () => {
               )}
             </div>
 
-            
+      <TrackExternalPostModal
+        open={isTrackPostOpen}
+        onOpenChange={setIsTrackPostOpen}
+      />
+
             {/* Active Posts Section */}
             <div className="space-y-4">
               <div className="flex items-center justify-between">
