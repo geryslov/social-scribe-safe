@@ -586,8 +586,8 @@ async function fetchPostAnalytics(
     }
     
     if (!found) {
-      console.log(`Could not resolve activity URN: ${postUrn}, skipping analytics`);
-      return { ...analytics, reactors };
+      console.log(`Could not resolve activity URN: ${postUrn}, skipping analytics but will try content fetch`);
+      return { ...analytics, reactors, unresolvedActivity: true, activityUrn: postUrn };
     }
   } else if (!isUgcPost && !isShare) {
     console.log(`Unknown URN format: ${postUrn}, skipping analytics`);
