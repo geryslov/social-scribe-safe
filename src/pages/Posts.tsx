@@ -13,6 +13,7 @@ import { PostModal } from '@/components/PostModal';
 import { LinkedInPostCard } from '@/components/LinkedInPostCard';
 import { PublishedPostRow } from '@/components/PublishedPostRow';
 import { BulkUploadModal } from '@/components/BulkUploadModal';
+import { TrackExternalPostModal } from '@/components/TrackExternalPostModal';
 import { DocumentUploadModal } from '@/components/DocumentUploadModal';
 import { useDocuments } from '@/hooks/useDocuments';
 import { useWorkspace } from '@/hooks/useWorkspace';
