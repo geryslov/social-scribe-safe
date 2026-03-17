@@ -664,7 +664,7 @@ async function fetchPostAnalytics(
     reactors = fetchedReactors;
   }
 
-  return { ...analytics, reactors };
+  return { ...analytics, reactors, resolvedUrn: resolvedUrn !== postUrn ? resolvedUrn : undefined };
 }
 
 // Save analytics snapshot for trend tracking
