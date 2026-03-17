@@ -357,6 +357,15 @@ const Posts = () => {
               {isAdmin && (
                 <div className="flex gap-2">
                   <Button 
+                    onClick={() => setIsTrackPostOpen(true)} 
+                    size="lg" 
+                    variant="outline"
+                    className="gap-2 rounded-xl"
+                  >
+                    <LinkIcon className="h-5 w-5" />
+                    Track Post
+                  </Button>
+                  <Button 
                     onClick={() => setIsBulkUploadOpen(true)} 
                     size="lg" 
                     variant="outline"
