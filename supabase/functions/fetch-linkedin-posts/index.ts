@@ -598,7 +598,10 @@ async function fetchPostAnalytics(
   const entityType = resolvedIsUgc ? 'ugcPost' : 'share';
   const entityParam = `(${entityType}:${encodeURIComponent(resolvedUrn)})`;
 
-  const metrics = ['IMPRESSION', 'MEMBERS_REACHED', 'REACTION', 'COMMENT', 'RESHARE'];
+  // Skip IMPRESSION if already fetched during activity URN resolution
+  const metrics = analytics.impressions > 0 
+    ? ['MEMBERS_REACHED', 'REACTION', 'COMMENT', 'RESHARE']
+    : ['IMPRESSION', 'MEMBERS_REACHED', 'REACTION', 'COMMENT', 'RESHARE'];
 
   for (const metric of metrics) {
     try {
