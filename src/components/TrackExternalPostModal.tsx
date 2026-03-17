@@ -90,7 +90,7 @@ export function TrackExternalPostModal({ open, onOpenChange }: TrackExternalPost
       const { error } = await supabase
         .from('posts')
         .insert({
-          content: `[Tracked external post]`,
+          content: postContent.trim() || `[Tracked external post]`,
           status: 'done',
           scheduled_date: new Date().toISOString().split('T')[0],
           publisher_name: publisher.name,
