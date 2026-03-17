@@ -523,7 +523,7 @@ async function storeComments(
 async function fetchPostAnalytics(
   accessToken: string,
   postUrn: string
-): Promise<PostAnalytics & { reactors: ReactorData[] }> {
+): Promise<PostAnalytics & { reactors: ReactorData[]; resolvedUrn?: string }> {
   const analytics: PostAnalytics = {
     impressions: 0,
     uniqueImpressions: 0,
@@ -539,24 +539,75 @@ async function fetchPostAnalytics(
   };
   let reactors: ReactorData[] = [];
 
+  let resolvedUrn = postUrn;
+  const isActivity = postUrn.includes('activity');
   const isUgcPost = postUrn.includes('ugcPost');
   const isShare = postUrn.includes('share');
   
-  if (!isUgcPost && !isShare) {
+  // Activity URNs share the same numeric ID as share/ugcPost URNs
+  // Try both formats against the analytics API to find which works
+  if (isActivity && !isUgcPost && !isShare) {
+    const activityId = postUrn.replace('urn:li:activity:', '');
+    const candidates = [
+      `urn:li:share:${activityId}`,
+      `urn:li:ugcPost:${activityId}`,
+    ];
+    
+    let found = false;
+    for (const candidate of candidates) {
+      const candidateIsUgc = candidate.includes('ugcPost');
+      const eType = candidateIsUgc ? 'ugcPost' : 'share';
+      const eParam = `(${eType}:${encodeURIComponent(candidate)})`;
+      const testUrl = `https://api.linkedin.com/rest/memberCreatorPostAnalytics?q=entity&entity=${eParam}&queryType=IMPRESSION&aggregation=TOTAL`;
+      
+      console.log(`Trying activity ID ${activityId} as ${eType}...`);
+      
+      const testResponse = await fetch(testUrl, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'LinkedIn-Version': LINKEDIN_VERSION,
+          'X-Restli-Protocol-Version': '2.0.0',
+        },
+      });
+      
+      if (testResponse.ok) {
+        const testData = await testResponse.json();
+        const count = testData.elements?.[0]?.count || 0;
+        if (testData.elements?.length > 0) {
+          console.log(`Activity ${activityId} resolved as ${eType} (impressions: ${count})`);
+          resolvedUrn = candidate;
+          analytics.impressions = count;
+          found = true;
+          break;
+        }
+      } else {
+        console.log(`${eType} attempt failed: ${testResponse.status}`);
+      }
+    }
+    
+    if (!found) {
+      console.log(`Could not resolve activity URN: ${postUrn}, skipping analytics`);
+      return { ...analytics, reactors };
+    }
+  } else if (!isUgcPost && !isShare) {
     console.log(`Unknown URN format: ${postUrn}, skipping analytics`);
     return { ...analytics, reactors };
   }
 
-  const entityType = isUgcPost ? 'ugcPost' : 'share';
-  const entityParam = `(${entityType}:${encodeURIComponent(postUrn)})`;
+  const resolvedIsUgc = resolvedUrn.includes('ugcPost');
+  const entityType = resolvedIsUgc ? 'ugcPost' : 'share';
+  const entityParam = `(${entityType}:${encodeURIComponent(resolvedUrn)})`;
 
-  const metrics = ['IMPRESSION', 'MEMBERS_REACHED', 'REACTION', 'COMMENT', 'RESHARE'];
+  // Skip IMPRESSION if already fetched during activity URN resolution
+  const metrics = analytics.impressions > 0 
+    ? ['MEMBERS_REACHED', 'REACTION', 'COMMENT', 'RESHARE']
+    : ['IMPRESSION', 'MEMBERS_REACHED', 'REACTION', 'COMMENT', 'RESHARE'];
 
   for (const metric of metrics) {
     try {
       const analyticsUrl = `https://api.linkedin.com/rest/memberCreatorPostAnalytics?q=entity&entity=${entityParam}&queryType=${metric}&aggregation=TOTAL`;
       
-      console.log(`Fetching ${metric} for ${postUrn}...`);
+      console.log(`Fetching ${metric} for ${resolvedUrn}...`);
       
       const response = await fetch(analyticsUrl, {
         headers: {
@@ -589,7 +640,7 @@ async function fetchPostAnalytics(
 
   // Fetch reaction breakdown AND reactor identities
   if (analytics.reactions > 0) {
-    const { breakdown, reactors: fetchedReactors } = await fetchReactionBreakdown(accessToken, postUrn);
+    const { breakdown, reactors: fetchedReactors } = await fetchReactionBreakdown(accessToken, resolvedUrn);
     analytics.reactionLike = breakdown.like;
     analytics.reactionCelebrate = breakdown.celebrate;
     analytics.reactionSupport = breakdown.support;
@@ -599,7 +650,7 @@ async function fetchPostAnalytics(
     reactors = fetchedReactors;
   }
 
-  return { ...analytics, reactors };
+  return { ...analytics, reactors, resolvedUrn: resolvedUrn !== postUrn ? resolvedUrn : undefined };
 }
 
 // Save analytics snapshot for trend tracking
@@ -866,30 +917,64 @@ Deno.serve(async (req) => {
     for (const post of appPosts) {
       try {
         const analyticsWithReactors = await fetchPostAnalytics(accessToken, post.linkedin_post_urn);
-        const { reactors, ...analytics } = analyticsWithReactors;
+        const { reactors, resolvedUrn, ...analytics } = analyticsWithReactors;
         
         const totalEngagements = analytics.reactions + analytics.comments + analytics.reshares;
         const engagementRate = analytics.impressions > 0 
           ? parseFloat(((totalEngagements / analytics.impressions) * 100).toFixed(2))
           : null;
 
+        // Build update payload
+        const updatePayload: Record<string, any> = {
+          impressions: analytics.impressions,
+          unique_impressions: analytics.uniqueImpressions,
+          reactions: analytics.reactions,
+          comments_count: analytics.comments,
+          reshares: analytics.reshares,
+          engagement_rate: engagementRate,
+          reaction_like: analytics.reactionLike,
+          reaction_celebrate: analytics.reactionCelebrate,
+          reaction_support: analytics.reactionSupport,
+          reaction_love: analytics.reactionLove,
+          reaction_insightful: analytics.reactionInsightful,
+          reaction_curious: analytics.reactionCurious,
+          analytics_fetched_at: new Date().toISOString(),
+        };
+
+        // If activity URN was resolved to share/ugcPost, update the stored URN
+        if (resolvedUrn) {
+          updatePayload.linkedin_post_urn = resolvedUrn;
+          console.log(`Updating URN for post ${post.id}: ${post.linkedin_post_urn} -> ${resolvedUrn}`);
+        }
+
+        // If content is placeholder, try to fetch actual content from LinkedIn
+        if (post.content === '[Tracked external post]') {
+          const contentUrn = resolvedUrn || post.linkedin_post_urn;
+          try {
+            const postUrl = `https://api.linkedin.com/rest/posts/${encodeURIComponent(contentUrn)}`;
+            const postResponse = await fetch(postUrl, {
+              headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'LinkedIn-Version': LINKEDIN_VERSION,
+                'X-Restli-Protocol-Version': '2.0.0',
+              },
+            });
+            if (postResponse.ok) {
+              const postData = await postResponse.json();
+              const commentary = postData.commentary || postData.specificContent?.['com.linkedin.ugc.ShareContent']?.shareCommentary?.text;
+              if (commentary) {
+                updatePayload.content = commentary;
+                console.log(`Fetched content for tracked post ${post.id}`);
+              }
+            }
+          } catch (contentErr) {
+            console.log('Could not fetch post content:', contentErr);
+          }
+        }
+
         const { error: updateError } = await supabase
           .from('posts')
-          .update({
-            impressions: analytics.impressions,
-            unique_impressions: analytics.uniqueImpressions,
-            reactions: analytics.reactions,
-            comments_count: analytics.comments,
-            reshares: analytics.reshares,
-            engagement_rate: engagementRate,
-            reaction_like: analytics.reactionLike,
-            reaction_celebrate: analytics.reactionCelebrate,
-            reaction_support: analytics.reactionSupport,
-            reaction_love: analytics.reactionLove,
-            reaction_insightful: analytics.reactionInsightful,
-            reaction_curious: analytics.reactionCurious,
-            analytics_fetched_at: new Date().toISOString(),
-          })
+          .update(updatePayload)
           .eq('id', post.id);
 
         if (updateError) {
@@ -903,8 +988,9 @@ Deno.serve(async (req) => {
           // Store reactors
           await storeReactors(supabase, post.id, reactors);
           
-          // Fetch and store comments
-          const postComments = await fetchPostComments(accessToken, post.linkedin_post_urn);
+          // Fetch and store comments using resolved URN
+          const commentUrn = resolvedUrn || post.linkedin_post_urn;
+          const postComments = await fetchPostComments(accessToken, commentUrn);
           await storeComments(supabase, post.id, postComments);
         }
       } catch (error) {
