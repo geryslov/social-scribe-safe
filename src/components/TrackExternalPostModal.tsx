@@ -151,7 +151,21 @@ export function TrackExternalPostModal({ open, onOpenChange }: TrackExternalPost
               onChange={(e) => setUrl(e.target.value)}
             />
             <p className="text-xs text-muted-foreground">
-              Supports post URLs, activity URLs, or raw URNs (urn:li:share:..., urn:li:ugcPost:..., urn:li:activity:...)
+              Supports post URLs, activity URLs, or raw URNs
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="post-content">Post Content (optional)</Label>
+            <textarea
+              id="post-content"
+              className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              placeholder="Paste the post text here so it shows up in your dashboard..."
+              value={postContent}
+              onChange={(e) => setPostContent(e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">
+              Copy-paste the post text from LinkedIn. If left empty, it will show as "Tracked external post".
             </p>
           </div>
 
