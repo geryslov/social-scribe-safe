@@ -931,30 +931,64 @@ Deno.serve(async (req) => {
     for (const post of appPosts) {
       try {
         const analyticsWithReactors = await fetchPostAnalytics(accessToken, post.linkedin_post_urn);
-        const { reactors, ...analytics } = analyticsWithReactors;
+        const { reactors, resolvedUrn, ...analytics } = analyticsWithReactors;
         
         const totalEngagements = analytics.reactions + analytics.comments + analytics.reshares;
         const engagementRate = analytics.impressions > 0 
           ? parseFloat(((totalEngagements / analytics.impressions) * 100).toFixed(2))
           : null;
 
+        // Build update payload
+        const updatePayload: Record<string, any> = {
+          impressions: analytics.impressions,
+          unique_impressions: analytics.uniqueImpressions,
+          reactions: analytics.reactions,
+          comments_count: analytics.comments,
+          reshares: analytics.reshares,
+          engagement_rate: engagementRate,
+          reaction_like: analytics.reactionLike,
+          reaction_celebrate: analytics.reactionCelebrate,
+          reaction_support: analytics.reactionSupport,
+          reaction_love: analytics.reactionLove,
+          reaction_insightful: analytics.reactionInsightful,
+          reaction_curious: analytics.reactionCurious,
+          analytics_fetched_at: new Date().toISOString(),
+        };
+
+        // If activity URN was resolved to share/ugcPost, update the stored URN
+        if (resolvedUrn) {
+          updatePayload.linkedin_post_urn = resolvedUrn;
+          console.log(`Updating URN for post ${post.id}: ${post.linkedin_post_urn} -> ${resolvedUrn}`);
+        }
+
+        // If content is placeholder, try to fetch actual content from LinkedIn
+        if (post.content === '[Tracked external post]') {
+          const contentUrn = resolvedUrn || post.linkedin_post_urn;
+          try {
+            const postUrl = `https://api.linkedin.com/rest/posts/${encodeURIComponent(contentUrn)}`;
+            const postResponse = await fetch(postUrl, {
+              headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'LinkedIn-Version': LINKEDIN_VERSION,
+                'X-Restli-Protocol-Version': '2.0.0',
+              },
+            });
+            if (postResponse.ok) {
+              const postData = await postResponse.json();
+              const commentary = postData.commentary || postData.specificContent?.['com.linkedin.ugc.ShareContent']?.shareCommentary?.text;
+              if (commentary) {
+                updatePayload.content = commentary;
+                console.log(`Fetched content for tracked post ${post.id}`);
+              }
+            }
+          } catch (contentErr) {
+            console.log('Could not fetch post content:', contentErr);
+          }
+        }
+
         const { error: updateError } = await supabase
           .from('posts')
-          .update({
-            impressions: analytics.impressions,
-            unique_impressions: analytics.uniqueImpressions,
-            reactions: analytics.reactions,
-            comments_count: analytics.comments,
-            reshares: analytics.reshares,
-            engagement_rate: engagementRate,
-            reaction_like: analytics.reactionLike,
-            reaction_celebrate: analytics.reactionCelebrate,
-            reaction_support: analytics.reactionSupport,
-            reaction_love: analytics.reactionLove,
-            reaction_insightful: analytics.reactionInsightful,
-            reaction_curious: analytics.reactionCurious,
-            analytics_fetched_at: new Date().toISOString(),
-          })
+          .update(updatePayload)
           .eq('id', post.id);
 
         if (updateError) {
@@ -968,8 +1002,9 @@ Deno.serve(async (req) => {
           // Store reactors
           await storeReactors(supabase, post.id, reactors);
           
-          // Fetch and store comments
-          const postComments = await fetchPostComments(accessToken, post.linkedin_post_urn);
+          // Fetch and store comments using resolved URN
+          const commentUrn = resolvedUrn || post.linkedin_post_urn;
+          const postComments = await fetchPostComments(accessToken, commentUrn);
           await storeComments(supabase, post.id, postComments);
         }
       } catch (error) {
