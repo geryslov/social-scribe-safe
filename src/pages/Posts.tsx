@@ -48,6 +48,7 @@ const Posts = () => {
   const [preselectedPublisher, setPreselectedPublisher] = useState<string | null>(null);
   const viewMode = 'feed' as const;
   const [isDocUploadOpen, setIsDocUploadOpen] = useState(false);
+  const [isTrackPostOpen, setIsTrackPostOpen] = useState(false);
   const [showReactorsPanel, setShowReactorsPanel] = useState(false);
   const [reactorsPanelTab, setReactorsPanelTab] = useState<'profiles' | 'comments'>('profiles');
   const { createDocument } = useDocuments();
