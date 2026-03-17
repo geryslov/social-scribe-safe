@@ -13,12 +13,13 @@ import { PostModal } from '@/components/PostModal';
 import { LinkedInPostCard } from '@/components/LinkedInPostCard';
 import { PublishedPostRow } from '@/components/PublishedPostRow';
 import { BulkUploadModal } from '@/components/BulkUploadModal';
+import { TrackExternalPostModal } from '@/components/TrackExternalPostModal';
 import { DocumentUploadModal } from '@/components/DocumentUploadModal';
 import { useDocuments } from '@/hooks/useDocuments';
 import { useWorkspace } from '@/hooks/useWorkspace';
 
 import { Button } from '@/components/ui/button';
-import { Plus, Inbox, ExternalLink, Loader2, Upload, Users, Eye, Heart, TrendingUp, MessageCircle, Repeat2 } from 'lucide-react';
+import { Plus, Inbox, ExternalLink, Loader2, Upload, Users, Eye, Heart, TrendingUp, MessageCircle, Repeat2, LinkIcon } from 'lucide-react';
 import { useAnalytics } from '@/hooks/useAnalytics';
 import { CountUp } from '@/components/CountUp';
 import { Card, CardContent } from '@/components/ui/card';
@@ -47,6 +48,7 @@ const Posts = () => {
   const [preselectedPublisher, setPreselectedPublisher] = useState<string | null>(null);
   const viewMode = 'feed' as const;
   const [isDocUploadOpen, setIsDocUploadOpen] = useState(false);
+  const [isTrackPostOpen, setIsTrackPostOpen] = useState(false);
   const [showReactorsPanel, setShowReactorsPanel] = useState(false);
   const [reactorsPanelTab, setReactorsPanelTab] = useState<'profiles' | 'comments'>('profiles');
   const { createDocument } = useDocuments();
@@ -355,6 +357,15 @@ const Posts = () => {
               {isAdmin && (
                 <div className="flex gap-2">
                   <Button 
+                    onClick={() => setIsTrackPostOpen(true)} 
+                    size="lg" 
+                    variant="outline"
+                    className="gap-2 rounded-xl"
+                  >
+                    <LinkIcon className="h-5 w-5" />
+                    Track Post
+                  </Button>
+                  <Button 
                     onClick={() => setIsBulkUploadOpen(true)} 
                     size="lg" 
                     variant="outline"
@@ -371,7 +382,11 @@ const Posts = () => {
               )}
             </div>
 
-            
+      <TrackExternalPostModal
+        open={isTrackPostOpen}
+        onOpenChange={setIsTrackPostOpen}
+      />
+
             {/* Active Posts Section */}
             <div className="space-y-4">
               <div className="flex items-center justify-between">
