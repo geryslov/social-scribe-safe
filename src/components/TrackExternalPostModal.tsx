@@ -48,6 +48,7 @@ export function TrackExternalPostModal({ open, onOpenChange }: TrackExternalPost
   const queryClient = useQueryClient();
 
   const [url, setUrl] = useState('');
+  const [postContent, setPostContent] = useState('');
   const [selectedPublisher, setSelectedPublisher] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
