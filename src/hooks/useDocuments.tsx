@@ -502,7 +502,7 @@ export function useDocumentSections(documentId: string) {
       // Fetch current section to track changes
       const { data: currentSection, error: fetchError } = await supabase
         .from('document_sections')
-        .select('content, status, document_id')
+        .select('content, status, document_id, publisher_id')
         .eq('id', data.id)
         .single();
       
@@ -519,6 +519,65 @@ export function useDocumentSections(documentId: string) {
         .eq('id', data.id);
       
       if (error) throw error;
+
+      // Auto-create/update a draft post when publisher is assigned
+      if (data.publisherId !== undefined) {
+        const { data: { user } } = await supabase.auth.getUser();
+        const sectionContent = data.content ?? currentSection.content;
+        
+        // Get the document's workspace_id
+        const { data: doc } = await supabase
+          .from('documents')
+          .select('workspace_id')
+          .eq('id', currentSection.document_id)
+          .single();
+
+        if (data.publisherId) {
+          // Fetch publisher details
+          const { data: publisher } = await supabase
+            .from('publishers')
+            .select('name, role, linkedin_url')
+            .eq('id', data.publisherId)
+            .single();
+
+          if (publisher && user) {
+            // Check if a post already exists for this section (linked via document_id + matching content)
+            const { data: existingPosts } = await supabase
+              .from('posts')
+              .select('id')
+              .eq('document_id', currentSection.document_id)
+              .eq('content', currentSection.content)
+              .limit(1);
+
+            if (existingPosts && existingPosts.length > 0) {
+              // Update existing post's publisher
+              await supabase
+                .from('posts')
+                .update({
+                  publisher_name: publisher.name,
+                  publisher_role: publisher.role || null,
+                  linkedin_url: publisher.linkedin_url || null,
+                })
+                .eq('id', existingPosts[0].id);
+            } else {
+              // Create a new draft post
+              await supabase
+                .from('posts')
+                .insert({
+                  content: sectionContent,
+                  status: 'draft',
+                  scheduled_date: new Date().toISOString().split('T')[0],
+                  publisher_name: publisher.name,
+                  publisher_role: publisher.role || null,
+                  linkedin_url: publisher.linkedin_url || null,
+                  created_by: user.id,
+                  document_id: currentSection.document_id,
+                  workspace_id: doc?.workspace_id || null,
+                });
+            }
+          }
+        }
+      }
 
       // Record edit history if content or status changed
       const contentChanged = data.content !== undefined && data.content !== currentSection.content;
@@ -541,6 +600,8 @@ export function useDocumentSections(documentId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['document-sections', documentId] });
       queryClient.invalidateQueries({ queryKey: ['section-edit-history'] });
+      queryClient.invalidateQueries({ queryKey: ['posts'] });
+      queryClient.invalidateQueries({ queryKey: ['document-posts'] });
       toast.success('Section updated');
     },
     onError: (error) => {
