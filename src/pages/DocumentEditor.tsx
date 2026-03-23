@@ -277,12 +277,27 @@ export default function DocumentEditor() {
                     <div className="flex-1 max-w-64">
                       <DocumentPublisherSelect
                         publisherId={null}
-                        onPublisherChange={(newPublisherId) => {
-                          selectedSections.forEach(sectionId => {
-                            updateSection.mutate({ id: sectionId, publisherId: newPublisherId });
-                          });
-                          setSelectedSections(new Set());
-                          toast.success(`Assigned publisher to ${selectedSections.size} posts`);
+                        disabled={updateSection.isPending}
+                        onPublisherChange={async (newPublisherId) => {
+                          const sectionIds = Array.from(selectedSections);
+
+                          try {
+                            await Promise.all(
+                              sectionIds.map((sectionId) =>
+                                updateSection.mutateAsync({ id: sectionId, publisherId: newPublisherId })
+                              )
+                            );
+
+                            setSelectedSections(new Set());
+                            toast.success(
+                              `Assigned publisher to ${sectionIds.length} post${sectionIds.length !== 1 ? 's' : ''}`
+                            );
+                          } catch (error) {
+                            console.error('Failed to assign publisher to selected posts:', error);
+                            toast.error(
+                              error instanceof Error ? error.message : 'Failed to assign publisher to selected posts'
+                            );
+                          }
                         }}
                       />
                     </div>
