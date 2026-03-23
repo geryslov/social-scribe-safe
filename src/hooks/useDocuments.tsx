@@ -481,6 +481,7 @@ const mapDbToSection = (db: DbSection): DocumentSection => ({
 
 export function useDocumentSections(documentId: string) {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   const { data: sections = [], isLoading } = useQuery({
     queryKey: ['document-sections', documentId],
@@ -522,46 +523,56 @@ export function useDocumentSections(documentId: string) {
 
       // Auto-create/update a draft post when publisher is assigned
       if (data.publisherId !== undefined) {
-        const { data: { user } } = await supabase.auth.getUser();
         const sectionContent = data.content ?? currentSection.content;
         
         // Get the document's workspace_id
-        const { data: doc } = await supabase
+        const { data: doc, error: docError } = await supabase
           .from('documents')
           .select('workspace_id')
           .eq('id', currentSection.document_id)
           .single();
 
+        if (docError) throw docError;
+
         if (data.publisherId) {
+          if (!user) throw new Error('Not authenticated');
+
           // Fetch publisher details
-          const { data: publisher } = await supabase
+          const { data: publisher, error: publisherError } = await supabase
             .from('publishers')
             .select('name, role, linkedin_url')
             .eq('id', data.publisherId)
             .single();
 
-          if (publisher && user) {
+          if (publisherError) throw publisherError;
+
+          if (publisher) {
             // Check if a post already exists for this section (linked via document_id + matching content)
-            const { data: existingPosts } = await supabase
+            const { data: existingPost, error: existingPostError } = await supabase
               .from('posts')
               .select('id')
               .eq('document_id', currentSection.document_id)
-              .eq('content', currentSection.content)
-              .limit(1);
+              .eq('content', sectionContent)
+              .maybeSingle();
 
-            if (existingPosts && existingPosts.length > 0) {
+            if (existingPostError) throw existingPostError;
+
+            if (existingPost) {
               // Update existing post's publisher
-              await supabase
+              const { error: updatePostError } = await supabase
                 .from('posts')
                 .update({
+                  content: sectionContent,
                   publisher_name: publisher.name,
                   publisher_role: publisher.role || null,
                   linkedin_url: publisher.linkedin_url || null,
                 })
-                .eq('id', existingPosts[0].id);
+                .eq('id', existingPost.id);
+
+              if (updatePostError) throw updatePostError;
             } else {
               // Create a new draft post
-              await supabase
+              const { error: insertPostError } = await supabase
                 .from('posts')
                 .insert({
                   content: sectionContent,
@@ -574,6 +585,8 @@ export function useDocumentSections(documentId: string) {
                   document_id: currentSection.document_id,
                   workspace_id: doc?.workspace_id || null,
                 });
+
+              if (insertPostError) throw insertPostError;
             }
           }
         }
@@ -584,7 +597,6 @@ export function useDocumentSections(documentId: string) {
       const statusChanged = data.status !== undefined && data.status !== currentSection.status;
       
       if (contentChanged || statusChanged) {
-        const { data: { user } } = await supabase.auth.getUser();
         await supabase.from('section_edit_history').insert({
           section_id: data.id,
           document_id: currentSection.document_id,
