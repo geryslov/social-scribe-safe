@@ -64,6 +64,7 @@ export function DocumentSplitModal({ open, onOpenChange, document, sections, onS
       
       setParsedPosts(sectionsToUse.map(s => ({
         content: s.content,
+        publisherId: s.publisherId || undefined,
         scheduledDate: documentUploadDate,
       })));
     } else if (open && sections.length === 0) {
