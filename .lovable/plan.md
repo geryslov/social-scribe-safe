@@ -1,24 +1,22 @@
 
 
-## Current State
+## Auto-populate LinkedIn Profile URL for New Publishers
 
-The platform **already supports** image attachments on posts:
-- **PostModal**: Has image/video upload UI → uploads to `post-media` storage bucket
-- **linkedin-post edge function**: Already implements LinkedIn's `registerUpload` API to upload images with posts
-- **LinkedInPublishModal**: Already passes `mediaUrl` to the edge function
-- **usePosts hook**: Already fetches and maps `media_url` from the database
+### What changes
+**File: `supabase/functions/linkedin-auth/index.ts`**
 
-## What's Missing
+1. **Add `vanityName` to the LinkedIn API projection** (line 271):
+   - Change projection from `(id,localizedFirstName,localizedLastName,localizedHeadline)` to `(id,localizedFirstName,localizedLastName,localizedHeadline,vanityName)`
 
-The **LinkedInPostCard** (feed view) never renders the attached image. Users attach images but can't see them in the post feed.
+2. **Extract vanityName and construct URL** (after line 281):
+   - Read `profileData.vanityName` and build `https://www.linkedin.com/in/${vanityName}`
 
-## Implementation Steps
+3. **Include `linkedin_url` in the NEW publisher insert only** (line 476):
+   - Add `linkedin_url: linkedinProfileUrl` to the insert object
+   - Do NOT add it to the existing publisher update path (line 414) — existing users keep their current null value until you manually provide their URLs
 
-1. **Update LinkedInPostCard** — Add image/video preview between the post content and the engagement summary section. If `post.mediaUrl` exists:
-   - For images: render an `<img>` tag with rounded corners and max height
-   - For videos: show a video indicator badge (matching existing pattern)
-
-2. **Update LinkedInPublishModal** — The modal already shows a small media preview. No changes needed; it already sends `mediaUrl` to the edge function.
-
-That's it — one component change. The entire upload → store → publish-to-LinkedIn pipeline is already functional.
+### What stays the same
+- Existing publishers are not touched on re-login
+- No database migration needed — `linkedin_url` column already exists
+- You'll send me existing publisher URLs manually and I'll update them
 
