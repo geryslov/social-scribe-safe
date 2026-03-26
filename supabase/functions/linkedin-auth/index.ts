@@ -288,6 +288,9 @@ Deno.serve(async (req) => {
             companyName = extractCompanyFromHeadline(headline);
             console.log('Extracted company:', companyName);
           }
+          if (vanityName) {
+            linkedinProfileUrl = `https://www.linkedin.com/in/${vanityName}`;
+          }
         } else {
           console.log('Could not fetch extended profile data, continuing without headline');
         }
