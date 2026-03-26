@@ -268,7 +268,7 @@ Deno.serve(async (req) => {
       let companyName: string | null = null;
       
       try {
-        const profileResponse = await fetch('https://api.linkedin.com/v2/me?projection=(id,localizedFirstName,localizedLastName,localizedHeadline)', {
+        const profileResponse = await fetch('https://api.linkedin.com/v2/me?projection=(id,localizedFirstName,localizedLastName,localizedHeadline,vanityName)', {
           headers: {
             'Authorization': `Bearer ${accessToken}`,
             'X-Restli-Protocol-Version': '2.0.0',
@@ -279,7 +279,8 @@ Deno.serve(async (req) => {
         if (profileResponse.ok) {
           const profileData = await profileResponse.json();
           headline = profileData.localizedHeadline || null;
-          console.log('Profile data received:', { headline });
+          const vanityName = profileData.vanityName || null;
+          console.log('Profile data received:', { headline, vanityName });
           
           // Try to extract company name from headline
           if (headline) {
