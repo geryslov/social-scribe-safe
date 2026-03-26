@@ -266,6 +266,7 @@ Deno.serve(async (req) => {
       // Fetch additional profile data (headline) from the /v2/me endpoint
       let headline: string | null = null;
       let companyName: string | null = null;
+      let linkedinProfileUrl: string | null = null;
       
       try {
         const profileResponse = await fetch('https://api.linkedin.com/v2/me?projection=(id,localizedFirstName,localizedLastName,localizedHeadline,vanityName)', {
