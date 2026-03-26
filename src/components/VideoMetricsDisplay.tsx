@@ -86,23 +86,23 @@ export function VideoMetricsCard({ metrics, className }: VideoMetricsCardProps) 
         {/* Main Stats */}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <p className="text-[10px] text-muted-foreground font-mono mb-1">TOTAL VIEWS</p>
+            <p className="text-xs text-muted-foreground mb-1">Total Views</p>
             <p className="text-2xl font-bold font-mono tabular-nums">
               <CountUp end={metrics.views} />
             </p>
           </div>
           <div>
-            <p className="text-[10px] text-muted-foreground font-mono mb-1">UNIQUE VIEWERS</p>
+            <p className="text-xs text-muted-foreground mb-1">Unique Viewers</p>
             <p className="text-2xl font-bold font-mono tabular-nums">
               <CountUp end={metrics.uniqueViewers} />
             </p>
           </div>
           <div>
-            <p className="text-[10px] text-muted-foreground font-mono mb-1">AVG WATCH TIME</p>
+            <p className="text-xs text-muted-foreground mb-1">Avg Watch Time</p>
             <p className="text-lg font-bold font-mono">{formatTime(metrics.watchTimeSeconds)}</p>
           </div>
           <div>
-            <p className="text-[10px] text-muted-foreground font-mono mb-1">COMPLETION RATE</p>
+            <p className="text-xs text-muted-foreground mb-1">Completion Rate</p>
             <p className="text-lg font-bold font-mono text-success">
               {metrics.completionRate?.toFixed(0) || 0}%
             </p>
@@ -112,7 +112,7 @@ export function VideoMetricsCard({ metrics, className }: VideoMetricsCardProps) 
         {/* View Milestones */}
         {maxMilestone > 0 && (
           <div>
-            <p className="text-[10px] text-muted-foreground font-mono mb-2">VIEW MILESTONES</p>
+            <p className="text-xs text-muted-foreground mb-2">View Milestones</p>
             <div className="space-y-2">
               {milestones.map(({ label, value }) => {
                 const percentage = maxMilestone > 0 ? (value / maxMilestone) * 100 : 0;

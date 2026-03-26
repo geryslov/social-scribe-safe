@@ -12,31 +12,20 @@ const CyberCard = React.forwardRef<HTMLDivElement, CyberCardProps>(
       <div
         ref={ref}
         className={cn(
-          "relative rounded-xl overflow-hidden transition-all duration-300",
-          // Base styles
-          "before:absolute before:inset-0 before:rounded-xl before:pointer-events-none",
-          "after:absolute after:inset-0 after:rounded-xl after:pointer-events-none",
-          // Corner accents
-          "cyber-corners",
+          "rounded-xl overflow-hidden transition-all duration-300",
           // Variants
-          variant === 'default' && "bg-card/50 border border-border/50 backdrop-blur-sm",
-          variant === 'elevated' && "bg-primary/5 border border-primary/20 backdrop-blur-sm",
-          variant === 'stat' && "bg-gradient-to-br from-primary/10 to-transparent border border-primary/30 backdrop-blur-sm",
+          variant === 'default' && "bg-card border border-border",
+          variant === 'elevated' && "bg-card border border-border/80 shadow-sm",
+          variant === 'stat' && "bg-gradient-to-br from-primary/[0.03] to-transparent bg-card border border-border",
           // Glow effect
-          glow && "shadow-[0_0_30px_rgba(139,92,246,0.15)]",
+          glow && "shadow-sm",
           // Hover
-          "hover:border-primary/40 hover:shadow-[0_0_40px_rgba(139,92,246,0.2)]",
+          "hover:border-primary/30 hover:shadow-md",
           className
         )}
         {...props}
       >
-        {/* Scanline overlay */}
-        <div className="absolute inset-0 pointer-events-none opacity-[0.02] bg-[repeating-linear-gradient(0deg,transparent,transparent_2px,rgba(255,255,255,0.03)_2px,rgba(255,255,255,0.03)_4px)]" />
-        
-        {/* Content */}
-        <div className="relative z-10">
-          {children}
-        </div>
+        {children}
       </div>
     );
   }
@@ -62,7 +51,7 @@ const CyberCardTitle = React.forwardRef<
   <h3
     ref={ref}
     className={cn(
-      "text-sm font-mono font-bold tracking-wide uppercase text-muted-foreground",
+      "text-sm font-semibold tracking-wide text-muted-foreground",
       className
     )}
     {...props}

@@ -111,7 +111,7 @@ function EditHistoryItem({
         <span className="font-medium text-foreground/80 truncate">
           {entry.edited_by_email}
         </span>
-        <span className="text-muted-foreground text-[10px]">
+        <span className="text-muted-foreground text-xs">
           {formatDate(entry.edited_at)}
         </span>
       </div>

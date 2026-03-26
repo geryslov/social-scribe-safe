@@ -61,8 +61,8 @@ export function PublishedPostRow({ post, publisherHeadline, isEven }: PublishedP
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5 mb-0.5">
             <span className="text-xs font-semibold text-foreground truncate">{post.publisherName}</span>
-            <span className="text-[10px] text-muted-foreground">·</span>
-            <span className="text-[10px] text-muted-foreground">{publishedDate ? getRelativeTime(publishedDate) : ''}</span>
+            <span className="text-xs text-muted-foreground">·</span>
+            <span className="text-xs text-muted-foreground">{publishedDate ? getRelativeTime(publishedDate) : ''}</span>
             {linkedInUrl && (
               <a href={linkedInUrl} target="_blank" rel="noopener noreferrer" className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity">
                 <ExternalLink className="h-3 w-3 text-muted-foreground hover:text-foreground" />
@@ -81,7 +81,7 @@ export function PublishedPostRow({ post, publisherHeadline, isEven }: PublishedP
           {post.content.length > 120 && (
             <button
               onClick={() => setIsExpanded(!isExpanded)}
-              className="text-[10px] text-primary hover:text-primary/80 font-medium mt-0.5"
+              className="text-xs text-primary hover:text-primary/80 font-medium mt-0.5"
             >
               {isExpanded ? 'less' : 'more'}
             </button>
@@ -96,9 +96,9 @@ export function PublishedPostRow({ post, publisherHeadline, isEven }: PublishedP
               <MetricPill icon={Users} value={reach.toLocaleString()} />
             )}
             {totalReactions > 0 && (
-              <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">
+              <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
                 <span className="flex -space-x-0.5">
-                  {topReactions.map((e, i) => <span key={i} className="text-[10px]">{e}</span>)}
+                  {topReactions.map((e, i) => <span key={i} className="text-xs">{e}</span>)}
                 </span>
                 <span className="font-mono tabular-nums font-medium text-foreground">{totalReactions.toLocaleString()}</span>
               </span>
@@ -110,7 +110,7 @@ export function PublishedPostRow({ post, publisherHeadline, isEven }: PublishedP
               <MetricPill icon={Repeat2} value={reshares.toLocaleString()} />
             )}
             {engagementRate > 0 && (
-              <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">
+              <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
                 <TrendingUp className="h-2.5 w-2.5" />
                 <span className="font-mono tabular-nums font-medium text-foreground">{engagementRate.toFixed(1)}%</span>
               </span>
@@ -140,7 +140,7 @@ export function PublishedPostRow({ post, publisherHeadline, isEven }: PublishedP
 
 function MetricPill({ icon: Icon, value }: { icon: typeof Eye; value: string }) {
   return (
-    <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">
+    <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
       <Icon className="h-2.5 w-2.5" />
       <span className="font-mono tabular-nums font-medium text-foreground">{value}</span>
     </span>

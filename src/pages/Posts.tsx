@@ -19,13 +19,14 @@ import { useDocuments } from '@/hooks/useDocuments';
 import { useWorkspace } from '@/hooks/useWorkspace';
 
 import { Button } from '@/components/ui/button';
-import { Plus, Inbox, ExternalLink, Loader2, Upload, Users, Eye, Heart, TrendingUp, MessageCircle, Repeat2, LinkIcon } from 'lucide-react';
+import { Plus, Inbox, ExternalLink, Loader2, Upload, Users, Eye, Heart, TrendingUp, MessageCircle, Repeat2, LinkIcon, Menu, X } from 'lucide-react';
 import { useAnalytics } from '@/hooks/useAnalytics';
 import { CountUp } from '@/components/CountUp';
 import { Card, CardContent } from '@/components/ui/card';
 import { PublisherAvatar } from '@/components/PublisherAvatar';
 import { AllReactorsPanel } from '@/components/AllReactorsPanel';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
 const Posts = () => {
   const navigate = useNavigate();
@@ -37,7 +38,7 @@ const Posts = () => {
   const handleMediaUpdate = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ['posts'] });
   }, [queryClient]);
-  
+
   // Auto-sync LinkedIn analytics on login
   const { isSyncing: isAutoSyncing } = useAutoSync(dbPublishers, user?.id);
 
@@ -54,6 +55,7 @@ const Posts = () => {
   const { createDocument } = useDocuments();
   const { currentWorkspace } = useWorkspace();
   const canUseAiCreate = user?.email === 'geryslov@gmail.com';
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Redirect to auth if not logged in
   useEffect(() => {
@@ -65,7 +67,7 @@ const Posts = () => {
   // Merge publishers from posts with publishers from database
   const publishers = useMemo(() => {
     const publisherMap = new Map<string, { name: string; role: string; linkedinUrl: string; posts: Post[] }>();
-    
+
     // First add all publishers from database (even those without posts)
     dbPublishers.forEach(pub => {
       publisherMap.set(pub.name, {
@@ -75,7 +77,7 @@ const Posts = () => {
         posts: [],
       });
     });
-    
+
     // Then add/update with posts data
     posts.forEach(post => {
       if (!publisherMap.has(post.publisherName)) {
@@ -88,7 +90,7 @@ const Posts = () => {
       }
       publisherMap.get(post.publisherName)!.posts.push(post);
     });
-    
+
     return Array.from(publisherMap.values()).sort((a, b) => a.name.localeCompare(b.name));
   }, [posts, dbPublishers]);
 
@@ -104,15 +106,15 @@ const Posts = () => {
       const publisher = publishers.find(p => p.name === selectedPublisher);
       postsToFilter = publisher?.posts || [];
     }
-    
+
     const active = postsToFilter
       .filter(p => p.status !== 'done')
       .sort((a, b) => new Date(b.scheduledDate).getTime() - new Date(a.scheduledDate).getTime());
-    
+
     const published = postsToFilter
       .filter(p => p.status === 'done')
       .sort((a, b) => new Date(b.scheduledDate).getTime() - new Date(a.scheduledDate).getTime());
-    
+
     return { activePosts: active, publishedPosts: published };
   }, [posts, selectedPublisher, publishers]);
 
@@ -170,11 +172,11 @@ const Posts = () => {
     setIsDocUploadOpen(true);
   };
 
-  const handleCreateDocument = async (data: { 
-    title: string; 
-    content: string; 
-    fileName?: string; 
-    fileUrl?: string 
+  const handleCreateDocument = async (data: {
+    title: string;
+    content: string;
+    fileName?: string;
+    fileUrl?: string
   }) => {
     const doc = await createDocument.mutateAsync(data);
     // Navigate to the document editor where sections are shown with editing & history
@@ -210,15 +212,24 @@ const Posts = () => {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      
+
+      <div className="lg:hidden px-4 py-2 border-b border-border">
+        <Button variant="ghost" size="sm" onClick={() => setSidebarOpen(!sidebarOpen)} className="gap-2">
+          {sidebarOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+          Publishers
+        </Button>
+      </div>
+
       <div className="flex">
-        <PublisherSidebar
-          publishers={publishers}
-          selectedPublisher={selectedPublisher}
-          onSelectPublisher={setSelectedPublisher}
-        />
-        
-        <main className="flex-1 overflow-y-auto h-[calc(100vh-73px)]">
+        <div className={cn("lg:block", sidebarOpen ? "block" : "hidden")}>
+          <PublisherSidebar
+            publishers={publishers}
+            selectedPublisher={selectedPublisher}
+            onSelectPublisher={setSelectedPublisher}
+          />
+        </div>
+
+        <main id="main-content" className="flex-1 overflow-y-auto h-[calc(100vh-73px)]">
           <div className="p-8">
           {/* Summary Stats - Aggregated Analytics */}
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
@@ -313,9 +324,9 @@ const Posts = () => {
               <div>
                 {currentPublisher ? (
                   <div className="flex items-center gap-5">
-                    <PublisherAvatar 
-                      name={currentPublisher.name} 
-                      size="lg" 
+                    <PublisherAvatar
+                      name={currentPublisher.name}
+                      size="lg"
                       editable={true}
                     />
                     <div>
@@ -353,21 +364,21 @@ const Posts = () => {
                   </div>
                 )}
               </div>
-              
+
               {isAdmin && (
                 <div className="flex gap-2">
-                  <Button 
-                    onClick={() => setIsTrackPostOpen(true)} 
-                    size="lg" 
+                  <Button
+                    onClick={() => setIsTrackPostOpen(true)}
+                    size="lg"
                     variant="outline"
                     className="gap-2 rounded-xl"
                   >
                     <LinkIcon className="h-5 w-5" />
                     Track Post
                   </Button>
-                  <Button 
-                    onClick={() => setIsBulkUploadOpen(true)} 
-                    size="lg" 
+                  <Button
+                    onClick={() => setIsBulkUploadOpen(true)}
+                    size="lg"
                     variant="outline"
                     className="gap-2 rounded-xl text-accent"
                   >
@@ -394,10 +405,10 @@ const Posts = () => {
                   {selectedPublisher ? 'Upcoming Posts' : 'All Active Posts'}
                   <span className="ml-2 text-sm font-normal text-muted-foreground">({activePosts.length})</span>
                 </h3>
-                
+
                 {/* View Toggle */}
               </div>
-              
+
               {activePosts.length === 0 ? (
                 <div className="text-center py-16 card-elevated animate-fade-in">
                   <div className="w-16 h-16 mx-auto mb-4 rounded-2xl gradient-bg glow-primary flex items-center justify-center">
@@ -405,7 +416,7 @@ const Posts = () => {
                   </div>
                   <h3 className="text-lg font-semibold mb-2">No upcoming posts</h3>
                   <p className="text-muted-foreground mb-6 max-w-sm mx-auto">
-                    {selectedPublisher 
+                    {selectedPublisher
                       ? `No scheduled posts for ${selectedPublisher}`
                       : 'No active posts available'}
                   </p>
@@ -450,7 +461,7 @@ const Posts = () => {
                   </div>
                   <div className="h-px flex-1 bg-border" />
                 </div>
-                
+
                 <div className="space-y-1.5">
                     {publishedPosts.map((post, index) => {
                       const publisher = dbPublishers.find(p => p.name === post.publisherName);

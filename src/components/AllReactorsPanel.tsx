@@ -343,13 +343,13 @@ export function AllReactorsPanel({
                     </div>
                     <div className="flex items-center gap-1 flex-shrink-0">
                       {p.reactionsCount > 0 && (
-                        <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold font-mono bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">
+                        <span className="inline-flex items-center gap-0.5 text-xs font-semibold font-mono bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">
                           <ThumbsUp className="h-2.5 w-2.5" />
                           {p.reactionsCount}
                         </span>
                       )}
                       {p.commentsCount > 0 && (
-                        <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold font-mono bg-accent/20 text-accent-foreground px-1.5 py-0.5 rounded-full">
+                        <span className="inline-flex items-center gap-0.5 text-xs font-semibold font-mono bg-accent/20 text-accent-foreground px-1.5 py-0.5 rounded-full">
                           <MessageCircle className="h-2.5 w-2.5" />
                           {p.commentsCount}
                         </span>
@@ -396,13 +396,13 @@ export function AllReactorsPanel({
                           </span>
                         )}
                         {c.commented_at && (
-                          <span className="text-[10px] text-muted-foreground ml-auto flex-shrink-0">
+                          <span className="text-xs text-muted-foreground ml-auto flex-shrink-0">
                             {getRelativeTime(c.commented_at)}
                           </span>
                         )}
                       </div>
                       {c.author_headline && (
-                        <p className="text-[10px] text-muted-foreground truncate mt-0.5">{c.author_headline}</p>
+                        <p className="text-xs text-muted-foreground truncate mt-0.5">{c.author_headline}</p>
                       )}
                       {c.content && (
                         <p className="text-[11px] text-foreground mt-1.5 leading-relaxed line-clamp-4">

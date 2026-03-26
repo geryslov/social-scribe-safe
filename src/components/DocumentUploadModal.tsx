@@ -584,7 +584,7 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate }
                               <GitMerge className={cn("h-4 w-4 mt-0.5 shrink-0", urlStrategy === 'cross' ? "text-primary" : "text-muted-foreground")} />
                               <div>
                                 <p className={cn("text-xs font-medium", urlStrategy === 'cross' ? "text-primary" : "text-foreground")}>Cross data</p>
-                                <p className="text-[10px] text-muted-foreground leading-tight mt-0.5">AI combines all URLs into a unified context</p>
+                                <p className="text-xs text-muted-foreground leading-tight mt-0.5">AI combines all URLs into a unified context</p>
                               </div>
                             </button>
                             <button
@@ -599,7 +599,7 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate }
                               <Layers className={cn("h-4 w-4 mt-0.5 shrink-0", urlStrategy === 'single' ? "text-primary" : "text-muted-foreground")} />
                               <div>
                                 <p className={cn("text-xs font-medium", urlStrategy === 'single' ? "text-primary" : "text-foreground")}>Single source</p>
-                                <p className="text-[10px] text-muted-foreground leading-tight mt-0.5">Each post uses one URL as its sole data source</p>
+                                <p className="text-xs text-muted-foreground leading-tight mt-0.5">Each post uses one URL as its sole data source</p>
                               </div>
                             </button>
                           </div>

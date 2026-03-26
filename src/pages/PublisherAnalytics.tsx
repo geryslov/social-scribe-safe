@@ -26,14 +26,14 @@ const PublisherAnalytics = () => {
   const navigate = useNavigate();
   const { name } = useParams<{ name: string }>();
   const publisherName = decodeURIComponent(name || '');
-  
+
   const { user, isLoading: authLoading } = useAuth();
   const { publishers: dbPublishers } = usePublishers();
   const { posts } = usePosts();
-  
+
   const [timeRange, setTimeRange] = useState<'7d' | '30d' | '90d'>('30d');
   const [isSyncing, setIsSyncing] = useState(false);
-  
+
   const { stats, trendData, topPosts, isLoading } = useAnalytics(publisherName, timeRange);
 
   const publisher = dbPublishers.find(p => p.name === publisherName);
@@ -98,7 +98,7 @@ const PublisherAnalytics = () => {
 
   const statCards = [
     {
-      title: 'TOTAL REACH',
+      title: 'Total Reach',
       value: stats.totalReach,
       icon: Users,
       sparkline: generateSparkline('reach'),
@@ -106,7 +106,7 @@ const PublisherAnalytics = () => {
       bgColor: 'bg-info/10',
     },
     {
-      title: 'IMPRESSIONS',
+      title: 'Impressions',
       value: stats.totalImpressions,
       icon: Eye,
       sparkline: generateSparkline('impressions'),
@@ -114,7 +114,7 @@ const PublisherAnalytics = () => {
       bgColor: 'bg-primary/10',
     },
     {
-      title: 'REACTIONS',
+      title: 'Reactions',
       value: stats.totalReactions,
       icon: Heart,
       sparkline: generateSparkline('reactions'),
@@ -122,7 +122,7 @@ const PublisherAnalytics = () => {
       bgColor: 'bg-destructive/10',
     },
     {
-      title: 'COMMENTS',
+      title: 'Comments',
       value: stats.totalComments,
       icon: MessageCircle,
       sparkline: generateSparkline('comments'),
@@ -130,7 +130,7 @@ const PublisherAnalytics = () => {
       bgColor: 'bg-warning/10',
     },
     {
-      title: 'RESHARES',
+      title: 'Reshares',
       value: stats.totalReshares,
       icon: Share2,
       sparkline: generateSparkline('reshares'),
@@ -138,7 +138,7 @@ const PublisherAnalytics = () => {
       bgColor: 'bg-success/10',
     },
     {
-      title: 'AVG ENGAGEMENT',
+      title: 'Avg Engagement',
       value: stats.avgEngagementRate,
       icon: TrendingUp,
       isPercentage: true,
@@ -150,12 +150,12 @@ const PublisherAnalytics = () => {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      
-      <main className="p-8 max-w-7xl mx-auto">
+
+      <main id="main-content" className="p-8 max-w-7xl mx-auto">
         {/* Back Button */}
-        <Button 
-          variant="ghost" 
-          size="sm" 
+        <Button
+          variant="ghost"
+          size="sm"
           onClick={() => navigate('/')}
           className="mb-6 gap-2 text-muted-foreground hover:text-foreground"
         >
@@ -167,14 +167,14 @@ const PublisherAnalytics = () => {
         <div className="mb-8">
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-5">
-              <PublisherAvatar 
-                name={publisher.name} 
-                size="lg" 
+              <PublisherAvatar
+                name={publisher.name}
+                size="lg"
                 className="w-20 h-20 ring-2 ring-primary/30 shadow-[0_0_30px_rgba(139,92,246,0.2)]"
               />
               <div>
                 <div className="flex items-center gap-3">
-                  <h1 className="text-3xl font-bold font-mono tracking-tight">{publisher.name}</h1>
+                  <h1 className="text-3xl font-bold tracking-tight">{publisher.name}</h1>
                   {publisher.linkedin_url && (
                     <a
                       href={publisher.linkedin_url}
@@ -187,20 +187,20 @@ const PublisherAnalytics = () => {
                   )}
                 </div>
                 {publisher.role && (
-                  <p className="text-muted-foreground mt-1 font-mono text-sm">{publisher.role}</p>
+                  <p className="text-muted-foreground mt-1 text-sm">{publisher.role}</p>
                 )}
                 <div className="flex items-center gap-3 mt-2">
-                  <Badge 
+                  <Badge
                     variant={publisher.linkedin_connected ? "default" : "secondary"}
                     className={cn(
-                      "font-mono text-xs",
+                      "text-xs",
                       publisher.linkedin_connected && "bg-success/20 text-success border-success/30"
                     )}
                   >
-                    {publisher.linkedin_connected ? '● CONNECTED' : '○ NOT CONNECTED'}
+                    {publisher.linkedin_connected ? 'Connected' : 'Not connected'}
                   </Badge>
-                  <span className="text-xs text-muted-foreground font-mono">
-                    {stats.totalPosts} PUBLISHED POSTS
+                  <span className="text-xs text-muted-foreground">
+                    {stats.totalPosts} published posts
                   </span>
                 </div>
               </div>
@@ -213,7 +213,7 @@ const PublisherAnalytics = () => {
                 disabled={isSyncing || !publisher.linkedin_connected}
                 variant="outline"
                 size="sm"
-                className="gap-2 font-mono"
+                className="gap-2"
               >
                 <RefreshCw className={cn("h-4 w-4", isSyncing && "animate-spin")} />
                 SYNC
@@ -235,14 +235,14 @@ const PublisherAnalytics = () => {
                     </div>
                   </div>
                   <div className="space-y-1">
-                    <p className="text-2xl font-bold font-mono tabular-nums">
-                      <CountUp 
-                        end={stat.value} 
-                        suffix={stat.isPercentage ? '%' : ''} 
+                    <p className="text-2xl font-bold tabular-nums">
+                      <CountUp
+                        end={stat.value}
+                        suffix={stat.isPercentage ? '%' : ''}
                         decimals={stat.isPercentage ? 1 : 0}
                       />
                     </p>
-                    <p className="text-[10px] font-mono text-muted-foreground tracking-wider">
+                    <p className="text-xs text-muted-foreground">
                       {stat.title}
                     </p>
                   </div>
@@ -254,7 +254,7 @@ const PublisherAnalytics = () => {
 
         {/* Follower Growth */}
         <div className="mb-8">
-          <h2 className="text-sm font-mono text-muted-foreground tracking-wider mb-4">FOLLOWER GROWTH</h2>
+          <h2 className="text-sm font-medium text-muted-foreground mb-4">Follower Growth</h2>
           <FollowerGrowthChart
             publisherId={publisher.id}
             timeRange={timeRange}
@@ -275,7 +275,7 @@ const PublisherAnalytics = () => {
         {/* Top Posts */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <TopPostsLeaderboard posts={topPosts} isLoading={isLoading} />
-          
+
           {/* Recent Posts */}
           <CyberCard>
             <CyberCardHeader>
@@ -284,7 +284,7 @@ const PublisherAnalytics = () => {
             <CyberCardContent>
               <div className="space-y-3">
               {topPosts.slice(0, 5).map((post, index) => (
-                  <div 
+                  <div
                     key={post.id}
                     className="flex items-center gap-3 p-3 rounded-lg bg-muted/30 border border-border/30"
                   >
@@ -299,13 +299,13 @@ const PublisherAnalytics = () => {
                     </div>
                     <div className="text-right">
                       <p className="text-sm font-mono font-bold">{(post.impressions || 0).toLocaleString()}</p>
-                      <p className="text-[10px] text-muted-foreground uppercase">impressions</p>
+                      <p className="text-xs text-muted-foreground">Impressions</p>
                     </div>
                   </div>
                 ))}
                 {topPosts.length === 0 && (
                   <div className="text-center py-8 text-muted-foreground">
-                    <p className="font-mono">No published posts yet</p>
+                    <p>No published posts yet</p>
                   </div>
                 )}
               </div>

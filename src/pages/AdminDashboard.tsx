@@ -68,7 +68,7 @@ export default function AdminDashboard() {
     <div className="min-h-screen bg-background">
       <Header />
       
-      <main className="px-8 py-8">
+      <main id="main-content" className="px-8 py-8">
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-3xl font-bold">Workspaces</h1>

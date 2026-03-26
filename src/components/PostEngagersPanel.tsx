@@ -42,7 +42,7 @@ function EngagerAvatar({ name, avatarUrl, size = 'sm' }: { name: string; avatarU
     .join('')
     .toUpperCase();
 
-  const sizeClasses = size === 'md' ? 'w-10 h-10 text-xs' : 'w-8 h-8 text-[10px]';
+  const sizeClasses = size === 'md' ? 'w-10 h-10 text-xs' : 'w-8 h-8 text-xs';
 
   if (avatarUrl) {
     return (
@@ -109,7 +109,7 @@ export function PostEngagersPanel({ postId, totalReactions = 0, totalComments = 
           </div>
           <span className="font-medium">Who engaged</span>
           {reactors.length > 0 && (
-            <span className="px-1.5 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-semibold">
+            <span className="px-1.5 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-semibold">
               {reactors.length}
             </span>
           )}
@@ -177,7 +177,7 @@ export function PostEngagersPanel({ postId, totalReactions = 0, totalComments = 
                         <span className="text-[11px] font-semibold text-foreground">
                           {reactionLabels[type] || type}
                         </span>
-                        <span className="text-[10px] text-muted-foreground">
+                        <span className="text-xs text-muted-foreground">
                           ({typeReactors.length})
                         </span>
                         <div className="flex-1 h-px bg-border" />
@@ -253,7 +253,7 @@ function ReactorCard({ reactor }: { reactor: PostReactor }) {
           )}
         </div>
         {reactor.actor_headline && (
-          <p className="text-[10px] text-muted-foreground truncate leading-tight mt-0.5">
+          <p className="text-xs text-muted-foreground truncate leading-tight mt-0.5">
             {reactor.actor_headline}
           </p>
         )}
@@ -289,13 +289,13 @@ function CommenterCard({ comment }: { comment: PostComment }) {
               </span>
             )}
             {comment.commented_at && (
-              <span className="text-[10px] text-muted-foreground ml-auto flex-shrink-0">
+              <span className="text-xs text-muted-foreground ml-auto flex-shrink-0">
                 {getRelativeTime(comment.commented_at)}
               </span>
             )}
           </div>
           {comment.author_headline && (
-            <p className="text-[10px] text-muted-foreground truncate mt-0.5">{comment.author_headline}</p>
+            <p className="text-xs text-muted-foreground truncate mt-0.5">{comment.author_headline}</p>
           )}
           {comment.content && (
             <p className="text-[11px] text-foreground mt-1.5 leading-relaxed line-clamp-3">

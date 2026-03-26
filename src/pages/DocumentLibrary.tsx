@@ -111,7 +111,7 @@ export default function DocumentLibrary() {
     <div className="min-h-screen bg-background">
       <Header />
       
-      <main className="px-8 py-6">
+      <main id="main-content" className="px-8 py-6">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>

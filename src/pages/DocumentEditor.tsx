@@ -150,7 +150,7 @@ export default function DocumentEditor() {
     <div className="min-h-screen bg-background">
       <Header />
       
-      <main className="px-8 py-6">
+      <main id="main-content" className="px-8 py-6">
         {/* Top Bar */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">

@@ -23,12 +23,12 @@ const Analytics = () => {
   const navigate = useNavigate();
   const { user, isLoading: authLoading } = useAuth();
   const { publishers: dbPublishers, refreshAllAvatars } = usePublishers();
-  
+
   const [timeRange, setTimeRange] = useState<'7d' | '30d' | '90d'>('30d');
-  
+
   // Auto-sync LinkedIn analytics on login
   const { isSyncing: isAutoSyncing, lastSyncTime } = useAutoSync(dbPublishers, user?.id);
-  
+
   const { stats, trendData, topPosts, publisherRanking, isLoading } = useAnalytics(null, timeRange);
 
   // Redirect to auth if not logged in
@@ -48,7 +48,7 @@ const Analytics = () => {
       <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-3">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
         {isAutoSyncing && (
-          <p className="text-sm text-muted-foreground font-mono">SYNCING ANALYTICS...</p>
+          <p className="text-sm text-muted-foreground">Syncing analytics...</p>
         )}
       </div>
     );
@@ -56,14 +56,14 @@ const Analytics = () => {
 
   const statCards = [
     {
-      title: 'TOTAL POSTS',
+      title: 'Total Posts',
       value: stats.totalPosts,
       icon: TrendingUp,
       color: 'text-primary',
       bgColor: 'bg-primary/10',
     },
     {
-      title: 'TOTAL REACH',
+      title: 'Total Reach',
       value: stats.totalReach,
       icon: Users,
       sparkline: generateSparkline('reach'),
@@ -71,7 +71,7 @@ const Analytics = () => {
       bgColor: 'bg-info/10',
     },
     {
-      title: 'IMPRESSIONS',
+      title: 'Impressions',
       value: stats.totalImpressions,
       icon: Eye,
       sparkline: generateSparkline('impressions'),
@@ -79,7 +79,7 @@ const Analytics = () => {
       bgColor: 'bg-primary/10',
     },
     {
-      title: 'REACTIONS',
+      title: 'Reactions',
       value: stats.totalReactions,
       icon: Heart,
       sparkline: generateSparkline('reactions'),
@@ -87,7 +87,7 @@ const Analytics = () => {
       bgColor: 'bg-destructive/10',
     },
     {
-      title: 'COMMENTS',
+      title: 'Comments',
       value: stats.totalComments,
       icon: MessageCircle,
       sparkline: generateSparkline('comments'),
@@ -95,7 +95,7 @@ const Analytics = () => {
       bgColor: 'bg-warning/10',
     },
     {
-      title: 'AVG ENGAGEMENT',
+      title: 'Avg Engagement',
       value: stats.avgEngagementRate,
       icon: TrendingUp,
       isPercentage: true,
@@ -107,25 +107,21 @@ const Analytics = () => {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      
-      <main className="p-8 max-w-7xl mx-auto">
+
+      <main id="main-content" className="p-8 max-w-7xl mx-auto">
         {/* Page Title */}
         <div className="flex items-start justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-bold font-mono tracking-tight">
-              <span className="bg-gradient-to-r from-foreground via-foreground to-muted-foreground/60 bg-clip-text text-transparent">
-                ANALYTICS_DASHBOARD
-              </span>
-            </h1>
-            <p className="text-muted-foreground mt-2 font-mono text-sm">
-              TRACK PERFORMANCE // ALL PUBLISHERS
+            <h1 className="text-3xl font-bold tracking-tight">Analytics</h1>
+            <p className="text-muted-foreground mt-1 text-sm">
+              Performance overview across all publishers
             </p>
           </div>
           <div className="flex items-center gap-4">
             <DataPulse />
             {lastSyncTime && (
-              <span className="text-xs text-muted-foreground font-mono">
-                LAST SYNC: {format(new Date(lastSyncTime), 'HH:mm')}
+              <span className="text-xs text-muted-foreground">
+                Last sync: {format(new Date(lastSyncTime), 'HH:mm')}
               </span>
             )}
           </div>
@@ -136,11 +132,11 @@ const Analytics = () => {
           {statCards.map((stat, index) => {
             const Icon = stat.icon;
             return (
-              <CyberCard 
-                key={stat.title} 
-                variant="stat" 
+              <CyberCard
+                key={stat.title}
+                variant="stat"
                 glow
-                className="animate-fade-in stat-glow" 
+                className="animate-fade-in stat-glow"
                 style={{ animationDelay: `${index * 50}ms` }}
               >
                 <CyberCardContent className="p-4">
@@ -151,13 +147,13 @@ const Analytics = () => {
                   </div>
                   <div className="space-y-1">
                     <p className="text-2xl font-bold font-mono tabular-nums data-value">
-                      <CountUp 
-                        end={stat.value} 
-                        suffix={stat.isPercentage ? '%' : ''} 
+                      <CountUp
+                        end={stat.value}
+                        suffix={stat.isPercentage ? '%' : ''}
                         decimals={stat.isPercentage ? 1 : 0}
                       />
                     </p>
-                    <p className="text-[10px] font-mono text-muted-foreground tracking-wider">
+                    <p className="text-xs text-muted-foreground">
                       {stat.title}
                     </p>
                   </div>
@@ -180,7 +176,7 @@ const Analytics = () => {
         {/* Bottom Grid - Top Posts and Publisher Comparison */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <TopPostsLeaderboard posts={topPosts} isLoading={isLoading} />
-          
+
           {/* Publisher Rankings - Clickable */}
           <CyberCard>
             <CyberCardHeader className="flex-row items-center justify-between">
@@ -235,13 +231,13 @@ const Analytics = () => {
                       <p className="text-sm font-mono font-bold text-success">
                         {pub.avgEngagementRate.toFixed(1)}%
                       </p>
-                      <p className="text-[10px] text-muted-foreground uppercase">engagement</p>
+                      <p className="text-xs text-muted-foreground">Engagement</p>
                     </div>
                   </button>
                 ))}
                 {publisherRanking.length === 0 && (
                   <div className="text-center py-8 text-muted-foreground">
-                    <p className="font-mono">NO PUBLISHER DATA</p>
+                    <p>No publisher data</p>
                     <p className="text-xs mt-1">Publish posts to see rankings</p>
                   </div>
                 )}

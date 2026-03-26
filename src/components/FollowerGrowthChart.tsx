@@ -62,7 +62,7 @@ export function FollowerGrowthChart({ publisherId, timeRange, onTimeRangeChange 
               <p className="text-2xl font-bold font-mono tabular-nums">
                 <CountUp end={stats.currentFollowers} />
               </p>
-              <p className="text-[10px] font-mono text-muted-foreground tracking-wider">FOLLOWERS</p>
+              <p className="text-xs text-muted-foreground">Followers</p>
             </div>
           </CyberCardContent>
         </CyberCard>
@@ -81,7 +81,7 @@ export function FollowerGrowthChart({ publisherId, timeRange, onTimeRangeChange 
               <p className={cn("text-2xl font-bold font-mono tabular-nums", isPositiveChange ? "text-success" : "text-destructive")}>
                 {isPositiveChange ? '+' : ''}{stats.netChange}
               </p>
-              <p className="text-[10px] font-mono text-muted-foreground tracking-wider">NET CHANGE</p>
+              <p className="text-xs text-muted-foreground">Net Change</p>
             </div>
           </CyberCardContent>
         </CyberCard>
@@ -97,7 +97,7 @@ export function FollowerGrowthChart({ publisherId, timeRange, onTimeRangeChange 
               <p className="text-2xl font-bold font-mono tabular-nums">
                 {stats.avgDailyGain >= 0 ? '+' : ''}{stats.avgDailyGain}
               </p>
-              <p className="text-[10px] font-mono text-muted-foreground tracking-wider">AVG DAILY GAIN</p>
+              <p className="text-xs text-muted-foreground">Avg Daily Gain</p>
             </div>
           </CyberCardContent>
         </CyberCard>

@@ -24,7 +24,7 @@ export function PostTypeBadge({ type, className }: PostTypeBadgeProps) {
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono uppercase',
+        'inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-mono uppercase',
         config.color,
         className
       )}

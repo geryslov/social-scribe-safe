@@ -63,7 +63,7 @@ export function MomentumTracker({ data, className }: MomentumTrackerProps) {
       <CyberCardContent className="space-y-4">
         {/* Week over Week Changes */}
         <div>
-          <p className="text-[10px] text-muted-foreground font-mono mb-3">THIS WEEK VS LAST WEEK</p>
+          <p className="text-xs text-muted-foreground mb-3">This Week vs Last Week</p>
           <div className="space-y-2">
             {metrics.map(({ label, icon, value, trend }) => {
               const TrendIcon = trend === 'up' ? TrendingUp : trend === 'down' ? TrendingDown : Minus;

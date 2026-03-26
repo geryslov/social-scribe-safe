@@ -37,40 +37,42 @@ export function Header() {
   ];
 
   return (
-    <header 
-      className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-border"
+    <header
+      className="sticky top-0 z-50 bg-card/80 backdrop-blur-xl border-b border-border"
       style={{
         boxShadow: `0 1px 3px rgba(0, 0, 0, 0.04), 0 4px 12px rgba(0, 0, 0, 0.02)`
       }}
     >
+      <a href="#main-content" className="skip-to-content">Skip to content</a>
+
       {/* Neon accent bar */}
-      <div 
+      <div
         className="h-1 w-full"
         style={{
           background: `linear-gradient(90deg, ${primaryColor}, #06B6D4)`
         }}
       />
-      
+
       <div className="px-8 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-8">
-            <div 
+            <div
               className="flex items-center gap-3 cursor-pointer group"
               onClick={() => navigate('/')}
             >
               {currentWorkspace?.logoUrl ? (
-                <img 
-                  src={currentWorkspace.logoUrl} 
-                  alt={currentWorkspace.name || 'Workspace'} 
+                <img
+                  src={currentWorkspace.logoUrl}
+                  alt={currentWorkspace.name || 'Workspace'}
                   className="h-10 w-auto max-w-[160px] object-contain transition-transform group-hover:scale-105"
                   onError={(e) => {
                     e.currentTarget.style.display = 'none';
                   }}
                 />
               ) : (
-                <div 
+                <div
                   className="h-10 w-10 rounded-xl flex items-center justify-center transition-all group-hover:scale-105"
-                  style={{ 
+                  style={{
                     background: `linear-gradient(135deg, ${primaryColor} 0%, #06B6D4 100%)`,
                     boxShadow: `0 4px 16px ${primaryColor}40`
                   }}
@@ -84,35 +86,36 @@ export function Header() {
             {user && <WorkspaceSwitcher />}
 
             {/* Navigation */}
-            <nav className="flex items-center gap-2 bg-secondary/50 p-1.5 rounded-xl">
+            <nav aria-label="Main navigation" className="flex items-center gap-2 bg-secondary/50 p-1.5 rounded-xl">
               {navItems.map(item => {
                 const Icon = item.icon;
-                const isActive = location.pathname === item.path || 
+                const isActive = location.pathname === item.path ||
                                  (item.path !== '/' && location.pathname.startsWith(item.path));
                 const hasNotification = item.badge > 0;
                 return (
                   <button
                     key={item.path}
                     onClick={() => navigate(item.path)}
+                    aria-current={isActive ? "page" : undefined}
                     className={cn(
                       "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 relative nav-button",
                       "active:scale-[0.95]",
-                      isActive 
-                        ? "text-white shadow-lg scale-[1.02]" 
+                      isActive
+                        ? "text-white shadow-lg scale-[1.02]"
                         : "text-muted-foreground hover:text-foreground hover:bg-white/60",
                       hasNotification && !isActive && "text-primary"
                     )}
-                    style={isActive ? { 
-                      background: 'var(--nav-button-bg, linear-gradient(135deg, #FF6B35, #E85D04))',
-                      boxShadow: `0 4px 20px rgba(0, 0, 0, 0.25), 0 2px 8px rgba(0, 0, 0, 0.15)`,
+                    style={isActive ? {
+                      background: 'linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)))',
+                      boxShadow: `0 4px 20px hsl(var(--primary) / 0.3), 0 2px 8px rgba(0, 0, 0, 0.15)`,
                     } : undefined}
                   >
                     <Icon className={cn("h-4 w-4", isActive && "drop-shadow-sm")} />
                     <span>{item.label}</span>
                     {hasNotification && (
-                      <span 
-                        className="absolute -top-1.5 -right-1.5 h-5 w-5 text-white text-xs font-bold rounded-full flex items-center justify-center animate-pulse shadow-md"
-                        style={{ 
+                      <span
+                        className="absolute -top-1.5 -right-1.5 h-5 w-5 text-white text-xs font-bold rounded-full flex items-center justify-center shadow-md"
+                        style={{
                           backgroundColor: '#10B981',
                           boxShadow: '0 2px 8px rgba(16, 185, 129, 0.5)'
                         }}
@@ -125,10 +128,10 @@ export function Header() {
               })}
             </nav>
           </div>
-          
+
           <div className="flex items-center gap-3">
             {isAdmin && (
-              <div 
+              <div
                 className="flex items-center gap-2 text-xs px-3 py-1.5 rounded-full"
                 style={{
                   background: `${primaryColor}15`,
@@ -139,7 +142,7 @@ export function Header() {
                 <span className="font-medium">Admin</span>
               </div>
             )}
-            
+
             {user ? (
               <div className="flex items-center gap-2">
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">

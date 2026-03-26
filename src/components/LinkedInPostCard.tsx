@@ -327,7 +327,7 @@ export function LinkedInPostCard({
               {breakdownEntries.map(([type, count]) => (
                 <span
                   key={type}
-                  className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-muted/40 text-[10px] font-medium"
+                  className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-muted/40 text-xs font-medium"
                 >
                   <span className="text-xs">{reactionEmojis[type as keyof ReactionBreakdown] || '👍'}</span>
                   <span className="capitalize text-foreground">{type}</span>
@@ -383,7 +383,7 @@ export function LinkedInPostCard({
 
       {/* Analytics Strip */}
       {showAnalytics && impressions > 0 && (
-        <div className="flex items-center justify-around px-3.5 py-1.5 bg-muted/20 border-t border-border/40 text-[10px]">
+        <div className="flex items-center justify-around px-3.5 py-1.5 bg-muted/20 border-t border-border/40 text-xs">
           <AnalyticsStat icon={Eye} value={impressions} label="Impressions" />
           <AnalyticsStat icon={Users} value={reach} label="Reach" />
           <AnalyticsStat icon={TrendingUp} value={engagementRate} label="Engage" isPercentage />
@@ -437,7 +437,7 @@ function AnalyticsStat({
           suffix={isPercentage ? '%' : ''}
         />
       </span>
-      <span className="text-[10px]">{label}</span>
+      <span className="text-xs">{label}</span>
     </div>
   );
 }

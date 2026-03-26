@@ -223,7 +223,7 @@ export function DocumentSplitModal({ open, onOpenChange, document, sections, onS
                           <div className="flex items-center gap-2">
                             <Avatar className="h-5 w-5">
                               <AvatarImage src={publisher.avatar_url || undefined} />
-                              <AvatarFallback className="text-[10px]">
+                              <AvatarFallback className="text-xs">
                                 {publisher.name.slice(0, 2).toUpperCase()}
                               </AvatarFallback>
                             </Avatar>
