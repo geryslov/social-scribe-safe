@@ -266,9 +266,10 @@ Deno.serve(async (req) => {
       // Fetch additional profile data (headline) from the /v2/me endpoint
       let headline: string | null = null;
       let companyName: string | null = null;
+      let linkedinProfileUrl: string | null = null;
       
       try {
-        const profileResponse = await fetch('https://api.linkedin.com/v2/me?projection=(id,localizedFirstName,localizedLastName,localizedHeadline)', {
+        const profileResponse = await fetch('https://api.linkedin.com/v2/me?projection=(id,localizedFirstName,localizedLastName,localizedHeadline,vanityName)', {
           headers: {
             'Authorization': `Bearer ${accessToken}`,
             'X-Restli-Protocol-Version': '2.0.0',
@@ -279,12 +280,16 @@ Deno.serve(async (req) => {
         if (profileResponse.ok) {
           const profileData = await profileResponse.json();
           headline = profileData.localizedHeadline || null;
-          console.log('Profile data received:', { headline });
+          const vanityName = profileData.vanityName || null;
+          console.log('Profile data received:', { headline, vanityName });
           
           // Try to extract company name from headline
           if (headline) {
             companyName = extractCompanyFromHeadline(headline);
             console.log('Extracted company:', companyName);
+          }
+          if (vanityName) {
+            linkedinProfileUrl = `https://www.linkedin.com/in/${vanityName}`;
           }
         } else {
           console.log('Could not fetch extended profile data, continuing without headline');
@@ -483,6 +488,7 @@ Deno.serve(async (req) => {
             headline: headline || null,
             company_name: companyName || null,
             workspace_id: workspaceId,
+            linkedin_url: linkedinProfileUrl,
           });
 
         if (insertError) {
