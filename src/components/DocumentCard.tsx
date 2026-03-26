@@ -42,7 +42,7 @@ export function DocumentCard({ document, postCount = 0, publisher, onEdit, onDel
       "group relative bg-card border rounded-xl p-5 hover:shadow-lg transition-all duration-200",
       isInReview 
         ? "border-yellow-500/50 ring-2 ring-yellow-500/20 bg-yellow-500/5" 
-        : "border-border hover:border-primary/30"
+        : "border-border/60 hover:border-primary/30 hover:shadow-[0_0_25px_hsl(var(--primary)/0.08)]"
     )}>
       {/* Status Badge */}
       <div className="absolute top-4 right-4">
@@ -54,8 +54,8 @@ export function DocumentCard({ document, postCount = 0, publisher, onEdit, onDel
 
       {/* Icon & Title */}
       <div className="flex items-start gap-3 mb-4 pr-24">
-        <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-          <FileText className="h-5 w-5 text-primary" />
+        <div className="flex-shrink-0 w-10 h-10 rounded-lg gradient-bg shadow-[0_0_15px_hsl(var(--primary)/0.15)] flex items-center justify-center">
+          <FileText className="h-5 w-5 text-white" />
         </div>
         <div className="min-w-0 flex-1">
           <h3 className="font-semibold text-foreground truncate">{document.title}</h3>

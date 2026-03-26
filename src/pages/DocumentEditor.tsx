@@ -151,6 +151,11 @@ export default function DocumentEditor() {
       <Header />
       
       <main id="main-content" className="px-8 py-6">
+        {/* Background glow */}
+        <div className="fixed inset-0 pointer-events-none -z-10" aria-hidden="true">
+          <div className="absolute top-1/4 left-1/2 w-[500px] h-[500px] rounded-full opacity-[0.03]" style={{ background: 'radial-gradient(circle, hsl(var(--primary)) 0%, transparent 70%)' }} />
+        </div>
+
         {/* Top Bar */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
@@ -159,7 +164,7 @@ export default function DocumentEditor() {
             </Button>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-xl font-semibold">{document.title}</h1>
+                <h1 className="text-xl font-bold">{document.title}</h1>
                 <Badge variant="secondary" className={status.color}>
                   {status.label}
                 </Badge>
@@ -173,7 +178,7 @@ export default function DocumentEditor() {
 
           <div className="flex items-center gap-2">
             {hasChanges && (
-              <Button onClick={handleSave} disabled={updateDocument.isPending}>
+              <Button onClick={handleSave} disabled={updateDocument.isPending} className="gradient-bg text-white hover:opacity-90">
                 <Save className="h-4 w-4 mr-2" />
                 Save Changes
               </Button>
@@ -198,7 +203,7 @@ export default function DocumentEditor() {
                   <RotateCcw className="h-4 w-4 mr-2" />
                   Request Changes
                 </Button>
-                <Button onClick={() => handleStatusChange('approved')}>
+                <Button onClick={() => handleStatusChange('approved')} className="bg-success text-white hover:bg-success/90">
                   <CheckCircle className="h-4 w-4 mr-2" />
                   Approve
                 </Button>
@@ -206,7 +211,7 @@ export default function DocumentEditor() {
             )}
 
             {document.status === 'approved' && isAdmin && (
-              <Button onClick={() => setSplitModalOpen(true)}>
+              <Button onClick={() => setSplitModalOpen(true)} className="gradient-bg text-white hover:opacity-90">
                 <Split className="h-4 w-4 mr-2" />
                 Split to Posts
               </Button>
@@ -244,7 +249,7 @@ export default function DocumentEditor() {
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <Layers className="h-4 w-4 text-primary" />
+                    <div className="p-1 rounded gradient-bg"><Layers className="h-3 w-3 text-white" /></div>
                     <h3 className="font-medium">Posts for Review ({sections.length})</h3>
                   </div>
                   
@@ -346,7 +351,7 @@ export default function DocumentEditor() {
           {/* Sidebar */}
           <div className="space-y-6">
             {/* Document Info */}
-            <div className="bg-card border border-border rounded-xl p-4">
+            <div className="bg-card/80 backdrop-blur-sm border border-border/50 rounded-xl p-4 hover:border-primary/20 transition-colors">
               <h3 className="font-medium flex items-center gap-2 mb-3">
                 <FileText className="h-4 w-4 text-primary" />
                 Document Info
@@ -390,7 +395,7 @@ export default function DocumentEditor() {
 
             {/* Assigned Publisher */}
             {isAdmin && (
-              <div className="bg-card border border-border rounded-xl p-4">
+              <div className="bg-card/80 backdrop-blur-sm border border-border/50 rounded-xl p-4 hover:border-primary/20 transition-colors">
                 <h3 className="font-medium flex items-center gap-2 mb-3">
                   <User className="h-4 w-4 text-primary" />
                   Assigned Publisher
@@ -409,7 +414,7 @@ export default function DocumentEditor() {
             <LinkedPostsList posts={posts} />
 
             {/* Comments */}
-            <div className="bg-card border border-border rounded-xl p-4">
+            <div className="bg-card/80 backdrop-blur-sm border border-border/50 rounded-xl p-4 hover:border-primary/20 transition-colors">
               <h3 className="font-medium flex items-center gap-2 mb-3">
                 <MessageSquare className="h-4 w-4 text-primary" />
                 Comments ({comments.length})
@@ -442,10 +447,11 @@ export default function DocumentEditor() {
                   placeholder="Add a comment..."
                   onKeyDown={(e) => e.key === 'Enter' && handleAddComment()}
                 />
-                <Button 
-                  size="icon" 
+                <Button
+                  size="icon"
                   onClick={handleAddComment}
                   disabled={!newComment.trim()}
+                  className="gradient-bg text-white hover:opacity-90"
                 >
                   <Send className="h-4 w-4" />
                 </Button>

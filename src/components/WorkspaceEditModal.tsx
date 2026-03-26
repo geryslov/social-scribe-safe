@@ -110,7 +110,12 @@ export function WorkspaceEditModal({ workspace, open, onOpenChange }: WorkspaceE
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Edit Workspace</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            <div className="p-1.5 rounded-lg gradient-bg">
+              <Building2 className="h-4 w-4 text-white" />
+            </div>
+            Edit Workspace
+          </DialogTitle>
         </DialogHeader>
 
         <Tabs defaultValue="general" className="w-full">
@@ -285,7 +290,7 @@ export function WorkspaceEditModal({ workspace, open, onOpenChange }: WorkspaceE
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button onClick={handleSave} disabled={!name.trim() || isSaving}>
+            <Button onClick={handleSave} disabled={!name.trim() || isSaving} className="gradient-bg text-white hover:opacity-90">
               {isSaving ? (
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
               ) : null}

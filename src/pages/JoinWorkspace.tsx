@@ -108,8 +108,12 @@ export default function JoinWorkspace() {
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <div className="fixed inset-0 pointer-events-none -z-10" aria-hidden="true">
+        <div className="absolute top-1/4 left-1/3 w-96 h-96 rounded-full opacity-[0.05]" style={{ background: 'radial-gradient(circle, hsl(var(--primary)) 0%, transparent 70%)' }} />
+        <div className="absolute bottom-1/4 right-1/3 w-96 h-96 rounded-full opacity-[0.04]" style={{ background: 'radial-gradient(circle, hsl(var(--accent)) 0%, transparent 70%)' }} />
+      </div>
       <div className="w-full max-w-md">
-        <div className="card-elevated p-8 animate-fade-in">
+        <div className="bg-card/80 backdrop-blur-sm border border-border/50 rounded-2xl p-8 animate-fade-in shadow-xl">
           {/* Workspace Logo/Icon */}
           <div className="text-center mb-8">
             <div className="flex items-center justify-center mb-4">

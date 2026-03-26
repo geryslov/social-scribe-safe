@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Building2 } from 'lucide-react';
 import { useWorkspaces } from '@/hooks/useWorkspaces';
 
 interface CreateWorkspaceModalProps {
@@ -40,7 +40,12 @@ export function CreateWorkspaceModal({ open, onOpenChange }: CreateWorkspaceModa
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Create Workspace</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            <div className="p-1.5 rounded-lg gradient-bg">
+              <Building2 className="h-4 w-4 text-white" />
+            </div>
+            Create Workspace
+          </DialogTitle>
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -85,7 +90,7 @@ export function CreateWorkspaceModal({ open, onOpenChange }: CreateWorkspaceModa
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={!name || createWorkspace.isPending}>
+            <Button type="submit" disabled={!name || createWorkspace.isPending} className="gradient-bg text-white hover:opacity-90">
               {createWorkspace.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Create Workspace
             </Button>

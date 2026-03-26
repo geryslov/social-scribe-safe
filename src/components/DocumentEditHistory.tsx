@@ -201,12 +201,12 @@ export function DocumentEditHistory({ documentId }: DocumentEditHistoryProps) {
   };
 
   return (
-    <div className="bg-card border border-border rounded-xl p-4">
+    <div className="bg-card/80 backdrop-blur-sm border border-border/50 rounded-xl p-4 hover:border-primary/20 transition-colors">
       <button
         onClick={() => setIsExpanded(!isExpanded)}
         className="flex items-center gap-2 text-sm font-medium hover:text-primary transition-colors w-full"
       >
-        <History className="h-4 w-4 text-primary" />
+        <div className="p-1 rounded gradient-bg"><History className="h-3 w-3 text-white" /></div>
         <span>Edit History ({history.length})</span>
         <span className="ml-auto">
           {isExpanded ? (

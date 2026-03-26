@@ -26,7 +26,7 @@ export function WorkspaceSwitcher() {
         <Button
           variant="ghost"
           size="sm"
-          className="gap-2 text-muted-foreground hover:text-foreground hover:bg-secondary"
+          className="gap-2 text-muted-foreground hover:text-foreground hover:bg-primary/5 border border-transparent hover:border-primary/20 transition-all"
         >
           <Building2 className="h-4 w-4" />
           <span className="max-w-32 truncate font-medium">{currentWorkspace?.name || 'Select Workspace'}</span>
@@ -46,11 +46,13 @@ export function WorkspaceSwitcher() {
             {workspace.isTestWorkspace ? (
               <FlaskConical className="h-4 w-4 text-warning" />
             ) : (
-              <Building2 className="h-4 w-4 text-muted-foreground" />
+              <div className="h-5 w-5 rounded gradient-bg flex items-center justify-center flex-shrink-0">
+                <Building2 className="h-3 w-3 text-white" />
+              </div>
             )}
             <span className="flex-1 truncate">{workspace.name}</span>
             {currentWorkspace?.id === workspace.id && (
-              <Check className="h-4 w-4 text-primary" />
+              <div className="h-2 w-2 rounded-full bg-primary shadow-[0_0_8px_hsl(var(--primary)/0.5)]" />
             )}
           </DropdownMenuItem>
         ))}

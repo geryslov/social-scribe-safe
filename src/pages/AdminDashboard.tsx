@@ -6,16 +6,17 @@ import { useAuth } from '@/hooks/useAuth';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { 
-  Building2, 
-  Plus, 
-  Copy, 
-  Users, 
+import {
+  Building2,
+  Plus,
+  Copy,
+  Users,
   ExternalLink,
   FlaskConical,
   Check,
   Loader2,
-  Settings
+  Settings,
+  Flame
 } from 'lucide-react';
 import { CreateWorkspaceModal } from '@/components/CreateWorkspaceModal';
 import { WorkspaceEditModal } from '@/components/WorkspaceEditModal';
@@ -56,6 +57,9 @@ export default function AdminDashboard() {
         <Header />
         <div className="flex items-center justify-center h-[60vh]">
           <div className="text-center">
+            <div className="w-16 h-16 rounded-2xl bg-destructive/10 flex items-center justify-center mx-auto mb-4">
+              <Flame className="h-8 w-8 text-destructive" />
+            </div>
             <h1 className="text-2xl font-bold mb-2">Access Denied</h1>
             <p className="text-muted-foreground">You need admin privileges to access this page.</p>
           </div>
@@ -69,14 +73,19 @@ export default function AdminDashboard() {
       <Header />
       
       <main id="main-content" className="px-8 py-8">
+        {/* Background glow */}
+        <div className="fixed inset-0 pointer-events-none -z-10" aria-hidden="true">
+          <div className="absolute top-0 left-1/3 w-[500px] h-[500px] rounded-full opacity-[0.04]" style={{ background: 'radial-gradient(circle, hsl(var(--primary)) 0%, transparent 70%)' }} />
+          <div className="absolute bottom-0 right-1/4 w-[400px] h-[400px] rounded-full opacity-[0.03]" style={{ background: 'radial-gradient(circle, hsl(var(--accent)) 0%, transparent 70%)' }} />
+        </div>
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-bold">Workspaces</h1>
+            <h1 className="text-3xl font-extrabold"><span className="gradient-text">Workspaces</span></h1>
             <p className="text-muted-foreground mt-1">
               Manage all workspaces and invite links
             </p>
           </div>
-          <Button onClick={() => setShowCreateModal(true)} className="gap-2">
+          <Button onClick={() => setShowCreateModal(true)} className="gap-2 gradient-bg text-white shadow-[0_4px_20px_hsl(var(--primary)/0.3)] hover:opacity-90">
             <Plus className="h-4 w-4" />
             Create Workspace
           </Button>
@@ -85,7 +94,9 @@ export default function AdminDashboard() {
         {workspaces.length === 0 ? (
           <Card className="border-dashed">
             <CardContent className="flex flex-col items-center justify-center py-12">
-              <Building2 className="h-12 w-12 text-muted-foreground mb-4" />
+              <div className="w-20 h-20 rounded-2xl gradient-bg shadow-[0_0_30px_hsl(var(--primary)/0.2)] flex items-center justify-center mx-auto mb-4">
+                <Building2 className="h-10 w-10 text-white" />
+              </div>
               <h3 className="text-lg font-semibold mb-2">No workspaces yet</h3>
               <p className="text-muted-foreground text-center mb-4">
                 Create your first workspace to start inviting publishers.
@@ -99,7 +110,8 @@ export default function AdminDashboard() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {workspaces.map((workspace) => (
-              <Card key={workspace.id} className="relative overflow-hidden">
+              <Card key={workspace.id} className="relative overflow-hidden hover:border-primary/30 hover:shadow-[0_0_30px_hsl(var(--primary)/0.08)] transition-all duration-200">
+                <div className="h-1 w-full gradient-bg" />
                 {workspace.isTestWorkspace && (
                   <div className="absolute top-3 right-3">
                     <FlaskConical className="h-5 w-5 text-yellow-400" />
@@ -114,7 +126,7 @@ export default function AdminDashboard() {
                         className="h-12 w-12 rounded-lg object-cover"
                       />
                     ) : (
-                      <div className="h-12 w-12 rounded-lg gradient-bg flex items-center justify-center">
+                      <div className="h-12 w-12 rounded-lg gradient-bg shadow-[0_0_20px_hsl(var(--primary)/0.2)] flex items-center justify-center">
                         <Building2 className="h-6 w-6 text-primary-foreground" />
                       </div>
                     )}
@@ -147,9 +159,8 @@ export default function AdminDashboard() {
 
                   <div className="flex gap-2">
                     <Button
-                      variant="outline"
                       size="sm"
-                      className="flex-1 gap-2"
+                      className="flex-1 gap-2 gradient-bg text-white hover:opacity-90"
                       onClick={() => {
                         switchWorkspace(workspace.id);
                         navigate('/');

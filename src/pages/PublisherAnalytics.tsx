@@ -152,6 +152,12 @@ const PublisherAnalytics = () => {
       <Header />
 
       <main id="main-content" className="p-8 max-w-7xl mx-auto">
+        {/* Background glow */}
+        <div className="fixed inset-0 pointer-events-none -z-10" aria-hidden="true">
+          <div className="absolute top-0 right-1/3 w-96 h-96 rounded-full opacity-[0.04]" style={{ background: 'radial-gradient(circle, hsl(var(--primary)) 0%, transparent 70%)' }} />
+          <div className="absolute bottom-1/3 left-1/4 w-96 h-96 rounded-full opacity-[0.03]" style={{ background: 'radial-gradient(circle, hsl(var(--accent)) 0%, transparent 70%)' }} />
+        </div>
+
         {/* Back Button */}
         <Button
           variant="ghost"
@@ -174,7 +180,7 @@ const PublisherAnalytics = () => {
               />
               <div>
                 <div className="flex items-center gap-3">
-                  <h1 className="text-3xl font-bold tracking-tight">{publisher.name}</h1>
+                  <h1 className="text-3xl font-extrabold tracking-tight"><span className="gradient-text">{publisher.name}</span></h1>
                   {publisher.linkedin_url && (
                     <a
                       href={publisher.linkedin_url}
@@ -227,10 +233,10 @@ const PublisherAnalytics = () => {
           {statCards.map((stat, index) => {
             const Icon = stat.icon;
             return (
-              <CyberCard key={stat.title} variant="stat" className="animate-fade-in" style={{ animationDelay: `${index * 50}ms` }}>
+              <CyberCard key={stat.title} variant="elevated" className="animate-fade-in group" style={{ animationDelay: `${index * 50}ms` }}>
                 <CyberCardContent className="p-4">
                   <div className="flex items-center justify-between mb-3">
-                    <div className={cn("p-2 rounded-lg", stat.bgColor)}>
+                    <div className={cn("p-2 rounded-lg transition-transform group-hover:scale-110 duration-200", stat.bgColor)}>
                       <Icon className={cn("h-4 w-4", stat.color)} />
                     </div>
                   </div>
@@ -254,7 +260,10 @@ const PublisherAnalytics = () => {
 
         {/* Follower Growth */}
         <div className="mb-8">
-          <h2 className="text-sm font-medium text-muted-foreground mb-4">Follower Growth</h2>
+          <h2 className="text-sm font-semibold text-muted-foreground mb-4 flex items-center gap-2">
+  <div className="h-4 w-1 rounded-full gradient-bg" />
+  Follower Growth
+</h2>
           <FollowerGrowthChart
             publisherId={publisher.id}
             timeRange={timeRange}
@@ -286,7 +295,7 @@ const PublisherAnalytics = () => {
               {topPosts.slice(0, 5).map((post, index) => (
                   <div
                     key={post.id}
-                    className="flex items-center gap-3 p-3 rounded-lg bg-muted/30 border border-border/30"
+                    className="flex items-center gap-3 p-3 rounded-lg bg-muted/30 border border-border/30 hover:bg-primary/5 hover:border-primary/20 transition-all duration-200"
                   >
                     <span className="w-6 h-6 rounded bg-primary/20 flex items-center justify-center text-xs font-mono text-primary">
                       {index + 1}

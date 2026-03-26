@@ -231,9 +231,13 @@ const Posts = () => {
 
         <main id="main-content" className="flex-1 overflow-y-auto h-[calc(100vh-73px)]">
           <div className="p-8">
+          {/* Background glow */}
+          <div className="fixed inset-0 pointer-events-none -z-10" aria-hidden="true">
+            <div className="absolute top-1/4 right-1/4 w-96 h-96 rounded-full opacity-[0.03]" style={{ background: 'radial-gradient(circle, hsl(var(--primary)) 0%, transparent 70%)' }} />
+          </div>
           {/* Summary Stats - Aggregated Analytics */}
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
-            <Card className="bg-card border-border/60 stat-glow">
+            <Card className="bg-card/80 backdrop-blur-sm border-border/40 hover:border-primary/30 transition-all duration-200 hover:shadow-[0_0_20px_hsl(var(--primary)/0.08)]">
               <CardContent className="p-4 flex items-center gap-3">
                 <div className="p-2.5 rounded-xl bg-info/10">
                   <Users className="h-5 w-5 text-info" />
@@ -246,7 +250,7 @@ const Posts = () => {
                 </div>
               </CardContent>
             </Card>
-            <Card className="bg-card border-border/60 stat-glow">
+            <Card className="bg-card/80 backdrop-blur-sm border-border/40 hover:border-primary/30 transition-all duration-200 hover:shadow-[0_0_20px_hsl(var(--primary)/0.08)]">
               <CardContent className="p-4 flex items-center gap-3">
                 <div className="p-2.5 rounded-xl bg-primary/10">
                   <Eye className="h-5 w-5 text-primary" />
@@ -260,7 +264,7 @@ const Posts = () => {
               </CardContent>
             </Card>
             <Card
-              className="bg-card border-border/60 stat-glow cursor-pointer hover:border-destructive/40 transition-colors"
+              className="bg-card/80 backdrop-blur-sm border-border/40 hover:border-primary/30 transition-all duration-200 hover:shadow-[0_0_20px_hsl(var(--primary)/0.08)] cursor-pointer hover:border-destructive/40"
               onClick={() => { setReactorsPanelTab('profiles'); setShowReactorsPanel(true); }}
             >
               <CardContent className="p-4 flex items-center gap-3">
@@ -276,7 +280,7 @@ const Posts = () => {
               </CardContent>
             </Card>
             <Card
-              className="bg-card border-border/60 stat-glow cursor-pointer hover:border-accent/40 transition-colors"
+              className="bg-card/80 backdrop-blur-sm border-border/40 hover:border-primary/30 transition-all duration-200 hover:shadow-[0_0_20px_hsl(var(--primary)/0.08)] cursor-pointer hover:border-accent/40"
               onClick={() => { setReactorsPanelTab('comments'); setShowReactorsPanel(true); }}
             >
               <CardContent className="p-4 flex items-center gap-3">
@@ -291,7 +295,7 @@ const Posts = () => {
                 </div>
               </CardContent>
             </Card>
-            <Card className="bg-card border-border/60 stat-glow">
+            <Card className="bg-card/80 backdrop-blur-sm border-border/40 hover:border-primary/30 transition-all duration-200 hover:shadow-[0_0_20px_hsl(var(--primary)/0.08)]">
               <CardContent className="p-4 flex items-center gap-3">
                 <div className="p-2.5 rounded-xl bg-muted">
                   <Repeat2 className="h-5 w-5 text-muted-foreground" />
@@ -304,7 +308,7 @@ const Posts = () => {
                 </div>
               </CardContent>
             </Card>
-            <Card className="bg-card border-border/60 stat-glow">
+            <Card className="bg-card/80 backdrop-blur-sm border-border/40 hover:border-primary/30 transition-all duration-200 hover:shadow-[0_0_20px_hsl(var(--primary)/0.08)]">
               <CardContent className="p-4 flex items-center gap-3">
                 <div className="p-2.5 rounded-xl bg-success/10">
                   <TrendingUp className="h-5 w-5 text-success" />
@@ -353,10 +357,8 @@ const Posts = () => {
                   </div>
                 ) : (
                   <div>
-                    <h2 className="text-3xl font-bold tracking-tight">
-                      <span className="bg-gradient-to-r from-foreground via-foreground to-muted-foreground/60 bg-clip-text text-transparent">
-                        All Posts
-                      </span>
+                    <h2 className="text-3xl font-extrabold tracking-tight">
+                      <span className="gradient-text">All Posts</span>
                     </h2>
                     <p className="text-muted-foreground mt-2 text-sm">
                       <span className="text-foreground font-medium">{totalPosts}</span> posts from <span className="text-foreground font-medium">{publishers.length}</span> publishers
@@ -385,7 +387,7 @@ const Posts = () => {
                     <Upload className="h-5 w-5" />
                     Bulk Upload
                   </Button>
-                  <Button onClick={handleNewPost} size="lg" className="gap-2 gradient-bg glow-primary hover:scale-105 transition-transform rounded-xl text-accent">
+                  <Button onClick={handleNewPost} size="lg" className="gap-2 gradient-bg hover:opacity-90 transition-all rounded-xl text-white shadow-[0_4px_20px_hsl(var(--primary)/0.3)]">
                     <Plus className="h-5 w-5" />
                     New Post
                   </Button>
@@ -411,7 +413,7 @@ const Posts = () => {
 
               {activePosts.length === 0 ? (
                 <div className="text-center py-16 card-elevated animate-fade-in">
-                  <div className="w-16 h-16 mx-auto mb-4 rounded-2xl gradient-bg glow-primary flex items-center justify-center">
+                  <div className="w-20 h-20 mx-auto mb-4 rounded-2xl gradient-bg shadow-[0_0_40px_hsl(var(--primary)/0.25)] flex items-center justify-center">
                     <Inbox className="h-8 w-8 text-primary-foreground" />
                   </div>
                   <h3 className="text-lg font-semibold mb-2">No upcoming posts</h3>
@@ -453,13 +455,13 @@ const Posts = () => {
             {publishedPosts.length > 0 && (
               <div className="mt-10">
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="h-px flex-1 bg-border" />
+                  <div className="h-px flex-1 bg-gradient-to-r from-transparent via-border to-transparent" />
                   <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-success/10 border border-success/20">
                     <div className="h-2 w-2 rounded-full bg-success" />
                     <span className="text-sm font-medium text-success">Published</span>
                     <span className="text-xs text-success/70">({publishedPosts.length})</span>
                   </div>
-                  <div className="h-px flex-1 bg-border" />
+                  <div className="h-px flex-1 bg-gradient-to-r from-transparent via-border to-transparent" />
                 </div>
 
                 <div className="space-y-1.5">

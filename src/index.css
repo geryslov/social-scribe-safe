@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -76,23 +76,23 @@
   }
 
   .dark {
-    /* ThoughtOS Dark Theme */
-    --background: 222 47% 6%;
+    /* ThoughtOS Dark Theme - Deep & Dramatic */
+    --background: 230 25% 7%;
     --foreground: 210 40% 96%;
 
-    --card: 222 47% 9%;
+    --card: 230 25% 10%;
     --card-foreground: 210 40% 96%;
 
-    --popover: 222 47% 9%;
+    --popover: 230 25% 10%;
     --popover-foreground: 210 40% 96%;
 
     --primary: 263 70% 65%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 217 33% 14%;
+    --secondary: 230 20% 14%;
     --secondary-foreground: 210 40% 96%;
 
-    --muted: 217 33% 14%;
+    --muted: 230 20% 14%;
     --muted-foreground: 215 20% 55%;
 
     --accent: 189 94% 48%;
@@ -101,8 +101,8 @@
     --destructive: 0 63% 55%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 217 33% 17%;
-    --input: 217 33% 17%;
+    --border: 230 20% 18%;
+    --input: 230 20% 18%;
     --ring: 263 70% 65%;
 
     --success: 142 71% 50%;
@@ -115,13 +115,13 @@
     --info-foreground: 0 0% 100%;
 
     /* Sidebar: Dark variant */
-    --sidebar-background: 222 47% 7%;
+    --sidebar-background: 230 25% 8%;
     --sidebar-foreground: 210 40% 96%;
     --sidebar-primary: 263 70% 65%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 217 33% 14%;
+    --sidebar-accent: 230 20% 14%;
     --sidebar-accent-foreground: 210 40% 96%;
-    --sidebar-border: 217 33% 17%;
+    --sidebar-border: 230 20% 18%;
     --sidebar-ring: 263 70% 65%;
 
     /* Neon glow variables - brighter for dark mode */
@@ -146,14 +146,20 @@
     color-scheme: dark;
   }
 
+  .dark body {
+    background-image:
+      radial-gradient(ellipse at 20% 0%, hsl(263 70% 65% / 0.06) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 100%, hsl(189 94% 48% / 0.04) 0%, transparent 50%);
+  }
+
   body {
     @apply bg-background text-foreground antialiased;
-    font-family: 'Inter', system-ui, sans-serif;
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
     min-height: 100vh;
   }
 
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Inter', system-ui, sans-serif;
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
     font-weight: 600;
     letter-spacing: -0.02em;
   }

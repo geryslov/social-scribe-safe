@@ -38,22 +38,14 @@ export function Header() {
 
   return (
     <header
-      className="sticky top-0 z-50 bg-card/80 backdrop-blur-xl border-b border-border"
+      className="sticky top-0 z-50 bg-card/80 backdrop-blur-xl border-b border-border/50"
       style={{
         boxShadow: `0 1px 3px rgba(0, 0, 0, 0.04), 0 4px 12px rgba(0, 0, 0, 0.02)`
       }}
     >
       <a href="#main-content" className="skip-to-content">Skip to content</a>
 
-      {/* Neon accent bar */}
-      <div
-        className="h-1 w-full"
-        style={{
-          background: `linear-gradient(90deg, ${primaryColor}, #06B6D4)`
-        }}
-      />
-
-      <div className="px-8 py-4">
+      <div className="px-8 py-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-8">
             <div
@@ -71,7 +63,7 @@ export function Header() {
                 />
               ) : (
                 <div
-                  className="h-10 w-10 rounded-xl flex items-center justify-center transition-all group-hover:scale-105"
+                  className="h-10 w-10 rounded-xl flex items-center justify-center transition-all group-hover:scale-105 ring-1 ring-primary/20"
                   style={{
                     background: `linear-gradient(135deg, ${primaryColor} 0%, #06B6D4 100%)`,
                     boxShadow: `0 4px 16px ${primaryColor}40`
@@ -102,7 +94,7 @@ export function Header() {
                       "active:scale-[0.95]",
                       isActive
                         ? "text-white shadow-lg scale-[1.02]"
-                        : "text-muted-foreground hover:text-foreground hover:bg-white/60",
+                        : "text-muted-foreground hover:text-foreground hover:bg-secondary",
                       hasNotification && !isActive && "text-primary"
                     )}
                     style={isActive ? {
@@ -144,7 +136,7 @@ export function Header() {
             )}
 
             {user ? (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 bg-secondary/50 rounded-full px-3 py-1.5">
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   <User className="h-3.5 w-3.5" />
                   <span className="max-w-32 truncate">{user.email}</span>

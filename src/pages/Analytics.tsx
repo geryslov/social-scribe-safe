@@ -109,10 +109,22 @@ const Analytics = () => {
       <Header />
 
       <main id="main-content" className="p-8 max-w-7xl mx-auto">
+        {/* Background glow */}
+        <div className="fixed inset-0 pointer-events-none -z-10" aria-hidden="true">
+          <div className="absolute top-0 left-1/4 w-96 h-96 rounded-full opacity-[0.04]"
+            style={{ background: 'radial-gradient(circle, hsl(var(--primary)) 0%, transparent 70%)' }}
+          />
+          <div className="absolute bottom-1/4 right-1/4 w-96 h-96 rounded-full opacity-[0.03]"
+            style={{ background: 'radial-gradient(circle, hsl(var(--accent)) 0%, transparent 70%)' }}
+          />
+        </div>
+
         {/* Page Title */}
         <div className="flex items-start justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Analytics</h1>
+            <h1 className="text-3xl font-extrabold tracking-tight">
+              <span className="gradient-text">Analytics</span>
+            </h1>
             <p className="text-muted-foreground mt-1 text-sm">
               Performance overview across all publishers
             </p>
@@ -134,19 +146,18 @@ const Analytics = () => {
             return (
               <CyberCard
                 key={stat.title}
-                variant="stat"
-                glow
-                className="animate-fade-in stat-glow"
+                variant="elevated"
+                className="animate-fade-in group"
                 style={{ animationDelay: `${index * 50}ms` }}
               >
                 <CyberCardContent className="p-4">
                   <div className="flex items-center justify-between mb-3">
-                    <div className={cn("p-2 rounded-lg", stat.bgColor)}>
+                    <div className={cn("p-2 rounded-lg transition-colors group-hover:scale-110 duration-200", stat.bgColor)}>
                       <Icon className={cn("h-4 w-4", stat.color)} />
                     </div>
                   </div>
                   <div className="space-y-1">
-                    <p className="text-2xl font-bold font-mono tabular-nums data-value">
+                    <p className="text-2xl font-bold tabular-nums data-value">
                       <CountUp
                         end={stat.value}
                         suffix={stat.isPercentage ? '%' : ''}
@@ -204,7 +215,7 @@ const Analytics = () => {
                     className={cn(
                       "w-full flex items-center gap-3 p-3 rounded-lg transition-all duration-200",
                       "bg-muted/30 border border-border/30",
-                      "hover:bg-primary/10 hover:border-primary/30 hover:scale-[1.02]"
+                      "hover:bg-primary/10 hover:border-primary/30 hover:shadow-[0_0_20px_hsl(var(--primary)/0.1)]"
                     )}
                   >
                     <span className={cn(

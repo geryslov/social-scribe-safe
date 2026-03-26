@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Upload, Search, FileText, Filter } from 'lucide-react';
+import { Plus, Upload, Search, FileText, Filter, Loader2 } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { DocumentCard } from '@/components/DocumentCard';
 import { DocumentUploadModal } from '@/components/DocumentUploadModal';
@@ -112,17 +112,22 @@ export default function DocumentLibrary() {
       <Header />
       
       <main id="main-content" className="px-8 py-6">
+        {/* Background glow */}
+        <div className="fixed inset-0 pointer-events-none -z-10" aria-hidden="true">
+          <div className="absolute top-1/3 left-1/3 w-96 h-96 rounded-full opacity-[0.03]" style={{ background: 'radial-gradient(circle, hsl(var(--primary)) 0%, transparent 70%)' }} />
+        </div>
+
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-bold">Document Library</h1>
+            <h1 className="text-2xl font-extrabold"><span className="gradient-text">Document Library</span></h1>
             <p className="text-sm text-muted-foreground mt-1">
               Manage your content documents and split them into posts
             </p>
           </div>
           
 {isAdmin && (
-            <Button variant="glow" className="text-accent" onClick={() => setUploadModalOpen(true)}>
+            <Button className="gradient-bg text-white shadow-[0_4px_20px_hsl(var(--primary)/0.3)] hover:opacity-90" onClick={() => setUploadModalOpen(true)}>
               <Plus className="h-4 w-4 mr-2" />
               Add Document
             </Button>
@@ -157,13 +162,14 @@ export default function DocumentLibrary() {
 
         {/* Document Grid */}
         {isLoading ? (
-          <div className="text-center py-12 text-muted-foreground">
-            Loading documents...
+          <div className="text-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-3" />
+            <p className="text-muted-foreground">Loading documents...</p>
           </div>
         ) : filteredDocuments.length === 0 ? (
           <div className="text-center py-12">
-            <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
-              <FileText className="h-8 w-8 text-muted-foreground" />
+            <div className="w-20 h-20 rounded-2xl gradient-bg shadow-[0_0_30px_hsl(var(--primary)/0.2)] flex items-center justify-center mx-auto mb-4">
+              <FileText className="h-8 w-8 text-white" />
             </div>
             <h3 className="font-medium text-foreground mb-1">No documents found</h3>
             <p className="text-sm text-muted-foreground">

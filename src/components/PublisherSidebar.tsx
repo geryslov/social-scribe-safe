@@ -43,7 +43,7 @@ export function PublisherSidebar({ publishers, selectedPublisher, onSelectPublis
   const location = useLocation();
   const totalPosts = publishers.reduce((acc, p) => acc + p.posts.length, 0);
   const { getPublisherByName, deletePublisher } = usePublishers();
-  
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingPublisher, setEditingPublisher] = useState<Publisher | null>(null);
   const [deleteConfirmPublisher, setDeleteConfirmPublisher] = useState<string | null>(null);
@@ -84,7 +84,7 @@ export function PublisherSidebar({ publishers, selectedPublisher, onSelectPublis
 
   return (
     <>
-      <div className="w-72 flex-shrink-0 h-[calc(100vh-73px)] overflow-y-auto bg-card border-r border-border">
+      <div className="w-72 flex-shrink-0 h-[calc(100vh-73px)] overflow-y-auto bg-gradient-to-b from-card via-card to-card/50 border-r border-border/50">
         <div className="p-5">
           <div className="flex items-center justify-between mb-4 px-1">
             <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
@@ -99,7 +99,7 @@ export function PublisherSidebar({ publishers, selectedPublisher, onSelectPublis
               <Plus className="h-4 w-4" />
             </Button>
           </div>
-          
+
           <div className="space-y-1">
             {/* All Publishers - Featured Card */}
             <button
@@ -112,7 +112,7 @@ export function PublisherSidebar({ publishers, selectedPublisher, onSelectPublis
               )}
               style={selectedPublisher === null ? {
                 background: 'linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)))',
-                boxShadow: '0 8px 24px hsl(var(--primary) / 0.35)'
+                boxShadow: '0 0 40px hsl(var(--primary) / 0.2), 0 8px 24px hsl(var(--primary) / 0.35)'
               } : {}}
             >
               <div className={cn(
@@ -137,13 +137,16 @@ export function PublisherSidebar({ publishers, selectedPublisher, onSelectPublis
                 <div className="w-2 h-2 rounded-full bg-white animate-pulse" />
               )}
             </button>
-            
+
+            {/* Divider */}
+            <div className="my-3 mx-2 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
+
             {/* Publisher List */}
             {publishers.map((publisher, index) => {
               const doneCount = publisher.posts.filter(p => p.status === 'done').length;
               const scheduledCount = publisher.posts.filter(p => p.status === 'scheduled').length;
               const isSelected = selectedPublisher === publisher.name;
-              
+
               return (
                 <div
                   key={publisher.name}
@@ -161,13 +164,15 @@ export function PublisherSidebar({ publishers, selectedPublisher, onSelectPublis
                     onClick={() => onSelectPublisher(publisher.name)}
                     className="flex items-center gap-3 flex-1 min-w-0"
                   >
-                    <PublisherAvatar 
-                      name={publisher.name} 
-                      size="md" 
+                    <PublisherAvatar
+                      name={publisher.name}
+                      size="md"
                       editable={true}
                       className={cn(
                         "w-10 h-10 transition-all duration-200",
-                        isSelected && "ring-2 ring-primary ring-offset-2 ring-offset-card"
+                        isSelected
+                          ? "ring-2 ring-primary/50 ring-offset-2 ring-offset-card shadow-[0_0_12px_hsl(var(--primary)/0.3)]"
+                          : ""
                       )}
                     />
                     <div className="flex-1 min-w-0 text-left">
@@ -201,7 +206,7 @@ export function PublisherSidebar({ publishers, selectedPublisher, onSelectPublis
                       </div>
                     </div>
                   </button>
-                  
+
                   {/* Actions dropdown */}
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -226,7 +231,7 @@ export function PublisherSidebar({ publishers, selectedPublisher, onSelectPublis
                         <Pencil className="h-4 w-4 mr-2" />
                         Edit
                       </DropdownMenuItem>
-                      <DropdownMenuItem 
+                      <DropdownMenuItem
                         onClick={(e) => handleDeleteClick(publisher.name, e as any)}
                         className="text-destructive focus:text-destructive"
                       >

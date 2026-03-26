@@ -165,7 +165,7 @@ export function DocumentSectionCard({
 
   return (
     <>
-      <div className="border border-border rounded-lg p-4 bg-card space-y-3">
+      <div className="border border-border/60 rounded-xl p-4 bg-card/80 backdrop-blur-sm space-y-3 hover:border-primary/20 transition-colors">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium text-muted-foreground">
@@ -289,7 +289,7 @@ export function DocumentSectionCard({
         )}
 
         {/* Publisher Assignment */}
-        <div className="flex items-center gap-2 pt-2 border-t border-border">
+        <div className="flex items-center gap-2 pt-3 border-t border-border/50">
           <User className="h-4 w-4 text-muted-foreground" />
           <span className="text-sm text-muted-foreground">Assign to:</span>
           <div className="flex-1 max-w-48">
