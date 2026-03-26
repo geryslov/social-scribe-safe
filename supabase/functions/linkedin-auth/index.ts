@@ -488,6 +488,7 @@ Deno.serve(async (req) => {
             headline: headline || null,
             company_name: companyName || null,
             workspace_id: workspaceId,
+            linkedin_url: linkedinProfileUrl,
           });
 
         if (insertError) {
