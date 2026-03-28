@@ -1028,23 +1028,21 @@ Deno.serve(async (req) => {
 
     console.log(`Successfully synced analytics for ${syncedCount} posts`);
 
-    // Fetch follower history for legacy workspace
+    // Fetch follower history for all publishers
     let followerCount = null;
-    if (publisher.workspace_id === LEGACY_WORKSPACE_ID) {
-      try {
-        followerCount = await fetchFollowerHistory(accessToken, publisher.id, supabase);
-        if (followerCount > 0) {
-          await supabase
-            .from('publishers')
-            .update({
-              followers_count: followerCount,
-              profile_analytics_fetched_at: new Date().toISOString(),
-            })
-            .eq('id', publisher.id);
-        }
-      } catch (followerError) {
-        console.error('Error fetching follower history:', followerError);
+    try {
+      followerCount = await fetchFollowerHistory(accessToken, publisher.id, supabase);
+      if (followerCount > 0) {
+        await supabase
+          .from('publishers')
+          .update({
+            followers_count: followerCount,
+            profile_analytics_fetched_at: new Date().toISOString(),
+          })
+          .eq('id', publisher.id);
       }
+    } catch (followerError) {
+      console.error('Error fetching follower history:', followerError);
     }
 
     // Refresh publisher avatar (check if current avatar is a LinkedIn CDN URL that may expire)
