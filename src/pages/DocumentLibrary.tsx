@@ -32,13 +32,13 @@ export default function DocumentLibrary() {
   const { currentWorkspace } = useWorkspace();
   const { user } = useAuth();
   const canUseAiCreate = user?.email === 'geryslov@gmail.com';
-  
+
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<DocumentStatus | 'all'>('all');
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [splitModalOpen, setSplitModalOpen] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
-  
+
   // Fetch sections for the selected document when split modal is open
   const { sections: selectedDocSections } = useDocumentSections(selectedDocument?.id || '');
 
@@ -51,11 +51,11 @@ export default function DocumentLibrary() {
     });
   }, [documents, searchQuery, statusFilter]);
 
-  const handleCreateDocument = async (data: { 
-    title: string; 
-    content: string; 
-    fileName?: string; 
-    fileUrl?: string 
+  const handleCreateDocument = async (data: {
+    title: string;
+    content: string;
+    fileName?: string;
+    fileUrl?: string
   }) => {
     const doc = await createDocument.mutateAsync(data);
     // Navigate to the document editor where sections are shown with editing & history
@@ -93,11 +93,11 @@ export default function DocumentLibrary() {
           documentId: post.documentId,
         });
       }
-      
+
       if (selectedDocument) {
         await updateStatus.mutateAsync({ id: selectedDocument.id, status: 'split' });
       }
-      
+
       toast.success(`Created ${posts.length} posts from document`);
       setSplitModalOpen(false);
       setSelectedDocument(null);
@@ -110,7 +110,7 @@ export default function DocumentLibrary() {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      
+
       <main id="main-content" className="px-8 py-6">
         {/* Background glow */}
         <div className="fixed inset-0 pointer-events-none -z-10" aria-hidden="true">
@@ -118,39 +118,46 @@ export default function DocumentLibrary() {
         </div>
 
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-2xl font-extrabold"><span className="gradient-text">Document Library</span></h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Manage your content documents and split them into posts
+            <div className="flex items-center gap-3 mb-1">
+              <div className="p-2 rounded-xl gradient-bg shadow-[0_0_20px_hsl(var(--primary)/0.2)]">
+                <FileText className="h-5 w-5 text-white" />
+              </div>
+              <h1 className="text-3xl font-extrabold tracking-tight">
+                <span className="gradient-text">Documents</span>
+              </h1>
+            </div>
+            <p className="text-sm text-muted-foreground ml-[52px]">
+              Manage content documents and split them into posts
             </p>
           </div>
-          
-{isAdmin && (
-            <Button className="gradient-bg text-white shadow-[0_4px_20px_hsl(var(--primary)/0.3)] hover:opacity-90" onClick={() => setUploadModalOpen(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Document
+
+          {isAdmin && (
+            <Button className="gap-2 gradient-bg text-white rounded-xl shadow-[0_4px_20px_hsl(var(--primary)/0.3)] hover:opacity-90" onClick={() => setUploadModalOpen(true)}>
+              <Plus className="h-4 w-4" />
+              New Document
             </Button>
           )}
         </div>
 
         {/* Filters */}
-        <div className="flex items-center gap-4 mb-6">
+        <div className="bg-card/60 backdrop-blur-sm border border-border/40 rounded-2xl p-4 mb-8 flex items-center gap-4">
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search documents..."
-              className="pl-10"
+              className="pl-10 rounded-xl border-border/50"
             />
           </div>
 
-          <Tabs 
-            value={statusFilter} 
+          <Tabs
+            value={statusFilter}
             onValueChange={(v) => setStatusFilter(v as DocumentStatus | 'all')}
           >
-            <TabsList>
+            <TabsList className="rounded-xl">
               {statusFilters.map(filter => (
                 <TabsTrigger key={filter.value} value={filter.value}>
                   {filter.label}
@@ -162,26 +169,28 @@ export default function DocumentLibrary() {
 
         {/* Document Grid */}
         {isLoading ? (
-          <div className="text-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-3" />
+          <div className="text-center py-20">
+            <div className="w-16 h-16 rounded-2xl gradient-bg shadow-[0_0_30px_hsl(var(--primary)/0.2)] flex items-center justify-center mx-auto mb-4">
+              <Loader2 className="h-7 w-7 animate-spin text-white" />
+            </div>
             <p className="text-muted-foreground">Loading documents...</p>
           </div>
         ) : filteredDocuments.length === 0 ? (
-          <div className="text-center py-12">
+          <div className="text-center py-20">
             <div className="w-20 h-20 rounded-2xl gradient-bg shadow-[0_0_30px_hsl(var(--primary)/0.2)] flex items-center justify-center mx-auto mb-4">
               <FileText className="h-8 w-8 text-white" />
             </div>
             <h3 className="font-medium text-foreground mb-1">No documents found</h3>
             <p className="text-sm text-muted-foreground">
-              {searchQuery || statusFilter !== 'all' 
+              {searchQuery || statusFilter !== 'all'
                 ? 'Try adjusting your filters'
                 : 'Upload your first document to get started'
               }
             </p>
             {isAdmin && !searchQuery && statusFilter === 'all' && (
-              <Button 
-                variant="outline" 
-                className="mt-4"
+              <Button
+                variant="outline"
+                className="mt-4 rounded-xl"
                 onClick={() => setUploadModalOpen(true)}
               >
                 <Upload className="h-4 w-4 mr-2" />
@@ -190,7 +199,7 @@ export default function DocumentLibrary() {
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredDocuments.map(document => (
               <DocumentCard
                 key={document.id}

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Eye, Users, Heart, MessageCircle, Share2, TrendingUp, Loader2, RefreshCw } from 'lucide-react';
+import { Eye, Users, Heart, MessageCircle, TrendingUp, Loader2, RefreshCw, BarChart3 } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { useAuth } from '@/hooks/useAuth';
 import { useAnalytics } from '@/hooks/useAnalytics';
@@ -8,7 +8,6 @@ import { usePublishers } from '@/hooks/usePublishers';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { useAutoSync } from '@/hooks/useAutoSync';
 import { Button } from '@/components/ui/button';
-import { CyberCard, CyberCardContent, CyberCardHeader, CyberCardTitle } from '@/components/ui/cyber-card';
 import { PerformanceChart } from '@/components/PerformanceChart';
 import { TopPostsLeaderboard } from '@/components/TopPostsLeaderboard';
 import { DataPulse } from '@/components/DataPulse';
@@ -119,20 +118,25 @@ const Analytics = () => {
           />
         </div>
 
-        {/* Page Title */}
-        <div className="flex items-start justify-between mb-8">
+        {/* Page Header */}
+        <div className="flex items-start justify-between mb-10">
           <div>
-            <h1 className="text-3xl font-extrabold tracking-tight">
-              <span className="gradient-text">Analytics</span>
-            </h1>
-            <p className="text-muted-foreground mt-1 text-sm">
+            <div className="flex items-center gap-3 mb-1">
+              <div className="p-2 rounded-xl gradient-bg shadow-[0_0_20px_hsl(var(--primary)/0.2)]">
+                <BarChart3 className="h-5 w-5 text-white" />
+              </div>
+              <h1 className="text-3xl font-extrabold tracking-tight">
+                <span className="gradient-text">Analytics</span>
+              </h1>
+            </div>
+            <p className="text-muted-foreground mt-1 text-sm ml-[52px]">
               Performance overview across all publishers
             </p>
           </div>
           <div className="flex items-center gap-4">
             <DataPulse />
             {lastSyncTime && (
-              <span className="text-xs text-muted-foreground">
+              <span className="text-xs text-muted-foreground bg-secondary/50 px-3 py-1.5 rounded-full">
                 Last sync: {format(new Date(lastSyncTime), 'HH:mm')}
               </span>
             )}
@@ -144,32 +148,25 @@ const Analytics = () => {
           {statCards.map((stat, index) => {
             const Icon = stat.icon;
             return (
-              <CyberCard
+              <div
                 key={stat.title}
-                variant="elevated"
-                className="animate-fade-in group"
-                style={{ animationDelay: `${index * 50}ms` }}
+                className="bg-card/80 backdrop-blur-sm border border-border/40 rounded-2xl p-5 hover:border-primary/20 transition-all duration-200 group animate-fade-in"
+                style={{ animationDelay: `${index * 60}ms` }}
               >
-                <CyberCardContent className="p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className={cn("p-2 rounded-lg transition-colors group-hover:scale-110 duration-200", stat.bgColor)}>
-                      <Icon className={cn("h-4 w-4", stat.color)} />
-                    </div>
+                <div className="flex items-center gap-3 mb-4">
+                  <div className={cn("p-2.5 rounded-xl transition-transform group-hover:scale-110 duration-200", stat.bgColor)}>
+                    <Icon className={cn("h-5 w-5", stat.color)} />
                   </div>
-                  <div className="space-y-1">
-                    <p className="text-2xl font-bold tabular-nums data-value">
-                      <CountUp
-                        end={stat.value}
-                        suffix={stat.isPercentage ? '%' : ''}
-                        decimals={stat.isPercentage ? 1 : 0}
-                      />
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {stat.title}
-                    </p>
-                  </div>
-                </CyberCardContent>
-              </CyberCard>
+                </div>
+                <p className="text-3xl font-extrabold tabular-nums tracking-tight">
+                  <CountUp
+                    end={stat.value}
+                    suffix={stat.isPercentage ? '%' : ''}
+                    decimals={stat.isPercentage ? 1 : 0}
+                  />
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">{stat.title}</p>
+              </div>
             );
           })}
         </div>
@@ -188,13 +185,13 @@ const Analytics = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <TopPostsLeaderboard posts={topPosts} isLoading={isLoading} />
 
-          {/* Publisher Rankings - Clickable */}
-          <CyberCard>
-            <CyberCardHeader className="flex-row items-center justify-between">
-              <CyberCardTitle className="flex items-center gap-2">
-                <Users className="h-4 w-4 text-info" />
-                PUBLISHER RANKINGS
-              </CyberCardTitle>
+          {/* Publisher Rankings */}
+          <div className="bg-card/80 backdrop-blur-sm border border-border/40 rounded-2xl overflow-hidden">
+            <div className="px-6 py-4 flex items-center justify-between border-b border-border/30">
+              <h3 className="text-sm font-semibold flex items-center gap-2">
+                <div className="h-4 w-1 rounded-full gradient-bg" />
+                Publisher Rankings
+              </h3>
               <Button
                 variant="ghost"
                 size="sm"
@@ -205,56 +202,54 @@ const Analytics = () => {
                 <RefreshCw className={cn("h-3 w-3", refreshAllAvatars.isPending && "animate-spin")} />
                 {refreshAllAvatars.isPending ? 'Refreshing...' : 'Refresh Photos'}
               </Button>
-            </CyberCardHeader>
-            <CyberCardContent>
-              <div className="space-y-2">
-                {publisherRanking.slice(0, 6).map((pub, index) => (
-                  <button
-                    key={pub.name}
-                    onClick={() => navigate(`/publisher/${encodeURIComponent(pub.name)}`)}
-                    className={cn(
-                      "w-full flex items-center gap-3 p-3 rounded-lg transition-all duration-200",
-                      "bg-muted/30 border border-border/30",
-                      "hover:bg-primary/10 hover:border-primary/30 hover:shadow-[0_0_20px_hsl(var(--primary)/0.1)]"
-                    )}
-                  >
-                    <span className={cn(
-                      "w-6 h-6 rounded flex items-center justify-center text-xs font-mono font-bold",
-                      index === 0 && "bg-warning/20 text-warning",
-                      index === 1 && "bg-muted-foreground/20 text-muted-foreground",
-                      index === 2 && "bg-warning/30 text-warning/80",
-                      index > 2 && "bg-primary/20 text-primary"
-                    )}>
-                      {index + 1}
-                    </span>
-                    <PublisherAvatar name={pub.name} size="sm" className="w-8 h-8" />
-                    <div className="flex-1 text-left min-w-0">
-                      <p className="text-sm font-medium truncate">{pub.name}</p>
-                      <p className="text-xs text-muted-foreground font-mono">
-                      {pub.postCount} posts • {pub.totalReach.toLocaleString()} reach
-                        {(() => {
-                          const dbPub = dbPublishers.find(p => p.name === pub.name);
-                          return dbPub?.followers_count ? ` • ${dbPub.followers_count.toLocaleString()} followers` : '';
-                        })()}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm font-mono font-bold text-success">
-                        {pub.avgEngagementRate.toFixed(1)}%
-                      </p>
-                      <p className="text-xs text-muted-foreground">Engagement</p>
-                    </div>
-                  </button>
-                ))}
-                {publisherRanking.length === 0 && (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <p>No publisher data</p>
-                    <p className="text-xs mt-1">Publish posts to see rankings</p>
+            </div>
+            <div className="p-4 space-y-2">
+              {publisherRanking.slice(0, 6).map((pub, index) => (
+                <button
+                  key={pub.name}
+                  onClick={() => navigate(`/publisher/${encodeURIComponent(pub.name)}`)}
+                  className={cn(
+                    "w-full flex items-center gap-3 p-3 rounded-xl transition-all duration-200",
+                    "bg-muted/30 border border-border/30",
+                    "hover:bg-primary/5 hover:border-primary/20 hover:shadow-[0_0_20px_hsl(var(--primary)/0.06)]"
+                  )}
+                >
+                  <span className={cn(
+                    "w-6 h-6 rounded flex items-center justify-center text-xs font-mono font-bold",
+                    index === 0 && "bg-warning/20 text-warning",
+                    index === 1 && "bg-muted-foreground/20 text-muted-foreground",
+                    index === 2 && "bg-warning/30 text-warning/80",
+                    index > 2 && "bg-primary/20 text-primary"
+                  )}>
+                    {index + 1}
+                  </span>
+                  <PublisherAvatar name={pub.name} size="sm" className="w-8 h-8" />
+                  <div className="flex-1 text-left min-w-0">
+                    <p className="text-sm font-medium truncate">{pub.name}</p>
+                    <p className="text-xs text-muted-foreground font-mono">
+                    {pub.postCount} posts • {pub.totalReach.toLocaleString()} reach
+                      {(() => {
+                        const dbPub = dbPublishers.find(p => p.name === pub.name);
+                        return dbPub?.followers_count ? ` • ${dbPub.followers_count.toLocaleString()} followers` : '';
+                      })()}
+                    </p>
                   </div>
-                )}
-              </div>
-            </CyberCardContent>
-          </CyberCard>
+                  <div className="text-right">
+                    <p className="text-sm font-mono font-bold text-success">
+                      {pub.avgEngagementRate.toFixed(1)}%
+                    </p>
+                    <p className="text-xs text-muted-foreground">Engagement</p>
+                  </div>
+                </button>
+              ))}
+              {publisherRanking.length === 0 && (
+                <div className="text-center py-8 text-muted-foreground">
+                  <p>No publisher data</p>
+                  <p className="text-xs mt-1">Publish posts to see rankings</p>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </main>
     </div>

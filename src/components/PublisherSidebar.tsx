@@ -84,16 +84,17 @@ export function PublisherSidebar({ publishers, selectedPublisher, onSelectPublis
 
   return (
     <>
-      <div className="w-72 flex-shrink-0 h-[calc(100vh-73px)] overflow-y-auto bg-gradient-to-b from-card via-card to-card/50 border-r border-border/50">
+      <div className="w-72 flex-shrink-0 h-[calc(100vh-73px)] overflow-y-auto bg-card/50 backdrop-blur-sm border-r border-border/30">
         <div className="p-5">
-          <div className="flex items-center justify-between mb-4 px-1">
-            <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+          <div className="flex items-center justify-between mb-5 px-1">
+            <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+              <div className="h-3 w-0.5 rounded-full gradient-bg" />
               Publishers
             </h2>
             <Button
               variant="ghost"
               size="icon"
-              className="h-7 w-7 text-muted-foreground hover:text-primary hover:bg-primary/10"
+              className="h-7 w-7 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10"
               onClick={handleAddPublisher}
             >
               <Plus className="h-4 w-4" />
@@ -105,7 +106,7 @@ export function PublisherSidebar({ publishers, selectedPublisher, onSelectPublis
             <button
               onClick={() => onSelectPublisher(null)}
               className={cn(
-                "w-full flex items-center gap-3 px-4 py-4 rounded-xl text-left transition-all duration-200 group",
+                "w-full flex items-center gap-3 px-4 py-4 rounded-2xl text-left transition-all duration-200 group",
                 selectedPublisher === null
                   ? "text-white shadow-lg"
                   : "bg-secondary/50 hover:bg-secondary border border-transparent"
@@ -151,14 +152,11 @@ export function PublisherSidebar({ publishers, selectedPublisher, onSelectPublis
                 <div
                   key={publisher.name}
                   className={cn(
-                    "w-full flex items-center gap-3 px-3 py-3 rounded-lg text-left transition-all duration-200 animate-fade-in group relative",
+                    "w-full flex items-center gap-3 px-3 py-3 text-left transition-all duration-200 animate-fade-in group relative",
                     isSelected
-                      ? "bg-primary/10 border-l-4 border-l-primary border-y border-r border-primary/20"
-                      : "hover:bg-secondary border-l-4 border-l-transparent border border-transparent"
+                      ? "bg-primary/[0.06] border-l-[3px] border-l-primary rounded-xl"
+                      : "hover:bg-secondary/50 border-l-[3px] border-l-transparent rounded-xl"
                   )}
-                  style={isSelected ? {
-                    boxShadow: '0 2px 8px hsl(var(--primary) / 0.1)'
-                  } : {}}
                 >
                   <button
                     onClick={() => onSelectPublisher(publisher.name)}
@@ -171,7 +169,7 @@ export function PublisherSidebar({ publishers, selectedPublisher, onSelectPublis
                       className={cn(
                         "w-10 h-10 transition-all duration-200",
                         isSelected
-                          ? "ring-2 ring-primary/50 ring-offset-2 ring-offset-card shadow-[0_0_12px_hsl(var(--primary)/0.3)]"
+                          ? "ring-2 ring-primary/30 ring-offset-1 ring-offset-card"
                           : ""
                       )}
                     />
@@ -189,17 +187,17 @@ export function PublisherSidebar({ publishers, selectedPublisher, onSelectPublis
                         }
                         return null;
                       })()}
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
                         <span>{publisher.posts.length} posts</span>
                         {doneCount > 0 && (
-                          <span className="flex items-center gap-1 text-success">
-                            <span className="w-1.5 h-1.5 rounded-full bg-success" />
+                          <span className="flex items-center gap-1 text-success/80">
+                            <span className="w-1.5 h-1.5 rounded-full bg-success/60" />
                             {doneCount}
                           </span>
                         )}
                         {scheduledCount > 0 && (
-                          <span className="flex items-center gap-1 text-info">
-                            <span className="w-1.5 h-1.5 rounded-full bg-info" />
+                          <span className="flex items-center gap-1 text-accent/80">
+                            <span className="w-1.5 h-1.5 rounded-full bg-accent/60" />
                             {scheduledCount}
                           </span>
                         )}

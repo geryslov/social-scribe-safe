@@ -7,7 +7,6 @@ import { useAnalytics } from '@/hooks/useAnalytics';
 import { usePublishers } from '@/hooks/usePublishers';
 import { usePosts } from '@/hooks/usePosts';
 import { useWorkspace } from '@/hooks/useWorkspace';
-import { CyberCard, CyberCardContent, CyberCardHeader, CyberCardTitle } from '@/components/ui/cyber-card';
 import { PerformanceChart } from '@/components/PerformanceChart';
 import { TopPostsLeaderboard } from '@/components/TopPostsLeaderboard';
 import { PublisherAvatar } from '@/components/PublisherAvatar';
@@ -163,24 +162,26 @@ const PublisherAnalytics = () => {
           variant="ghost"
           size="sm"
           onClick={() => navigate('/')}
-          className="mb-6 gap-2 text-muted-foreground hover:text-foreground"
+          className="mb-6 gap-2 text-muted-foreground hover:text-foreground rounded-xl"
         >
           <ArrowLeft className="h-4 w-4" />
           Back to Dashboard
         </Button>
 
-        {/* Publisher Header */}
-        <div className="mb-8">
+        {/* Publisher Header — Premium frosted card */}
+        <div className="bg-card/80 backdrop-blur-sm border border-border/40 rounded-2xl p-6 mb-8">
           <div className="flex items-start justify-between">
-            <div className="flex items-center gap-5">
+            <div className="flex items-center gap-6">
               <PublisherAvatar
                 name={publisher.name}
                 size="lg"
-                className="w-20 h-20 ring-2 ring-primary/30 shadow-[0_0_30px_rgba(139,92,246,0.2)]"
+                className="w-20 h-20 ring-2 ring-primary/20 shadow-[0_0_30px_hsl(var(--primary)/0.15)]"
               />
               <div>
                 <div className="flex items-center gap-3">
-                  <h1 className="text-3xl font-extrabold tracking-tight"><span className="gradient-text">{publisher.name}</span></h1>
+                  <h1 className="text-3xl font-extrabold tracking-tight">
+                    <span className="gradient-text">{publisher.name}</span>
+                  </h1>
                   {publisher.linkedin_url && (
                     <a
                       href={publisher.linkedin_url}
@@ -219,7 +220,7 @@ const PublisherAnalytics = () => {
                 disabled={isSyncing || !publisher.linkedin_connected}
                 variant="outline"
                 size="sm"
-                className="gap-2"
+                className="gap-2 rounded-xl"
               >
                 <RefreshCw className={cn("h-4 w-4", isSyncing && "animate-spin")} />
                 SYNC
@@ -228,32 +229,34 @@ const PublisherAnalytics = () => {
           </div>
         </div>
 
-        {/* Stats Grid */}
+        {/* Stats Grid — Premium frosted cards */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
           {statCards.map((stat, index) => {
             const Icon = stat.icon;
             return (
-              <CyberCard key={stat.title} variant="elevated" className="animate-fade-in group" style={{ animationDelay: `${index * 50}ms` }}>
-                <CyberCardContent className="p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className={cn("p-2 rounded-lg transition-transform group-hover:scale-110 duration-200", stat.bgColor)}>
-                      <Icon className={cn("h-4 w-4", stat.color)} />
-                    </div>
+              <div
+                key={stat.title}
+                className="bg-card/80 backdrop-blur-sm border border-border/40 rounded-2xl p-5 hover:border-primary/20 transition-all group animate-fade-in"
+                style={{ animationDelay: `${index * 50}ms` }}
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <div className={cn("p-2 rounded-lg transition-transform group-hover:scale-110 duration-200", stat.bgColor)}>
+                    <Icon className={cn("h-4 w-4", stat.color)} />
                   </div>
-                  <div className="space-y-1">
-                    <p className="text-2xl font-bold tabular-nums">
-                      <CountUp
-                        end={stat.value}
-                        suffix={stat.isPercentage ? '%' : ''}
-                        decimals={stat.isPercentage ? 1 : 0}
-                      />
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {stat.title}
-                    </p>
-                  </div>
-                </CyberCardContent>
-              </CyberCard>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-2xl font-bold tabular-nums">
+                    <CountUp
+                      end={stat.value}
+                      suffix={stat.isPercentage ? '%' : ''}
+                      decimals={stat.isPercentage ? 1 : 0}
+                    />
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {stat.title}
+                  </p>
+                </div>
+              </div>
             );
           })}
         </div>
@@ -261,9 +264,9 @@ const PublisherAnalytics = () => {
         {/* Follower Growth */}
         <div className="mb-8">
           <h2 className="text-sm font-semibold text-muted-foreground mb-4 flex items-center gap-2">
-  <div className="h-4 w-1 rounded-full gradient-bg" />
-  Follower Growth
-</h2>
+            <div className="h-4 w-1 rounded-full gradient-bg" />
+            Follower Growth
+          </h2>
           <FollowerGrowthChart
             publisherId={publisher.id}
             timeRange={timeRange}
@@ -273,6 +276,10 @@ const PublisherAnalytics = () => {
 
         {/* Performance Chart */}
         <div className="mb-8">
+          <h2 className="text-sm font-semibold text-muted-foreground mb-4 flex items-center gap-2">
+            <div className="h-4 w-1 rounded-full gradient-bg" />
+            Performance Over Time
+          </h2>
           <PerformanceChart
             data={trendData}
             timeRange={timeRange}
@@ -281,45 +288,52 @@ const PublisherAnalytics = () => {
           />
         </div>
 
-        {/* Top Posts */}
+        {/* Top Posts & Recent Activity */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <TopPostsLeaderboard posts={topPosts} isLoading={isLoading} />
+          <div>
+            <h2 className="text-sm font-semibold text-muted-foreground mb-4 flex items-center gap-2">
+              <div className="h-4 w-1 rounded-full gradient-bg" />
+              Top Posts
+            </h2>
+            <TopPostsLeaderboard posts={topPosts} isLoading={isLoading} />
+          </div>
 
-          {/* Recent Posts */}
-          <CyberCard>
-            <CyberCardHeader>
-              <CyberCardTitle>Recent Activity</CyberCardTitle>
-            </CyberCardHeader>
-            <CyberCardContent>
-              <div className="space-y-3">
+          {/* Recent Activity — Premium frosted card */}
+          <div className="bg-card/80 backdrop-blur-sm border border-border/40 rounded-2xl overflow-hidden">
+            <div className="px-6 py-4 border-b border-border/30">
+              <h3 className="text-sm font-semibold flex items-center gap-2">
+                <div className="h-4 w-1 rounded-full gradient-bg" />
+                Recent Activity
+              </h3>
+            </div>
+            <div className="p-4 space-y-2">
               {topPosts.slice(0, 5).map((post, index) => (
-                  <div
-                    key={post.id}
-                    className="flex items-center gap-3 p-3 rounded-lg bg-muted/30 border border-border/30 hover:bg-primary/5 hover:border-primary/20 transition-all duration-200"
-                  >
-                    <span className="w-6 h-6 rounded bg-primary/20 flex items-center justify-center text-xs font-mono text-primary">
-                      {index + 1}
-                    </span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm truncate">{post.content.substring(0, 60)}...</p>
-                      <p className="text-xs text-muted-foreground font-mono">
-                        {post.publisherName}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm font-mono font-bold">{(post.impressions || 0).toLocaleString()}</p>
-                      <p className="text-xs text-muted-foreground">Impressions</p>
-                    </div>
+                <div
+                  key={post.id}
+                  className="flex items-center gap-3 p-3 rounded-xl bg-muted/30 border border-border/30 hover:bg-primary/5 hover:border-primary/20 transition-all duration-200"
+                >
+                  <span className="w-6 h-6 rounded-lg bg-primary/20 flex items-center justify-center text-xs font-mono text-primary">
+                    {index + 1}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm truncate">{post.content.substring(0, 60)}...</p>
+                    <p className="text-xs text-muted-foreground font-mono">
+                      {post.publisherName}
+                    </p>
                   </div>
-                ))}
-                {topPosts.length === 0 && (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <p>No published posts yet</p>
+                  <div className="text-right">
+                    <p className="text-sm font-mono font-bold">{(post.impressions || 0).toLocaleString()}</p>
+                    <p className="text-xs text-muted-foreground">Impressions</p>
                   </div>
-                )}
-              </div>
-            </CyberCardContent>
-          </CyberCard>
+                </div>
+              ))}
+              {topPosts.length === 0 && (
+                <div className="text-center py-8 text-muted-foreground">
+                  <p>No published posts yet</p>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </main>
     </div>

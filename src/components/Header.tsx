@@ -45,7 +45,7 @@ export function Header() {
     >
       <a href="#main-content" className="skip-to-content">Skip to content</a>
 
-      <div className="px-8 py-3">
+      <div className="px-6 py-2.5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-8">
             <div
@@ -62,15 +62,20 @@ export function Header() {
                   }}
                 />
               ) : (
-                <div
-                  className="h-10 w-10 rounded-xl flex items-center justify-center transition-all group-hover:scale-105 ring-1 ring-primary/20"
-                  style={{
-                    background: `linear-gradient(135deg, ${primaryColor} 0%, #06B6D4 100%)`,
-                    boxShadow: `0 4px 16px ${primaryColor}40`
-                  }}
-                >
-                  <Building2 className="h-5 w-5 text-white" />
-                </div>
+                <>
+                  <div
+                    className="h-10 w-10 rounded-xl flex items-center justify-center transition-all group-hover:scale-105 ring-1 ring-primary/20"
+                    style={{
+                      background: `linear-gradient(135deg, ${primaryColor} 0%, #06B6D4 100%)`,
+                      boxShadow: `0 4px 16px ${primaryColor}40`
+                    }}
+                  >
+                    <Building2 className="h-5 w-5 text-white" />
+                  </div>
+                  <span className="text-lg font-extrabold tracking-tight hidden sm:block">
+                    <span className="gradient-text">ThoughtOS</span>
+                  </span>
+                </>
               )}
             </div>
 
@@ -78,7 +83,7 @@ export function Header() {
             {user && <WorkspaceSwitcher />}
 
             {/* Navigation */}
-            <nav aria-label="Main navigation" className="flex items-center gap-2 bg-secondary/50 p-1.5 rounded-xl">
+            <nav aria-label="Main navigation" className="flex items-center gap-2 bg-secondary/30 p-1 rounded-xl border border-border/30">
               {navItems.map(item => {
                 const Icon = item.icon;
                 const isActive = location.pathname === item.path ||
@@ -90,11 +95,11 @@ export function Header() {
                     onClick={() => navigate(item.path)}
                     aria-current={isActive ? "page" : undefined}
                     className={cn(
-                      "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 relative nav-button",
+                      "flex items-center gap-2 px-4 py-2 rounded-lg text-sm transition-all duration-200 relative nav-button",
                       "active:scale-[0.95]",
                       isActive
-                        ? "text-white shadow-lg scale-[1.02]"
-                        : "text-muted-foreground hover:text-foreground hover:bg-secondary",
+                        ? "text-white shadow-lg scale-[1.02] font-semibold"
+                        : "text-muted-foreground hover:text-foreground hover:bg-secondary/80 font-medium",
                       hasNotification && !isActive && "text-primary"
                     )}
                     style={isActive ? {
@@ -123,31 +128,25 @@ export function Header() {
 
           <div className="flex items-center gap-3">
             {isAdmin && (
-              <div
-                className="flex items-center gap-2 text-xs px-3 py-1.5 rounded-full"
-                style={{
-                  background: `${primaryColor}15`,
-                  color: primaryColor
-                }}
-              >
-                <Flame className="h-3.5 w-3.5" />
-                <span className="font-medium">Admin</span>
+              <div className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border border-primary/20 bg-primary/5">
+                <Flame className="h-3 w-3 text-primary" />
+                <span className="font-semibold text-primary">Admin</span>
               </div>
             )}
 
             {user ? (
-              <div className="flex items-center gap-2 bg-secondary/50 rounded-full px-3 py-1.5">
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <User className="h-3.5 w-3.5" />
-                  <span className="max-w-32 truncate">{user.email}</span>
+              <div className="flex items-center gap-2.5 bg-secondary/50 rounded-full pl-1 pr-3 py-1">
+                <div className="h-7 w-7 rounded-full gradient-bg flex items-center justify-center">
+                  <User className="h-3.5 w-3.5 text-white" />
                 </div>
+                <span className="text-xs text-muted-foreground max-w-32 truncate">{user.email}</span>
                 <Button
                   variant="ghost"
                   size="icon"
                   onClick={handleSignOut}
-                  className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-secondary"
+                  className="h-7 w-7 rounded-full text-muted-foreground hover:text-foreground hover:bg-secondary"
                 >
-                  <LogOut className="h-4 w-4" />
+                  <LogOut className="h-3.5 w-3.5" />
                 </Button>
               </div>
             ) : (

@@ -19,7 +19,7 @@ import { useDocuments } from '@/hooks/useDocuments';
 import { useWorkspace } from '@/hooks/useWorkspace';
 
 import { Button } from '@/components/ui/button';
-import { Plus, Inbox, ExternalLink, Loader2, Upload, Users, Eye, Heart, TrendingUp, MessageCircle, Repeat2, LinkIcon, Menu, X } from 'lucide-react';
+import { Plus, Inbox, ExternalLink, Loader2, Upload, Users, Eye, Heart, TrendingUp, MessageCircle, Repeat2, LinkIcon, Menu, X, LayoutDashboard } from 'lucide-react';
 import { useAnalytics } from '@/hooks/useAnalytics';
 import { CountUp } from '@/components/CountUp';
 import { Card, CardContent } from '@/components/ui/card';
@@ -209,12 +209,81 @@ const Posts = () => {
     );
   }
 
+  const statCards = [
+    {
+      icon: Users,
+      iconBg: 'bg-info/10',
+      iconColor: 'text-info',
+      value: analyticsStats.totalReach,
+      label: 'Total Reach',
+      onClick: undefined,
+      cursorClass: '',
+      delay: 0,
+    },
+    {
+      icon: Eye,
+      iconBg: 'bg-primary/10',
+      iconColor: 'text-primary',
+      value: analyticsStats.totalImpressions,
+      label: 'Impressions',
+      onClick: undefined,
+      cursorClass: '',
+      delay: 1,
+    },
+    {
+      icon: Heart,
+      iconBg: 'bg-destructive/10',
+      iconColor: 'text-destructive',
+      value: analyticsStats.totalReactions,
+      label: 'Reactions',
+      suffix: undefined,
+      onClick: () => { setReactorsPanelTab('profiles'); setShowReactorsPanel(true); },
+      cursorClass: 'cursor-pointer',
+      clickHint: true,
+      delay: 2,
+    },
+    {
+      icon: MessageCircle,
+      iconBg: 'bg-accent/20',
+      iconColor: 'text-accent-foreground',
+      value: analyticsStats.totalComments,
+      label: 'Comments',
+      suffix: undefined,
+      onClick: () => { setReactorsPanelTab('comments'); setShowReactorsPanel(true); },
+      cursorClass: 'cursor-pointer',
+      clickHint: true,
+      delay: 3,
+    },
+    {
+      icon: Repeat2,
+      iconBg: 'bg-muted',
+      iconColor: 'text-muted-foreground',
+      value: analyticsStats.totalReshares,
+      label: 'Reshares',
+      onClick: undefined,
+      cursorClass: '',
+      delay: 4,
+    },
+    {
+      icon: TrendingUp,
+      iconBg: 'bg-success/10',
+      iconColor: 'text-success',
+      value: analyticsStats.avgEngagementRate,
+      label: 'Avg Engagement',
+      decimals: 1,
+      suffix: '%',
+      onClick: undefined,
+      cursorClass: '',
+      delay: 5,
+    },
+  ];
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
 
       <div className="lg:hidden px-4 py-2 border-b border-border">
-        <Button variant="ghost" size="sm" onClick={() => setSidebarOpen(!sidebarOpen)} className="gap-2">
+        <Button variant="outline" size="sm" onClick={() => setSidebarOpen(!sidebarOpen)} className="gap-2 rounded-xl">
           {sidebarOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
           Publishers
         </Button>
@@ -230,97 +299,41 @@ const Posts = () => {
         </div>
 
         <main id="main-content" className="flex-1 overflow-y-auto h-[calc(100vh-73px)]">
-          <div className="p-8">
+          <div className="px-8 py-6">
           {/* Background glow */}
           <div className="fixed inset-0 pointer-events-none -z-10" aria-hidden="true">
             <div className="absolute top-1/4 right-1/4 w-96 h-96 rounded-full opacity-[0.03]" style={{ background: 'radial-gradient(circle, hsl(var(--primary)) 0%, transparent 70%)' }} />
           </div>
-          {/* Summary Stats - Aggregated Analytics */}
+
+          {/* Summary Stats - Premium Stat Cards */}
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
-            <Card className="bg-card/80 backdrop-blur-sm border-border/40 hover:border-primary/30 transition-all duration-200 hover:shadow-[0_0_20px_hsl(var(--primary)/0.08)]">
-              <CardContent className="p-4 flex items-center gap-3">
-                <div className="p-2.5 rounded-xl bg-info/10">
-                  <Users className="h-5 w-5 text-info" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold font-mono tabular-nums data-value">
-                    <CountUp end={analyticsStats.totalReach} />
+            {statCards.map((card) => {
+              const Icon = card.icon;
+              return (
+                <div
+                  key={card.label}
+                  className={cn(
+                    'bg-card/80 backdrop-blur-sm border border-border/40 rounded-2xl p-5 hover:border-primary/20 transition-all group animate-fade-in',
+                    card.cursorClass
+                  )}
+                  style={{ animationDelay: `${card.delay * 75}ms` }}
+                  onClick={card.onClick}
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <div className={cn('p-2.5 rounded-xl', card.iconBg)}>
+                      <Icon className={cn('h-5 w-5', card.iconColor)} />
+                    </div>
+                  </div>
+                  <p className="text-3xl font-extrabold tabular-nums data-value">
+                    <CountUp end={card.value} decimals={card.decimals} suffix={card.suffix} />
                   </p>
-                  <p className="text-xs text-muted-foreground">Total Reach</p>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="bg-card/80 backdrop-blur-sm border-border/40 hover:border-primary/30 transition-all duration-200 hover:shadow-[0_0_20px_hsl(var(--primary)/0.08)]">
-              <CardContent className="p-4 flex items-center gap-3">
-                <div className="p-2.5 rounded-xl bg-primary/10">
-                  <Eye className="h-5 w-5 text-primary" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold font-mono tabular-nums data-value">
-                    <CountUp end={analyticsStats.totalImpressions} />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {card.label}
+                    {card.clickHint && <span className="text-primary/60 ml-1">-- view</span>}
                   </p>
-                  <p className="text-xs text-muted-foreground">Impressions</p>
                 </div>
-              </CardContent>
-            </Card>
-            <Card
-              className="bg-card/80 backdrop-blur-sm border-border/40 hover:border-primary/30 transition-all duration-200 hover:shadow-[0_0_20px_hsl(var(--primary)/0.08)] cursor-pointer hover:border-destructive/40"
-              onClick={() => { setReactorsPanelTab('profiles'); setShowReactorsPanel(true); }}
-            >
-              <CardContent className="p-4 flex items-center gap-3">
-                <div className="p-2.5 rounded-xl bg-destructive/10">
-                  <Heart className="h-5 w-5 text-destructive" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold font-mono tabular-nums data-value">
-                    <CountUp end={analyticsStats.totalReactions} />
-                  </p>
-                  <p className="text-xs text-muted-foreground">Reactions <span className="text-primary/60">→ view</span></p>
-                </div>
-              </CardContent>
-            </Card>
-            <Card
-              className="bg-card/80 backdrop-blur-sm border-border/40 hover:border-primary/30 transition-all duration-200 hover:shadow-[0_0_20px_hsl(var(--primary)/0.08)] cursor-pointer hover:border-accent/40"
-              onClick={() => { setReactorsPanelTab('comments'); setShowReactorsPanel(true); }}
-            >
-              <CardContent className="p-4 flex items-center gap-3">
-                <div className="p-2.5 rounded-xl bg-accent/20">
-                  <MessageCircle className="h-5 w-5 text-accent-foreground" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold font-mono tabular-nums data-value">
-                    <CountUp end={analyticsStats.totalComments} />
-                  </p>
-                  <p className="text-xs text-muted-foreground">Comments <span className="text-primary/60">→ view</span></p>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="bg-card/80 backdrop-blur-sm border-border/40 hover:border-primary/30 transition-all duration-200 hover:shadow-[0_0_20px_hsl(var(--primary)/0.08)]">
-              <CardContent className="p-4 flex items-center gap-3">
-                <div className="p-2.5 rounded-xl bg-muted">
-                  <Repeat2 className="h-5 w-5 text-muted-foreground" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold font-mono tabular-nums data-value">
-                    <CountUp end={analyticsStats.totalReshares} />
-                  </p>
-                  <p className="text-xs text-muted-foreground">Reshares</p>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="bg-card/80 backdrop-blur-sm border-border/40 hover:border-primary/30 transition-all duration-200 hover:shadow-[0_0_20px_hsl(var(--primary)/0.08)]">
-              <CardContent className="p-4 flex items-center gap-3">
-                <div className="p-2.5 rounded-xl bg-success/10">
-                  <TrendingUp className="h-5 w-5 text-success" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold font-mono tabular-nums data-value">
-                    <CountUp end={analyticsStats.avgEngagementRate} decimals={1} suffix="%" />
-                  </p>
-                  <p className="text-xs text-muted-foreground">Avg Engagement</p>
-                </div>
-              </CardContent>
-            </Card>
+              );
+            })}
           </div>
 
           {/* Header Section */}
@@ -357,10 +370,15 @@ const Posts = () => {
                   </div>
                 ) : (
                   <div>
-                    <h2 className="text-3xl font-extrabold tracking-tight">
-                      <span className="gradient-text">All Posts</span>
-                    </h2>
-                    <p className="text-muted-foreground mt-2 text-sm">
+                    <div className="flex items-center gap-3 mb-1">
+                      <div className="p-2 rounded-xl gradient-bg shadow-[0_0_20px_hsl(var(--primary)/0.2)]">
+                        <LayoutDashboard className="h-5 w-5 text-white" />
+                      </div>
+                      <h2 className="text-3xl font-extrabold tracking-tight">
+                        <span className="gradient-text">Content Hub</span>
+                      </h2>
+                    </div>
+                    <p className="text-muted-foreground text-sm ml-[52px]">
                       <span className="text-foreground font-medium">{totalPosts}</span> posts from <span className="text-foreground font-medium">{publishers.length}</span> publishers
                     </p>
                   </div>
@@ -373,7 +391,7 @@ const Posts = () => {
                     onClick={() => setIsTrackPostOpen(true)}
                     size="lg"
                     variant="outline"
-                    className="gap-2 rounded-xl"
+                    className="gap-2 rounded-xl border-border/60 hover:border-primary/30"
                   >
                     <LinkIcon className="h-5 w-5" />
                     Track Post
@@ -382,12 +400,12 @@ const Posts = () => {
                     onClick={() => setIsBulkUploadOpen(true)}
                     size="lg"
                     variant="outline"
-                    className="gap-2 rounded-xl text-accent"
+                    className="gap-2 rounded-xl border-border/60 hover:border-primary/30"
                   >
                     <Upload className="h-5 w-5" />
                     Bulk Upload
                   </Button>
-                  <Button onClick={handleNewPost} size="lg" className="gap-2 gradient-bg hover:opacity-90 transition-all rounded-xl text-white shadow-[0_4px_20px_hsl(var(--primary)/0.3)]">
+                  <Button onClick={handleNewPost} size="lg" className="gap-2 gradient-bg text-white rounded-xl shadow-[0_4px_20px_hsl(var(--primary)/0.3)] hover:opacity-90 transition-all">
                     <Plus className="h-5 w-5" />
                     New Post
                   </Button>
@@ -403,20 +421,21 @@ const Posts = () => {
             {/* Active Posts Section */}
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-foreground">
-                  {selectedPublisher ? 'Upcoming Posts' : 'All Active Posts'}
-                  <span className="ml-2 text-sm font-normal text-muted-foreground">({activePosts.length})</span>
+                <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
+                  <div className="h-5 w-1 rounded-full gradient-bg" />
+                  {selectedPublisher ? 'Upcoming Posts' : 'Active Posts'}
+                  <span className="ml-1 text-sm font-normal text-muted-foreground">({activePosts.length})</span>
                 </h3>
 
                 {/* View Toggle */}
               </div>
 
               {activePosts.length === 0 ? (
-                <div className="text-center py-16 card-elevated animate-fade-in">
-                  <div className="w-20 h-20 mx-auto mb-4 rounded-2xl gradient-bg shadow-[0_0_40px_hsl(var(--primary)/0.25)] flex items-center justify-center">
-                    <Inbox className="h-8 w-8 text-primary-foreground" />
+                <div className="text-center py-20 bg-card/50 backdrop-blur-sm border border-dashed border-border/50 rounded-2xl animate-fade-in">
+                  <div className="w-20 h-20 mx-auto mb-6 rounded-2xl gradient-bg shadow-[0_0_40px_hsl(var(--primary)/0.2)] flex items-center justify-center">
+                    <Inbox className="h-9 w-9 text-white" />
                   </div>
-                  <h3 className="text-lg font-semibold mb-2">No upcoming posts</h3>
+                  <h3 className="text-xl font-bold mb-2">No upcoming posts</h3>
                   <p className="text-muted-foreground mb-6 max-w-sm mx-auto">
                     {selectedPublisher
                       ? `No scheduled posts for ${selectedPublisher}`
@@ -456,10 +475,10 @@ const Posts = () => {
               <div className="mt-10">
                 <div className="flex items-center gap-3 mb-4">
                   <div className="h-px flex-1 bg-gradient-to-r from-transparent via-border to-transparent" />
-                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-success/10 border border-success/20">
-                    <div className="h-2 w-2 rounded-full bg-success" />
-                    <span className="text-sm font-medium text-success">Published</span>
-                    <span className="text-xs text-success/70">({publishedPosts.length})</span>
+                  <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-success/10 border border-success/20">
+                    <div className="h-2 w-2 rounded-full bg-success shadow-[0_0_6px_hsl(var(--success)/0.5)]" />
+                    <span className="text-sm font-semibold text-success">Published</span>
+                    <span className="text-xs text-success/60">({publishedPosts.length})</span>
                   </div>
                   <div className="h-px flex-1 bg-gradient-to-r from-transparent via-border to-transparent" />
                 </div>
