@@ -587,7 +587,7 @@ async function fetchPostAnalytics(
     
     if (!found) {
       console.log(`Could not resolve activity URN: ${postUrn}, skipping analytics but will try content fetch`);
-      return { ...analytics, reactors, unresolvedActivity: true, activityUrn: postUrn };
+      return { ...analytics, reactors, unresolvedActivity: true, activityUrn: postUrn } as PostAnalytics & { reactors: ReactorData[]; resolvedUrn?: string; unresolvedActivity?: boolean; activityUrn?: string };
     }
   } else if (!isUgcPost && !isShare) {
     console.log(`Unknown URN format: ${postUrn}, skipping analytics`);
@@ -917,7 +917,7 @@ Deno.serve(async (req) => {
     for (const post of appPosts) {
       try {
         const analyticsWithReactors = await fetchPostAnalytics(accessToken, post.linkedin_post_urn);
-        const { reactors, resolvedUrn, unresolvedActivity, activityUrn, ...analytics } = analyticsWithReactors;
+        const { reactors, resolvedUrn, unresolvedActivity, activityUrn, ...analytics } = analyticsWithReactors as PostAnalytics & { reactors: ReactorData[]; resolvedUrn?: string; unresolvedActivity?: boolean; activityUrn?: string };
         
         // If activity URN couldn't be resolved, still try to fetch content
         if (unresolvedActivity && post.content === '[Tracked external post]') {
