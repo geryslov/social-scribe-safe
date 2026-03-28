@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Save, Send, CheckCircle, RotateCcw, Split,
-  FileText, Clock, MessageSquare, ExternalLink, Layers, User, Users
+  FileText, Clock, MessageSquare, ExternalLink, Layers, User, Users, Loader2
 } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { Button } from '@/components/ui/button';
@@ -122,8 +122,9 @@ export default function DocumentEditor() {
     return (
       <div className="min-h-screen bg-background">
         <Header />
-        <div className="flex items-center justify-center h-96">
-          <p className="text-muted-foreground">Loading document...</p>
+        <div className="flex flex-col items-center justify-center h-96 gap-3">
+          <Loader2 className="h-6 w-6 animate-spin text-primary" />
+          <p className="text-sm text-muted-foreground">Loading document...</p>
         </div>
       </div>
     );
@@ -135,7 +136,7 @@ export default function DocumentEditor() {
         <Header />
         <div className="flex flex-col items-center justify-center h-96 gap-4">
           <p className="text-muted-foreground">Document not found</p>
-          <Button variant="outline" onClick={() => navigate('/documents')} className="rounded-xl">
+          <Button variant="outline" onClick={() => navigate('/documents')} className="rounded-xl h-8 text-sm">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Library
           </Button>
@@ -153,23 +154,21 @@ export default function DocumentEditor() {
       <main id="main-content" className="px-8 py-6">
         {/* Background glow */}
         <div className="fixed inset-0 pointer-events-none -z-10" aria-hidden="true">
-          <div className="absolute top-1/4 left-1/2 w-[500px] h-[500px] rounded-full opacity-[0.03]" style={{ background: 'radial-gradient(circle, hsl(var(--primary)) 0%, transparent 70%)' }} />
+          <div className="absolute top-1/4 left-1/2 w-[500px] h-[500px] rounded-full opacity-[0.03]" style={{ background: 'radial-gradient(circle, hsl(var(--warm)) 0%, transparent 70%)' }} />
         </div>
 
         {/* Top Bar */}
-        <div className="bg-card/60 backdrop-blur-sm border border-border/40 rounded-2xl p-4 mb-6 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => navigate('/documents')} className="rounded-xl">
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
+        <div className="flex items-center justify-between mb-6 pb-5 border-b border-border/30">
+          <div className="flex items-center gap-3">
+            <button onClick={() => navigate('/documents')} className="h-8 w-8 rounded-lg hover:bg-foreground/5 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors">
+              <ArrowLeft className="h-4 w-4" />
+            </button>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-xl font-bold">{document.title}</h1>
-                <Badge variant="secondary" className={status.color}>
-                  {status.label}
-                </Badge>
+                <h1 className="text-lg font-display font-bold">{document.title}</h1>
+                <Badge variant="secondary" className={status.color}>{status.label}</Badge>
               </div>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-xs text-muted-foreground mt-0.5">
                 Created {format(new Date(document.createdAt), 'MMM d, yyyy')}
                 {document.fileName && ` · ${document.fileName}`}
               </p>
@@ -178,19 +177,18 @@ export default function DocumentEditor() {
 
           <div className="flex items-center gap-2">
             {hasChanges && (
-              <Button onClick={handleSave} disabled={updateDocument.isPending} className="gradient-bg text-white hover:opacity-90 rounded-xl">
-                <Save className="h-4 w-4 mr-2" />
-                Save Changes
+              <Button onClick={handleSave} disabled={updateDocument.isPending} className="btn-warm rounded-xl gap-1.5 h-8 text-sm">
+                <Save className="h-3.5 w-3.5" /> Save
               </Button>
             )}
 
             {document.status === 'draft' && isAdmin && (
               <Button
                 variant="outline"
-                className="rounded-xl"
+                className="rounded-xl h-8 text-sm"
                 onClick={() => handleStatusChange('in_review')}
               >
-                <Send className="h-4 w-4 mr-2" />
+                <Send className="h-3.5 w-3.5 mr-1.5" />
                 Submit for Review
               </Button>
             )}
@@ -199,53 +197,50 @@ export default function DocumentEditor() {
               <>
                 <Button
                   variant="outline"
-                  className="rounded-xl"
+                  className="rounded-xl h-8 text-sm"
                   onClick={() => handleStatusChange('draft')}
                 >
-                  <RotateCcw className="h-4 w-4 mr-2" />
+                  <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
                   Request Changes
                 </Button>
-                <Button onClick={() => handleStatusChange('approved')} className="bg-success text-white hover:bg-success/90 rounded-xl">
-                  <CheckCircle className="h-4 w-4 mr-2" />
-                  Approve
+                <Button onClick={() => handleStatusChange('approved')} className="btn-warm rounded-xl h-8 text-sm gap-1.5">
+                  <CheckCircle className="h-3.5 w-3.5" /> Approve
                 </Button>
               </>
             )}
 
             {document.status === 'approved' && isAdmin && (
-              <Button onClick={() => setSplitModalOpen(true)} className="gradient-bg text-white hover:opacity-90 rounded-xl">
-                <Split className="h-4 w-4 mr-2" />
-                Split to Posts
+              <Button onClick={() => setSplitModalOpen(true)} className="btn-warm rounded-xl h-8 text-sm gap-1.5">
+                <Split className="h-3.5 w-3.5" /> Split to Posts
               </Button>
             )}
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
           {/* Main Editor */}
-          <div className="col-span-2 space-y-4">
+          <div className="space-y-4">
             {/* Editor card */}
-            <div className="bg-card/60 backdrop-blur-sm border border-border/40 rounded-2xl p-6 space-y-4">
-              <div>
-                <label className="text-sm font-medium mb-1.5 block">Title</label>
-                <Input
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  className="text-lg font-semibold rounded-xl border-border/50"
-                />
-              </div>
+            <div className="bento-card p-6">
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Title</label>
+              <Input
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                className="text-xl font-display font-bold border-none bg-transparent px-0 focus-visible:ring-0 placeholder:text-muted-foreground/30"
+                placeholder="Document title..."
+              />
 
               {/* Show content textarea only if no sections exist */}
               {sections.length === 0 && (
-                <div>
-                  <label className="text-sm font-medium mb-1.5 block">Content</label>
+                <>
+                  <div className="h-px bg-border/30 my-4" />
                   <Textarea
                     value={content}
                     onChange={(e) => setContent(e.target.value)}
-                    className="min-h-[300px] resize-none font-mono text-sm rounded-xl border-border/50"
-                    placeholder="Document content..."
+                    className="min-h-[400px] resize-none border-none bg-transparent px-0 focus-visible:ring-0 text-sm leading-relaxed"
+                    placeholder="Start writing..."
                   />
-                </div>
+                </>
               )}
             </div>
 
@@ -253,10 +248,7 @@ export default function DocumentEditor() {
             {sections.length > 0 && (
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="p-1 rounded gradient-bg"><Layers className="h-3 w-3 text-white" /></div>
-                    <h3 className="font-medium">Posts for Review ({sections.length})</h3>
-                  </div>
+                  <p className="section-heading mb-0">Posts for Review <span className="normal-case tracking-normal font-normal text-muted-foreground/50">({sections.length})</span></p>
 
                   {/* Select All Checkbox */}
                   <div className="flex items-center gap-2">
@@ -356,11 +348,8 @@ export default function DocumentEditor() {
           {/* Sidebar */}
           <div className="space-y-6">
             {/* Document Info */}
-            <div className="bg-card/80 backdrop-blur-sm border border-border/50 rounded-xl p-4 hover:border-primary/20 transition-colors">
-              <h3 className="font-medium flex items-center gap-2 mb-3">
-                <div className="p-1 rounded gradient-bg"><FileText className="h-3 w-3 text-white" /></div>
-                Document Info
-              </h3>
+            <div className="bento-card p-4">
+              <p className="section-heading mb-3">Document Info</p>
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Status</span>
@@ -400,11 +389,8 @@ export default function DocumentEditor() {
 
             {/* Assigned Publisher */}
             {isAdmin && (
-              <div className="bg-card/80 backdrop-blur-sm border border-border/50 rounded-xl p-4 hover:border-primary/20 transition-colors">
-                <h3 className="font-medium flex items-center gap-2 mb-3">
-                  <div className="p-1 rounded gradient-bg"><User className="h-3 w-3 text-white" /></div>
-                  Assigned Publisher
-                </h3>
+              <div className="bento-card p-4">
+                <p className="section-heading mb-3">Assigned Publisher</p>
                 <DocumentPublisherSelect
                   publisherId={publisherId}
                   onPublisherChange={setPublisherId}
@@ -419,18 +405,15 @@ export default function DocumentEditor() {
             <LinkedPostsList posts={posts} />
 
             {/* Comments */}
-            <div className="bg-card/80 backdrop-blur-sm border border-border/50 rounded-xl p-4 hover:border-primary/20 transition-colors">
-              <h3 className="font-medium flex items-center gap-2 mb-3">
-                <div className="p-1 rounded gradient-bg"><MessageSquare className="h-3 w-3 text-white" /></div>
-                Comments ({comments.length})
-              </h3>
+            <div className="bento-card p-4">
+              <p className="section-heading mb-3">Comments <span className="normal-case tracking-normal font-normal text-muted-foreground/50">({comments.length})</span></p>
 
               <div className="space-y-3 max-h-64 overflow-y-auto mb-3">
                 {comments.length === 0 ? (
                   <p className="text-sm text-muted-foreground">No comments yet</p>
                 ) : (
                   comments.map(comment => (
-                    <div key={comment.id} className="text-sm pl-3 border-l-2 border-primary/20">
+                    <div key={comment.id} className="text-sm pl-3 border-l-2 border-warm/20">
                       <div className="flex items-center gap-2 mb-1">
                         <span className="font-medium">{comment.userEmail}</span>
                         <span className="text-xs text-muted-foreground">
@@ -451,15 +434,15 @@ export default function DocumentEditor() {
                   onChange={(e) => setNewComment(e.target.value)}
                   placeholder="Add a comment..."
                   onKeyDown={(e) => e.key === 'Enter' && handleAddComment()}
-                  className="rounded-xl border-border/50"
+                  className="rounded-xl bg-foreground/[0.03] border-border/40"
                 />
                 <Button
                   size="icon"
                   onClick={handleAddComment}
                   disabled={!newComment.trim()}
-                  className="gradient-bg text-white hover:opacity-90 rounded-xl"
+                  className="btn-warm rounded-lg h-9 w-9"
                 >
-                  <Send className="h-4 w-4" />
+                  <Send className="h-3.5 w-3.5" />
                 </Button>
               </div>
             </div>

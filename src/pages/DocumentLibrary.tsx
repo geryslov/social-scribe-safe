@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Upload, Search, FileText, Filter, Loader2 } from 'lucide-react';
+import { Plus, Upload, Search, FileText, Loader2 } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { DocumentCard } from '@/components/DocumentCard';
 import { DocumentUploadModal } from '@/components/DocumentUploadModal';
@@ -111,57 +111,44 @@ export default function DocumentLibrary() {
     <div className="min-h-screen bg-background">
       <Header />
 
-      <main id="main-content" className="px-8 py-6">
+      <main id="main-content" className="px-8 py-6 max-w-6xl mx-auto">
         {/* Background glow */}
         <div className="fixed inset-0 pointer-events-none -z-10" aria-hidden="true">
-          <div className="absolute top-1/3 left-1/3 w-96 h-96 rounded-full opacity-[0.03]" style={{ background: 'radial-gradient(circle, hsl(var(--primary)) 0%, transparent 70%)' }} />
+          <div className="absolute top-1/4 left-1/3 w-[500px] h-[500px] rounded-full opacity-[0.03]" style={{ background: 'radial-gradient(circle, hsl(var(--warm)) 0%, transparent 70%)' }} />
         </div>
 
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        {/* Page header */}
+        <div className="flex items-start justify-between mb-8">
           <div>
-            <div className="flex items-center gap-3 mb-1">
-              <div className="p-2 rounded-xl gradient-bg shadow-[0_0_20px_hsl(var(--primary)/0.2)]">
-                <FileText className="h-5 w-5 text-white" />
-              </div>
-              <h1 className="text-3xl font-extrabold tracking-tight">
-                <span className="gradient-text">Documents</span>
-              </h1>
-            </div>
-            <p className="text-sm text-muted-foreground ml-[52px]">
-              Manage content documents and split them into posts
-            </p>
+            <p className="section-heading mb-2">Content Pipeline</p>
+            <h1 className="text-4xl font-display font-extrabold tracking-tight">Documents</h1>
+            <p className="text-sm text-muted-foreground mt-2">Long-form content to LinkedIn posts</p>
           </div>
-
           {isAdmin && (
-            <Button className="gap-2 gradient-bg text-white rounded-xl shadow-[0_4px_20px_hsl(var(--primary)/0.3)] hover:opacity-90" onClick={() => setUploadModalOpen(true)}>
-              <Plus className="h-4 w-4" />
-              New Document
+            <Button className="btn-warm rounded-xl gap-2" onClick={() => setUploadModalOpen(true)}>
+              <Plus className="h-4 w-4" /> New Document
             </Button>
           )}
         </div>
 
         {/* Filters */}
-        <div className="bg-card/60 backdrop-blur-sm border border-border/40 rounded-2xl p-4 mb-8 flex items-center gap-4">
-          <div className="relative flex-1 max-w-md">
+        <div className="flex items-center gap-3 mb-8">
+          <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search documents..."
-              className="pl-10 rounded-xl border-border/50"
+              placeholder="Search..."
+              className="pl-9 rounded-xl bg-foreground/[0.03] border-border/40"
             />
           </div>
-
           <Tabs
             value={statusFilter}
             onValueChange={(v) => setStatusFilter(v as DocumentStatus | 'all')}
           >
-            <TabsList className="rounded-xl">
-              {statusFilters.map(filter => (
-                <TabsTrigger key={filter.value} value={filter.value}>
-                  {filter.label}
-                </TabsTrigger>
+            <TabsList className="bg-foreground/[0.03] rounded-xl">
+              {statusFilters.map(f => (
+                <TabsTrigger key={f.value} value={f.value} className="rounded-lg text-xs">{f.label}</TabsTrigger>
               ))}
             </TabsList>
           </Tabs>
@@ -169,37 +156,35 @@ export default function DocumentLibrary() {
 
         {/* Document Grid */}
         {isLoading ? (
-          <div className="text-center py-20">
-            <div className="w-16 h-16 rounded-2xl gradient-bg shadow-[0_0_30px_hsl(var(--primary)/0.2)] flex items-center justify-center mx-auto mb-4">
-              <Loader2 className="h-7 w-7 animate-spin text-white" />
-            </div>
-            <p className="text-muted-foreground">Loading documents...</p>
+          <div className="flex flex-col items-center justify-center py-24 gap-3">
+            <Loader2 className="h-6 w-6 animate-spin text-primary" />
+            <p className="text-sm text-muted-foreground">Loading documents...</p>
           </div>
         ) : filteredDocuments.length === 0 ? (
-          <div className="text-center py-20">
-            <div className="w-20 h-20 rounded-2xl gradient-bg shadow-[0_0_30px_hsl(var(--primary)/0.2)] flex items-center justify-center mx-auto mb-4">
-              <FileText className="h-8 w-8 text-white" />
+          <div className="text-center py-24">
+            <div className="w-16 h-16 mx-auto mb-5 rounded-2xl gradient-bg flex items-center justify-center shadow-[0_0_30px_hsl(var(--warm)/0.15)]">
+              <FileText className="h-7 w-7 text-white" />
             </div>
-            <h3 className="font-medium text-foreground mb-1">No documents found</h3>
-            <p className="text-sm text-muted-foreground">
+            <h3 className="text-xl font-display font-bold mb-2">No documents yet</h3>
+            <p className="text-sm text-muted-foreground max-w-sm mx-auto mb-6">
               {searchQuery || statusFilter !== 'all'
                 ? 'Try adjusting your filters'
-                : 'Upload your first document to get started'
+                : 'Upload long-form content to split into LinkedIn posts'
               }
             </p>
             {isAdmin && !searchQuery && statusFilter === 'all' && (
               <Button
                 variant="outline"
-                className="mt-4 rounded-xl"
+                className="rounded-xl gap-2"
                 onClick={() => setUploadModalOpen(true)}
               >
-                <Upload className="h-4 w-4 mr-2" />
+                <Upload className="h-4 w-4" />
                 Upload Document
               </Button>
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {filteredDocuments.map(document => (
               <DocumentCard
                 key={document.id}

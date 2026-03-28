@@ -55,13 +55,6 @@ const Analytics = () => {
 
   const statCards = [
     {
-      title: 'Total Posts',
-      value: stats.totalPosts,
-      icon: TrendingUp,
-      color: 'text-primary',
-      bgColor: 'bg-primary/10',
-    },
-    {
       title: 'Total Reach',
       value: stats.totalReach,
       icon: Users,
@@ -86,20 +79,27 @@ const Analytics = () => {
       bgColor: 'bg-destructive/10',
     },
     {
-      title: 'Comments',
-      value: stats.totalComments,
-      icon: MessageCircle,
-      sparkline: generateSparkline('comments'),
-      color: 'text-warning',
-      bgColor: 'bg-warning/10',
-    },
-    {
       title: 'Avg Engagement',
       value: stats.avgEngagementRate,
       icon: TrendingUp,
       isPercentage: true,
       color: 'text-success',
       bgColor: 'bg-success/10',
+    },
+    {
+      title: 'Total Posts',
+      value: stats.totalPosts,
+      icon: TrendingUp,
+      color: 'text-primary',
+      bgColor: 'bg-primary/10',
+    },
+    {
+      title: 'Comments',
+      value: stats.totalComments,
+      icon: MessageCircle,
+      sparkline: generateSparkline('comments'),
+      color: 'text-warning',
+      bgColor: 'bg-warning/10',
     },
   ];
 
@@ -108,71 +108,94 @@ const Analytics = () => {
       <Header />
 
       <main id="main-content" className="p-8 max-w-7xl mx-auto">
-        {/* Background glow */}
+        {/* Background glow - warm tones */}
         <div className="fixed inset-0 pointer-events-none -z-10" aria-hidden="true">
           <div className="absolute top-0 left-1/4 w-96 h-96 rounded-full opacity-[0.04]"
             style={{ background: 'radial-gradient(circle, hsl(var(--primary)) 0%, transparent 70%)' }}
           />
           <div className="absolute bottom-1/4 right-1/4 w-96 h-96 rounded-full opacity-[0.03]"
-            style={{ background: 'radial-gradient(circle, hsl(var(--accent)) 0%, transparent 70%)' }}
+            style={{ background: 'radial-gradient(circle, hsl(var(--warm)) 0%, transparent 70%)' }}
           />
         </div>
 
         {/* Page Header */}
-        <div className="flex items-start justify-between mb-10">
+        <div className="flex items-start justify-between mb-8">
           <div>
-            <div className="flex items-center gap-3 mb-1">
-              <div className="p-2 rounded-xl gradient-bg shadow-[0_0_20px_hsl(var(--primary)/0.2)]">
-                <BarChart3 className="h-5 w-5 text-white" />
-              </div>
-              <h1 className="text-3xl font-extrabold tracking-tight">
-                <span className="gradient-text">Analytics</span>
-              </h1>
-            </div>
-            <p className="text-muted-foreground mt-1 text-sm ml-[52px]">
-              Performance overview across all publishers
-            </p>
+            <p className="section-heading mb-2">Dashboard</p>
+            <h1 className="text-4xl font-display font-extrabold tracking-tight">Analytics</h1>
+            <p className="text-muted-foreground mt-2 text-sm">Performance across all publishers</p>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             <DataPulse />
             {lastSyncTime && (
-              <span className="text-xs text-muted-foreground bg-secondary/50 px-3 py-1.5 rounded-full">
+              <span className="text-xs text-muted-foreground bento-card px-3 py-1.5">
                 Last sync: {format(new Date(lastSyncTime), 'HH:mm')}
               </span>
             )}
           </div>
         </div>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
-          {statCards.map((stat, index) => {
+        {/* Top Stats Row — 4 primary + 2 secondary stacked */}
+        <div className="grid grid-cols-6 gap-3 mb-6">
+          {/* Primary stats — one column each */}
+          {statCards.slice(0, 4).map((stat, i) => {
             const Icon = stat.icon;
             return (
               <div
                 key={stat.title}
-                className="bg-card/80 backdrop-blur-sm border border-border/40 rounded-2xl p-5 hover:border-primary/20 transition-all duration-200 group animate-fade-in"
-                style={{ animationDelay: `${index * 60}ms` }}
+                className="bento-card p-5 group animate-fade-in"
+                style={{ animationDelay: `${i * 60}ms` }}
               >
-                <div className="flex items-center gap-3 mb-4">
-                  <div className={cn("p-2.5 rounded-xl transition-transform group-hover:scale-110 duration-200", stat.bgColor)}>
-                    <Icon className={cn("h-5 w-5", stat.color)} />
+                <div className="flex items-center gap-2 mb-4">
+                  <div className={cn("p-2 rounded-xl group-hover:scale-110 transition-transform", stat.bgColor)}>
+                    <Icon className={cn("h-4 w-4", stat.color)} />
                   </div>
+                  <span className="text-xs text-muted-foreground font-medium">{stat.title}</span>
                 </div>
-                <p className="text-3xl font-extrabold tabular-nums tracking-tight">
+                <p className="text-3xl font-display font-extrabold tabular-nums tracking-tight">
                   <CountUp
                     end={stat.value}
                     suffix={stat.isPercentage ? '%' : ''}
                     decimals={stat.isPercentage ? 1 : 0}
                   />
                 </p>
-                <p className="text-xs text-muted-foreground mt-1">{stat.title}</p>
               </div>
             );
           })}
+
+          {/* Secondary stats — last 2 stacked in a 2-col span */}
+          <div className="col-span-2 grid grid-rows-2 gap-3">
+            {statCards.slice(4).map((stat, i) => {
+              const Icon = stat.icon;
+              return (
+                <div
+                  key={stat.title}
+                  className="bento-card p-4 group animate-fade-in"
+                  style={{ animationDelay: `${(i + 4) * 60}ms` }}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={cn("p-2 rounded-xl", stat.bgColor)}>
+                      <Icon className={cn("h-4 w-4", stat.color)} />
+                    </div>
+                    <div>
+                      <p className="text-xl font-display font-extrabold tabular-nums tracking-tight">
+                        <CountUp
+                          end={stat.value}
+                          suffix={stat.isPercentage ? '%' : ''}
+                          decimals={stat.isPercentage ? 1 : 0}
+                        />
+                      </p>
+                      <p className="text-xs text-muted-foreground">{stat.title}</p>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
 
-        {/* Performance Chart */}
-        <div className="mb-8">
+        {/* Performance Chart — full width bento */}
+        <div className="bento-card p-1 mb-6">
           <PerformanceChart
             data={trendData}
             timeRange={timeRange}
@@ -181,73 +204,73 @@ const Analytics = () => {
           />
         </div>
 
-        {/* Bottom Grid - Top Posts and Publisher Comparison */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <TopPostsLeaderboard posts={topPosts} isLoading={isLoading} />
-
-          {/* Publisher Rankings */}
-          <div className="bg-card/80 backdrop-blur-sm border border-border/40 rounded-2xl overflow-hidden">
-            <div className="px-6 py-4 flex items-center justify-between border-b border-border/30">
-              <h3 className="text-sm font-semibold flex items-center gap-2">
-                <div className="h-4 w-1 rounded-full gradient-bg" />
-                Publisher Rankings
-              </h3>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => refreshAllAvatars.mutate()}
-                disabled={refreshAllAvatars.isPending}
-                className="text-xs gap-1"
-              >
-                <RefreshCw className={cn("h-3 w-3", refreshAllAvatars.isPending && "animate-spin")} />
-                {refreshAllAvatars.isPending ? 'Refreshing...' : 'Refresh Photos'}
-              </Button>
-            </div>
-            <div className="p-4 space-y-2">
-              {publisherRanking.slice(0, 6).map((pub, index) => (
-                <button
-                  key={pub.name}
-                  onClick={() => navigate(`/publisher/${encodeURIComponent(pub.name)}`)}
-                  className={cn(
-                    "w-full flex items-center gap-3 p-3 rounded-xl transition-all duration-200",
-                    "bg-muted/30 border border-border/30",
-                    "hover:bg-primary/5 hover:border-primary/20 hover:shadow-[0_0_20px_hsl(var(--primary)/0.06)]"
-                  )}
+        {/* Bottom Grid — Top Posts (3/5) + Publisher Rankings (2/5) */}
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+          <div className="lg:col-span-3">
+            <TopPostsLeaderboard posts={topPosts} isLoading={isLoading} />
+          </div>
+          <div className="lg:col-span-2">
+            {/* Publisher Rankings */}
+            <div className="bento-card overflow-hidden">
+              <div className="px-5 py-4 flex items-center justify-between border-b border-border/30">
+                <p className="section-heading">Publisher Rankings</p>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => refreshAllAvatars.mutate()}
+                  disabled={refreshAllAvatars.isPending}
+                  className="text-xs gap-1"
                 >
-                  <span className={cn(
-                    "w-6 h-6 rounded flex items-center justify-center text-xs font-mono font-bold",
-                    index === 0 && "bg-warning/20 text-warning",
-                    index === 1 && "bg-muted-foreground/20 text-muted-foreground",
-                    index === 2 && "bg-warning/30 text-warning/80",
-                    index > 2 && "bg-primary/20 text-primary"
-                  )}>
-                    {index + 1}
-                  </span>
-                  <PublisherAvatar name={pub.name} size="sm" className="w-8 h-8" />
-                  <div className="flex-1 text-left min-w-0">
-                    <p className="text-sm font-medium truncate">{pub.name}</p>
-                    <p className="text-xs text-muted-foreground font-mono">
-                    {pub.postCount} posts • {pub.totalReach.toLocaleString()} reach
-                      {(() => {
-                        const dbPub = dbPublishers.find(p => p.name === pub.name);
-                        return dbPub?.followers_count ? ` • ${dbPub.followers_count.toLocaleString()} followers` : '';
-                      })()}
-                    </p>
+                  <RefreshCw className={cn("h-3 w-3", refreshAllAvatars.isPending && "animate-spin")} />
+                  {refreshAllAvatars.isPending ? 'Refreshing...' : 'Refresh Photos'}
+                </Button>
+              </div>
+              <div className="p-3 space-y-1.5">
+                {publisherRanking.slice(0, 6).map((pub, index) => (
+                  <button
+                    key={pub.name}
+                    onClick={() => navigate(`/publisher/${encodeURIComponent(pub.name)}`)}
+                    className={cn(
+                      "w-full flex items-center gap-3 p-3 rounded-xl transition-all duration-200",
+                      "bg-muted/30 border border-border/30",
+                      "hover:bg-primary/5 hover:border-primary/20 hover:shadow-[0_0_20px_hsl(var(--primary)/0.06)]"
+                    )}
+                  >
+                    <span className={cn(
+                      "w-6 h-6 rounded flex items-center justify-center text-xs font-mono font-bold",
+                      index === 0 && "bg-warning/20 text-warning",
+                      index === 1 && "bg-muted-foreground/20 text-muted-foreground",
+                      index === 2 && "bg-warning/30 text-warning/80",
+                      index > 2 && "bg-primary/20 text-primary"
+                    )}>
+                      {index + 1}
+                    </span>
+                    <PublisherAvatar name={pub.name} size="sm" className="w-8 h-8" />
+                    <div className="flex-1 text-left min-w-0">
+                      <p className="text-sm font-medium truncate">{pub.name}</p>
+                      <p className="text-xs text-muted-foreground font-mono">
+                        {pub.postCount} posts • {pub.totalReach.toLocaleString()} reach
+                        {(() => {
+                          const dbPub = dbPublishers.find(p => p.name === pub.name);
+                          return dbPub?.followers_count ? ` • ${dbPub.followers_count.toLocaleString()} followers` : '';
+                        })()}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-display font-bold text-success">
+                        {pub.avgEngagementRate.toFixed(1)}%
+                      </p>
+                      <p className="text-xs text-muted-foreground">Engagement</p>
+                    </div>
+                  </button>
+                ))}
+                {publisherRanking.length === 0 && (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <p>No publisher data</p>
+                    <p className="text-xs mt-1">Publish posts to see rankings</p>
                   </div>
-                  <div className="text-right">
-                    <p className="text-sm font-mono font-bold text-success">
-                      {pub.avgEngagementRate.toFixed(1)}%
-                    </p>
-                    <p className="text-xs text-muted-foreground">Engagement</p>
-                  </div>
-                </button>
-              ))}
-              {publisherRanking.length === 0 && (
-                <div className="text-center py-8 text-muted-foreground">
-                  <p>No publisher data</p>
-                  <p className="text-xs mt-1">Publish posts to see rankings</p>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </div>
         </div>

@@ -84,63 +84,43 @@ export function PublisherSidebar({ publishers, selectedPublisher, onSelectPublis
 
   return (
     <>
-      <div className="w-72 flex-shrink-0 h-[calc(100vh-73px)] overflow-y-auto bg-card/50 backdrop-blur-sm border-r border-border/30">
-        <div className="p-5">
-          <div className="flex items-center justify-between mb-5 px-1">
-            <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
-              <div className="h-3 w-0.5 rounded-full gradient-bg" />
-              Publishers
-            </h2>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10"
+      <div className="w-64 flex-shrink-0 h-[calc(100vh-56px)] overflow-y-auto bg-background border-r border-border/30">
+        <div className="p-4">
+          <div className="flex items-center justify-between mb-4 px-1">
+            <p className="section-heading">Publishers</p>
+            <button
               onClick={handleAddPublisher}
+              className="h-6 w-6 rounded-md hover:bg-foreground/5 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
             >
-              <Plus className="h-4 w-4" />
-            </Button>
+              <Plus className="h-3.5 w-3.5" />
+            </button>
           </div>
 
           <div className="space-y-1">
-            {/* All Publishers - Featured Card */}
+            {/* All Publishers */}
             <button
               onClick={() => onSelectPublisher(null)}
               className={cn(
-                "w-full flex items-center gap-3 px-4 py-4 rounded-2xl text-left transition-all duration-200 group",
+                "w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left transition-all duration-200",
                 selectedPublisher === null
-                  ? "text-white shadow-lg"
-                  : "bg-secondary/50 hover:bg-secondary border border-transparent"
+                  ? "bg-warm/10 border border-warm/20 text-foreground"
+                  : "hover:bg-foreground/5 border border-transparent"
               )}
-              style={selectedPublisher === null ? {
-                background: 'linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)))',
-                boxShadow: '0 0 40px hsl(var(--primary) / 0.2), 0 8px 24px hsl(var(--primary) / 0.35)'
-              } : {}}
             >
               <div className={cn(
-                "w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-200",
-                selectedPublisher === null
-                  ? "bg-white/20 backdrop-blur-sm"
-                  : "bg-card text-muted-foreground group-hover:text-primary"
+                "w-9 h-9 rounded-lg flex items-center justify-center",
+                selectedPublisher === null ? "bg-warm/20 text-warm" : "bg-foreground/5 text-muted-foreground"
               )}>
-                <Users className="h-5 w-5" />
+                <Users className="h-4 w-4" />
               </div>
               <div className="flex-1">
-                <p className={cn(
-                  "font-semibold text-sm",
-                  selectedPublisher === null ? "text-white" : "text-foreground"
-                )}>All Publishers</p>
-                <p className={cn(
-                  "text-xs",
-                  selectedPublisher === null ? "text-white/70" : "text-muted-foreground"
-                )}>{totalPosts} posts total</p>
+                <p className="font-semibold text-sm">All Publishers</p>
+                <p className="text-xs text-muted-foreground">{totalPosts} posts</p>
               </div>
-              {selectedPublisher === null && (
-                <div className="w-2 h-2 rounded-full bg-white animate-pulse" />
-              )}
             </button>
 
             {/* Divider */}
-            <div className="my-3 mx-2 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
+            <div className="my-3 h-px bg-border/40" />
 
             {/* Publisher List */}
             {publishers.map((publisher, index) => {
@@ -152,12 +132,14 @@ export function PublisherSidebar({ publishers, selectedPublisher, onSelectPublis
                 <div
                   key={publisher.name}
                   className={cn(
-                    "w-full flex items-center gap-3 px-3 py-3 text-left transition-all duration-200 animate-fade-in group relative",
-                    isSelected
-                      ? "bg-primary/[0.06] border-l-[3px] border-l-primary rounded-xl"
-                      : "hover:bg-secondary/50 border-l-[3px] border-l-transparent rounded-xl"
+                    "flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all duration-200 group relative",
+                    isSelected ? "bg-primary/[0.05]" : "hover:bg-foreground/[0.03]"
                   )}
                 >
+                  {isSelected && (
+                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-full bg-primary" />
+                  )}
+
                   <button
                     onClick={() => onSelectPublisher(publisher.name)}
                     className="flex items-center gap-3 flex-1 min-w-0"
@@ -169,7 +151,7 @@ export function PublisherSidebar({ publishers, selectedPublisher, onSelectPublis
                       className={cn(
                         "w-10 h-10 transition-all duration-200",
                         isSelected
-                          ? "ring-2 ring-primary/30 ring-offset-1 ring-offset-card"
+                          ? "ring-1 ring-primary/30 ring-offset-1 ring-offset-background"
                           : ""
                       )}
                     />

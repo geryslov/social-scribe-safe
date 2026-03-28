@@ -86,7 +86,7 @@ const PublisherAnalytics = () => {
         <Header />
         <div className="flex items-center justify-center h-[calc(100vh-73px)]">
           <div className="text-center">
-            <h2 className="text-2xl font-bold mb-2">Publisher Not Found</h2>
+            <h2 className="text-2xl font-display font-bold mb-2">Publisher Not Found</h2>
             <p className="text-muted-foreground mb-4">The publisher "{publisherName}" doesn't exist.</p>
             <Button onClick={() => navigate('/')}>Go to Dashboard</Button>
           </div>
@@ -151,48 +151,32 @@ const PublisherAnalytics = () => {
       <Header />
 
       <main id="main-content" className="p-8 max-w-7xl mx-auto">
-        {/* Background glow */}
+        {/* Background glow — warm tones */}
         <div className="fixed inset-0 pointer-events-none -z-10" aria-hidden="true">
-          <div className="absolute top-0 right-1/3 w-96 h-96 rounded-full opacity-[0.04]" style={{ background: 'radial-gradient(circle, hsl(var(--primary)) 0%, transparent 70%)' }} />
-          <div className="absolute bottom-1/3 left-1/4 w-96 h-96 rounded-full opacity-[0.03]" style={{ background: 'radial-gradient(circle, hsl(var(--accent)) 0%, transparent 70%)' }} />
+          <div className="absolute top-0 right-1/3 w-96 h-96 rounded-full opacity-[0.03]" style={{ background: 'radial-gradient(circle, hsl(var(--primary)) 0%, transparent 70%)' }} />
+          <div className="absolute bottom-1/3 left-1/4 w-96 h-96 rounded-full opacity-[0.02]" style={{ background: 'radial-gradient(circle, hsl(var(--warm)) 0%, transparent 70%)' }} />
         </div>
 
-        {/* Back Button */}
-        <Button
-          variant="ghost"
-          size="sm"
+        {/* Back Button — Minimal */}
+        <button
           onClick={() => navigate('/')}
-          className="mb-6 gap-2 text-muted-foreground hover:text-foreground rounded-xl"
+          className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-6"
         >
-          <ArrowLeft className="h-4 w-4" />
-          Back to Dashboard
-        </Button>
+          <ArrowLeft className="h-3.5 w-3.5" />
+          <span>Back</span>
+        </button>
 
-        {/* Publisher Header — Premium frosted card */}
-        <div className="bg-card/80 backdrop-blur-sm border border-border/40 rounded-2xl p-6 mb-8">
+        {/* Publisher Profile Hero — Warm bento card */}
+        <div className="bento-card p-6 mb-8">
           <div className="flex items-start justify-between">
-            <div className="flex items-center gap-6">
+            <div className="flex items-center gap-5">
               <PublisherAvatar
                 name={publisher.name}
                 size="lg"
-                className="w-20 h-20 ring-2 ring-primary/20 shadow-[0_0_30px_hsl(var(--primary)/0.15)]"
+                className="w-20 h-20 ring-2 ring-warm/20"
               />
               <div>
-                <div className="flex items-center gap-3">
-                  <h1 className="text-3xl font-extrabold tracking-tight">
-                    <span className="gradient-text">{publisher.name}</span>
-                  </h1>
-                  {publisher.linkedin_url && (
-                    <a
-                      href={publisher.linkedin_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-primary hover:text-primary/80 transition-colors"
-                    >
-                      <ExternalLink className="h-5 w-5" />
-                    </a>
-                  )}
-                </div>
+                <h1 className="text-3xl font-display font-extrabold tracking-tight">{publisher.name}</h1>
                 {publisher.role && (
                   <p className="text-muted-foreground mt-1 text-sm">{publisher.role}</p>
                 )}
@@ -201,7 +185,7 @@ const PublisherAnalytics = () => {
                     variant={publisher.linkedin_connected ? "default" : "secondary"}
                     className={cn(
                       "text-xs",
-                      publisher.linkedin_connected && "bg-success/20 text-success border-success/30"
+                      publisher.linkedin_connected && "bg-success/15 text-success border-success/20"
                     )}
                   >
                     {publisher.linkedin_connected ? 'Connected' : 'Not connected'}
@@ -209,53 +193,59 @@ const PublisherAnalytics = () => {
                   <span className="text-xs text-muted-foreground">
                     {stats.totalPosts} published posts
                   </span>
+                  {publisher.linkedin_url && (
+                    <a
+                      href={publisher.linkedin_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-primary hover:underline flex items-center gap-1"
+                    >
+                      <ExternalLink className="h-3 w-3" /> LinkedIn
+                    </a>
+                  )}
                 </div>
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               <DataPulse />
               <Button
                 onClick={handleSync}
                 disabled={isSyncing || !publisher.linkedin_connected}
                 variant="outline"
                 size="sm"
-                className="gap-2 rounded-xl"
+                className="gap-1.5 rounded-xl h-8 text-xs border-border/50"
               >
-                <RefreshCw className={cn("h-4 w-4", isSyncing && "animate-spin")} />
-                SYNC
+                <RefreshCw className={cn("h-3.5 w-3.5", isSyncing && "animate-spin")} />
+                Sync
               </Button>
             </div>
           </div>
         </div>
 
-        {/* Stats Grid — Premium frosted cards */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
+        {/* Stat Cards — Bento with font-display */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-8">
           {statCards.map((stat, index) => {
             const Icon = stat.icon;
             return (
               <div
                 key={stat.title}
-                className="bg-card/80 backdrop-blur-sm border border-border/40 rounded-2xl p-5 hover:border-primary/20 transition-all group animate-fade-in"
+                className="bento-card p-4 group animate-fade-in"
                 style={{ animationDelay: `${index * 50}ms` }}
               >
-                <div className="flex items-center justify-between mb-3">
-                  <div className={cn("p-2 rounded-lg transition-transform group-hover:scale-110 duration-200", stat.bgColor)}>
-                    <Icon className={cn("h-4 w-4", stat.color)} />
+                <div className="flex items-center gap-2 mb-3">
+                  <div className={cn("p-1.5 rounded-lg group-hover:scale-110 transition-transform", stat.bgColor)}>
+                    <Icon className={cn("h-3.5 w-3.5", stat.color)} />
                   </div>
+                  <span className="text-xs text-muted-foreground">{stat.title}</span>
                 </div>
-                <div className="space-y-1">
-                  <p className="text-2xl font-bold tabular-nums">
-                    <CountUp
-                      end={stat.value}
-                      suffix={stat.isPercentage ? '%' : ''}
-                      decimals={stat.isPercentage ? 1 : 0}
-                    />
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {stat.title}
-                  </p>
-                </div>
+                <p className="text-2xl font-display font-extrabold tabular-nums tracking-tight">
+                  <CountUp
+                    end={stat.value}
+                    suffix={stat.isPercentage ? '%' : ''}
+                    decimals={stat.isPercentage ? 1 : 0}
+                  />
+                </p>
               </div>
             );
           })}
@@ -263,10 +253,7 @@ const PublisherAnalytics = () => {
 
         {/* Follower Growth */}
         <div className="mb-8">
-          <h2 className="text-sm font-semibold text-muted-foreground mb-4 flex items-center gap-2">
-            <div className="h-4 w-1 rounded-full gradient-bg" />
-            Follower Growth
-          </h2>
+          <p className="section-heading mb-4">Follower Growth</p>
           <FollowerGrowthChart
             publisherId={publisher.id}
             timeRange={timeRange}
@@ -276,10 +263,7 @@ const PublisherAnalytics = () => {
 
         {/* Performance Chart */}
         <div className="mb-8">
-          <h2 className="text-sm font-semibold text-muted-foreground mb-4 flex items-center gap-2">
-            <div className="h-4 w-1 rounded-full gradient-bg" />
-            Performance Over Time
-          </h2>
+          <p className="section-heading mb-4">Performance</p>
           <PerformanceChart
             data={trendData}
             timeRange={timeRange}
@@ -288,50 +272,40 @@ const PublisherAnalytics = () => {
           />
         </div>
 
-        {/* Top Posts & Recent Activity */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div>
-            <h2 className="text-sm font-semibold text-muted-foreground mb-4 flex items-center gap-2">
-              <div className="h-4 w-1 rounded-full gradient-bg" />
-              Top Posts
-            </h2>
+        {/* Top Posts & Recent Activity — 3:2 split */}
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+          <div className="lg:col-span-3">
+            <p className="section-heading mb-4">Top Posts</p>
             <TopPostsLeaderboard posts={topPosts} isLoading={isLoading} />
           </div>
 
-          {/* Recent Activity — Premium frosted card */}
-          <div className="bg-card/80 backdrop-blur-sm border border-border/40 rounded-2xl overflow-hidden">
-            <div className="px-6 py-4 border-b border-border/30">
-              <h3 className="text-sm font-semibold flex items-center gap-2">
-                <div className="h-4 w-1 rounded-full gradient-bg" />
-                Recent Activity
-              </h3>
-            </div>
-            <div className="p-4 space-y-2">
-              {topPosts.slice(0, 5).map((post, index) => (
-                <div
-                  key={post.id}
-                  className="flex items-center gap-3 p-3 rounded-xl bg-muted/30 border border-border/30 hover:bg-primary/5 hover:border-primary/20 transition-all duration-200"
-                >
-                  <span className="w-6 h-6 rounded-lg bg-primary/20 flex items-center justify-center text-xs font-mono text-primary">
-                    {index + 1}
-                  </span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm truncate">{post.content.substring(0, 60)}...</p>
-                    <p className="text-xs text-muted-foreground font-mono">
-                      {post.publisherName}
-                    </p>
+          {/* Recent Activity — Bento card */}
+          <div className="lg:col-span-2">
+            <div className="bento-card overflow-hidden">
+              <div className="px-5 py-3 border-b border-border/30">
+                <p className="section-heading">Recent Activity</p>
+              </div>
+              <div className="p-3 space-y-1.5">
+                {topPosts.slice(0, 5).map((post, index) => (
+                  <div
+                    key={post.id}
+                    className="flex items-center gap-3 p-3 rounded-xl hover:bg-foreground/[0.03] transition-colors"
+                  >
+                    <span className="w-6 h-6 rounded-lg bg-warm/10 text-warm flex items-center justify-center text-xs font-display font-bold">
+                      {index + 1}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm truncate">{post.content.substring(0, 60)}...</p>
+                    </div>
+                    <p className="text-sm font-display font-bold tabular-nums">{(post.impressions || 0).toLocaleString()}</p>
                   </div>
-                  <div className="text-right">
-                    <p className="text-sm font-mono font-bold">{(post.impressions || 0).toLocaleString()}</p>
-                    <p className="text-xs text-muted-foreground">Impressions</p>
+                ))}
+                {topPosts.length === 0 && (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <p>No published posts yet</p>
                   </div>
-                </div>
-              ))}
-              {topPosts.length === 0 && (
-                <div className="text-center py-8 text-muted-foreground">
-                  <p>No published posts yet</p>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </div>
         </div>
