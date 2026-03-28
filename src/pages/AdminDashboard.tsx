@@ -85,21 +85,16 @@ export default function AdminDashboard() {
       <Header />
 
       <main id="main-content" className="max-w-6xl mx-auto px-8 py-8">
-        {/* Background glow */}
-        <div className="fixed inset-0 pointer-events-none -z-10" aria-hidden="true">
-          <div className="absolute top-0 left-1/3 w-[600px] h-[600px] rounded-full opacity-[0.04]" style={{ background: 'radial-gradient(circle, hsl(var(--primary)) 0%, transparent 70%)' }} />
-          <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] rounded-full opacity-[0.03]" style={{ background: 'radial-gradient(circle, hsl(var(--accent)) 0%, transparent 70%)' }} />
-        </div>
 
         {/* Page Header */}
         <div className="flex items-start justify-between mb-10">
           <div>
             <div className="flex items-center gap-3 mb-1">
-              <div className="p-2 rounded-xl gradient-bg shadow-[0_0_20px_hsl(var(--primary)/0.2)]">
+              <div className="p-2 rounded-xl bg-primary">
                 <Sparkles className="h-5 w-5 text-white" />
               </div>
-              <h1 className="text-3xl font-extrabold tracking-tight">
-                <span className="gradient-text">Workspaces</span>
+              <h1 className="text-3xl font-extrabold tracking-tight text-foreground">
+                Workspaces
               </h1>
             </div>
             <p className="text-muted-foreground mt-2 ml-[52px]">
@@ -108,7 +103,7 @@ export default function AdminDashboard() {
           </div>
           <Button
             onClick={() => setShowCreateModal(true)}
-            className="gap-2 gradient-bg text-white shadow-[0_4px_20px_hsl(var(--primary)/0.3)] hover:opacity-90 rounded-xl h-11 px-5"
+            className="gap-2 bg-primary text-white hover:bg-primary/90 rounded-xl h-11 px-5"
           >
             <Plus className="h-4 w-4" />
             New Workspace
@@ -117,7 +112,7 @@ export default function AdminDashboard() {
 
         {/* Summary Stats */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-10">
-          <div className="bg-card/80 backdrop-blur-sm border border-border/50 rounded-xl p-5 hover:border-primary/20 transition-colors">
+          <div className="bg-card border border-border rounded-xl p-5 hover:border-primary/20 transition-colors">
             <div className="flex items-center gap-3">
               <div className="p-2.5 rounded-xl bg-primary/10">
                 <Building2 className="h-5 w-5 text-primary" />
@@ -128,7 +123,7 @@ export default function AdminDashboard() {
               </div>
             </div>
           </div>
-          <div className="bg-card/80 backdrop-blur-sm border border-border/50 rounded-xl p-5 hover:border-primary/20 transition-colors">
+          <div className="bg-card border border-border rounded-xl p-5 hover:border-primary/20 transition-colors">
             <div className="flex items-center gap-3">
               <div className="p-2.5 rounded-xl bg-accent/10">
                 <Users className="h-5 w-5 text-accent" />
@@ -139,7 +134,7 @@ export default function AdminDashboard() {
               </div>
             </div>
           </div>
-          <div className="bg-card/80 backdrop-blur-sm border border-border/50 rounded-xl p-5 hover:border-primary/20 transition-colors">
+          <div className="bg-card border border-border rounded-xl p-5 hover:border-primary/20 transition-colors">
             <div className="flex items-center gap-3">
               <div className="p-2.5 rounded-xl bg-success/10">
                 <Link2 className="h-5 w-5 text-success" />
@@ -154,8 +149,8 @@ export default function AdminDashboard() {
 
         {/* Workspace Grid */}
         {workspaces.length === 0 ? (
-          <div className="bg-card/60 backdrop-blur-sm border border-dashed border-border/60 rounded-2xl p-16 text-center">
-            <div className="w-24 h-24 rounded-3xl gradient-bg shadow-[0_0_40px_hsl(var(--primary)/0.25)] flex items-center justify-center mx-auto mb-6">
+          <div className="bg-card border border-dashed border-border rounded-2xl p-16 text-center">
+            <div className="w-24 h-24 rounded-3xl bg-primary flex items-center justify-center mx-auto mb-6">
               <Building2 className="h-12 w-12 text-white" />
             </div>
             <h3 className="text-xl font-bold mb-2">Create your first workspace</h3>
@@ -164,7 +159,7 @@ export default function AdminDashboard() {
             </p>
             <Button
               onClick={() => setShowCreateModal(true)}
-              className="gap-2 gradient-bg text-white shadow-[0_4px_20px_hsl(var(--primary)/0.3)] hover:opacity-90 rounded-xl h-11 px-6"
+              className="gap-2 bg-primary text-white hover:bg-primary/90 rounded-xl h-11 px-6"
             >
               <Plus className="h-4 w-4" />
               Create Workspace
@@ -180,19 +175,19 @@ export default function AdminDashboard() {
                 <div
                   key={workspace.id}
                   className={cn(
-                    "group relative bg-card/80 backdrop-blur-sm border rounded-2xl overflow-hidden transition-all duration-300",
+                    "group relative bg-card border rounded-2xl overflow-hidden transition-all duration-300",
                     isActive
-                      ? "border-primary/40 shadow-[0_0_30px_hsl(var(--primary)/0.1)]"
-                      : "border-border/50 hover:border-primary/30 hover:shadow-[0_0_30px_hsl(var(--primary)/0.08)]"
+                      ? "border-primary/40 shadow-sm"
+                      : "border-border hover:border-primary/30 hover:shadow-sm"
                   )}
                 >
                   {/* Top gradient accent */}
-                  <div className="h-1 w-full gradient-bg" />
+                  <div className="h-1 w-full bg-primary" />
 
                   {/* Active indicator */}
                   {isActive && (
                     <div className="absolute top-4 right-4 flex items-center gap-1.5 bg-primary/10 text-primary text-xs font-medium px-2.5 py-1 rounded-full">
-                      <div className="h-1.5 w-1.5 rounded-full bg-primary shadow-[0_0_6px_hsl(var(--primary)/0.5)]" />
+                      <div className="h-1.5 w-1.5 rounded-full bg-primary" />
                       Active
                     </div>
                   )}
@@ -214,10 +209,10 @@ export default function AdminDashboard() {
                         <img
                           src={workspace.logoUrl}
                           alt={workspace.name}
-                          className="h-14 w-14 rounded-xl object-cover ring-1 ring-border/50"
+                          className="h-14 w-14 rounded-xl object-cover ring-1 ring-border"
                         />
                       ) : (
-                        <div className="h-14 w-14 rounded-xl gradient-bg shadow-[0_0_20px_hsl(var(--primary)/0.15)] flex items-center justify-center flex-shrink-0">
+                        <div className="h-14 w-14 rounded-xl bg-primary flex items-center justify-center flex-shrink-0">
                           <Building2 className="h-7 w-7 text-white" />
                         </div>
                       )}
@@ -258,7 +253,7 @@ export default function AdminDashboard() {
                     <div className="flex gap-2">
                       <Button
                         size="sm"
-                        className="flex-1 gap-2 gradient-bg text-white hover:opacity-90 rounded-lg h-9"
+                        className="flex-1 gap-2 bg-primary text-white hover:bg-primary/90 rounded-lg h-9"
                         onClick={() => {
                           switchWorkspace(workspace.id);
                           navigate('/');
@@ -304,7 +299,7 @@ export default function AdminDashboard() {
             {/* Create New Card */}
             <button
               onClick={() => setShowCreateModal(true)}
-              className="group border-2 border-dashed border-border/50 rounded-2xl p-6 flex flex-col items-center justify-center gap-4 min-h-[280px] hover:border-primary/40 hover:bg-primary/[0.02] transition-all duration-300 cursor-pointer"
+              className="group border-2 border-dashed border-border rounded-2xl p-6 flex flex-col items-center justify-center gap-4 min-h-[280px] hover:border-primary/40 hover:bg-primary/[0.02] transition-all duration-300 cursor-pointer"
             >
               <div className="w-14 h-14 rounded-xl bg-secondary/80 group-hover:bg-primary/10 flex items-center justify-center transition-colors duration-300">
                 <Plus className="h-6 w-6 text-muted-foreground group-hover:text-primary transition-colors duration-300" />

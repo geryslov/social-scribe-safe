@@ -213,7 +213,7 @@ const Posts = () => {
     { label: 'Reach', value: analyticsStats.totalReach, icon: Users, color: 'text-info', bg: 'bg-info/10' },
     { label: 'Impressions', value: analyticsStats.totalImpressions, icon: Eye, color: 'text-primary', bg: 'bg-primary/10' },
     { label: 'Reactions', value: analyticsStats.totalReactions, icon: Heart, color: 'text-destructive', bg: 'bg-destructive/10', onClick: () => { setReactorsPanelTab('profiles'); setShowReactorsPanel(true); }, hint: 'View profiles' },
-    { label: 'Comments', value: analyticsStats.totalComments, icon: MessageCircle, color: 'text-warm', bg: 'bg-warm/10', onClick: () => { setReactorsPanelTab('comments'); setShowReactorsPanel(true); }, hint: 'View threads' },
+    { label: 'Comments', value: analyticsStats.totalComments, icon: MessageCircle, color: 'text-primary', bg: 'bg-primary/10', onClick: () => { setReactorsPanelTab('comments'); setShowReactorsPanel(true); }, hint: 'View threads' },
     { label: 'Reshares', value: analyticsStats.totalReshares, icon: Repeat2, color: 'text-muted-foreground', bg: 'bg-muted' },
     { label: 'Engagement', value: analyticsStats.avgEngagementRate, icon: TrendingUp, color: 'text-success', bg: 'bg-success/10', suffix: '%', decimals: 1 },
   ];
@@ -241,10 +241,6 @@ const Posts = () => {
 
         <main id="main-content" className="flex-1 overflow-y-auto h-[calc(100vh-73px)]">
           <div className="px-6 py-5">
-            {/* Background glow */}
-            <div className="fixed inset-0 pointer-events-none -z-10" aria-hidden="true">
-              <div className="absolute top-1/4 right-1/4 w-96 h-96 rounded-full opacity-[0.03]" style={{ background: 'radial-gradient(circle, hsl(var(--primary)) 0%, transparent 70%)' }} />
-            </div>
 
             {/* ============================================= */}
             {/* HERO SECTION: Publisher profile + action bar   */}
@@ -255,7 +251,7 @@ const Posts = () => {
                 <div>
                   {currentPublisher ? (
                     <div className="flex items-center gap-5">
-                      <PublisherAvatar name={currentPublisher.name} size="lg" editable={true} className="ring-2 ring-warm/20" />
+                      <PublisherAvatar name={currentPublisher.name} size="lg" editable={true} className="ring-2 ring-primary/20" />
                       <div>
                         <div className="flex items-center gap-2">
                           <h2 className="text-3xl font-display font-extrabold tracking-tight">{currentPublisher.name}</h2>
@@ -293,15 +289,15 @@ const Posts = () => {
 
                 {isAdmin && (
                   <div className="flex gap-2">
-                    <Button onClick={() => setIsTrackPostOpen(true)} variant="outline" className="gap-2 rounded-xl border-border/50">
+                    <Button onClick={() => setIsTrackPostOpen(true)} variant="outline" className="gap-2 rounded-xl border-border">
                       <LinkIcon className="h-4 w-4" />
                       Track
                     </Button>
-                    <Button onClick={() => setIsBulkUploadOpen(true)} variant="outline" className="gap-2 rounded-xl border-border/50">
+                    <Button onClick={() => setIsBulkUploadOpen(true)} variant="outline" className="gap-2 rounded-xl border-border">
                       <Upload className="h-4 w-4" />
                       Import
                     </Button>
-                    <Button onClick={handleNewPost} className="gap-2 btn-warm rounded-xl">
+                    <Button onClick={handleNewPost} className="gap-2 bg-primary text-white hover:bg-primary/90 rounded-xl">
                       <Plus className="h-4 w-4" />
                       New Post
                     </Button>
@@ -346,7 +342,7 @@ const Posts = () => {
 
               {activePosts.length === 0 ? (
                 <div className="text-center py-20 bento-card">
-                  <div className="w-16 h-16 mx-auto mb-5 rounded-2xl gradient-bg flex items-center justify-center shadow-[0_0_30px_hsl(var(--warm)/0.2)]">
+                  <div className="w-16 h-16 mx-auto mb-5 rounded-2xl bg-primary flex items-center justify-center">
                     <Inbox className="h-8 w-8 text-white" />
                   </div>
                   <h3 className="text-xl font-display font-bold mb-2">No upcoming posts</h3>
@@ -354,7 +350,7 @@ const Posts = () => {
                     {selectedPublisher ? `No scheduled posts for ${selectedPublisher}` : 'Start creating content for your thought leaders'}
                   </p>
                   {isAdmin && (
-                    <Button onClick={handleNewPost} className="btn-warm rounded-xl gap-2">
+                    <Button onClick={handleNewPost} className="bg-primary text-white hover:bg-primary/90 rounded-xl gap-2">
                       <Plus className="h-4 w-4" /> Create Post
                     </Button>
                   )}

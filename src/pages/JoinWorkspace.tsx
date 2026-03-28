@@ -108,12 +108,8 @@ export default function JoinWorkspace() {
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <div className="fixed inset-0 pointer-events-none -z-10" aria-hidden="true">
-        <div className="absolute top-1/4 left-1/3 w-96 h-96 rounded-full opacity-[0.05]" style={{ background: 'radial-gradient(circle, hsl(var(--primary)) 0%, transparent 70%)' }} />
-        <div className="absolute bottom-1/4 right-1/3 w-96 h-96 rounded-full opacity-[0.04]" style={{ background: 'radial-gradient(circle, hsl(var(--accent)) 0%, transparent 70%)' }} />
-      </div>
       <div className="w-full max-w-md">
-        <div className="bg-card/80 backdrop-blur-sm border border-border/50 rounded-2xl p-8 animate-fade-in shadow-xl">
+        <div className="bg-card border border-border rounded-2xl p-8 animate-fade-in shadow-sm">
           {/* Workspace Logo/Icon */}
           <div className="text-center mb-8">
             <div className="flex items-center justify-center mb-4">
@@ -124,13 +120,13 @@ export default function JoinWorkspace() {
                   className="h-16 w-16 rounded-2xl object-cover"
                 />
               ) : (
-                <div className="flex items-center justify-center w-16 h-16 rounded-2xl gradient-bg glow-primary">
+                <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-primary">
                   <Building2 className="h-8 w-8 text-primary-foreground" />
                 </div>
               )}
             </div>
             <h1 className="text-2xl font-bold mb-2">
-              Join <span className="gradient-text">{workspace.name}</span>
+              Join <span className="text-foreground">{workspace.name}</span>
             </h1>
             {workspace.companyName && (
               <p className="text-muted-foreground text-sm mb-2">

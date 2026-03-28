@@ -112,10 +112,6 @@ export default function DocumentLibrary() {
       <Header />
 
       <main id="main-content" className="px-8 py-6 max-w-6xl mx-auto">
-        {/* Background glow */}
-        <div className="fixed inset-0 pointer-events-none -z-10" aria-hidden="true">
-          <div className="absolute top-1/4 left-1/3 w-[500px] h-[500px] rounded-full opacity-[0.03]" style={{ background: 'radial-gradient(circle, hsl(var(--warm)) 0%, transparent 70%)' }} />
-        </div>
 
         {/* Page header */}
         <div className="flex items-start justify-between mb-8">
@@ -125,7 +121,7 @@ export default function DocumentLibrary() {
             <p className="text-sm text-muted-foreground mt-2">Long-form content to LinkedIn posts</p>
           </div>
           {isAdmin && (
-            <Button className="btn-warm rounded-xl gap-2" onClick={() => setUploadModalOpen(true)}>
+            <Button className="bg-primary text-white hover:bg-primary/90 rounded-xl gap-2" onClick={() => setUploadModalOpen(true)}>
               <Plus className="h-4 w-4" /> New Document
             </Button>
           )}
@@ -139,14 +135,14 @@ export default function DocumentLibrary() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search..."
-              className="pl-9 rounded-xl bg-foreground/[0.03] border-border/40"
+              className="pl-9 rounded-xl bg-muted border-border"
             />
           </div>
           <Tabs
             value={statusFilter}
             onValueChange={(v) => setStatusFilter(v as DocumentStatus | 'all')}
           >
-            <TabsList className="bg-foreground/[0.03] rounded-xl">
+            <TabsList className="bg-muted rounded-xl">
               {statusFilters.map(f => (
                 <TabsTrigger key={f.value} value={f.value} className="rounded-lg text-xs">{f.label}</TabsTrigger>
               ))}
@@ -162,7 +158,7 @@ export default function DocumentLibrary() {
           </div>
         ) : filteredDocuments.length === 0 ? (
           <div className="text-center py-24">
-            <div className="w-16 h-16 mx-auto mb-5 rounded-2xl gradient-bg flex items-center justify-center shadow-[0_0_30px_hsl(var(--warm)/0.15)]">
+            <div className="w-16 h-16 mx-auto mb-5 rounded-2xl bg-primary flex items-center justify-center">
               <FileText className="h-7 w-7 text-white" />
             </div>
             <h3 className="text-xl font-display font-bold mb-2">No documents yet</h3>

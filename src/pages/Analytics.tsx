@@ -108,15 +108,6 @@ const Analytics = () => {
       <Header />
 
       <main id="main-content" className="p-8 max-w-7xl mx-auto">
-        {/* Background glow - warm tones */}
-        <div className="fixed inset-0 pointer-events-none -z-10" aria-hidden="true">
-          <div className="absolute top-0 left-1/4 w-96 h-96 rounded-full opacity-[0.04]"
-            style={{ background: 'radial-gradient(circle, hsl(var(--primary)) 0%, transparent 70%)' }}
-          />
-          <div className="absolute bottom-1/4 right-1/4 w-96 h-96 rounded-full opacity-[0.03]"
-            style={{ background: 'radial-gradient(circle, hsl(var(--warm)) 0%, transparent 70%)' }}
-          />
-        </div>
 
         {/* Page Header */}
         <div className="flex items-start justify-between mb-8">
@@ -212,7 +203,7 @@ const Analytics = () => {
           <div className="lg:col-span-2">
             {/* Publisher Rankings */}
             <div className="bento-card overflow-hidden">
-              <div className="px-5 py-4 flex items-center justify-between border-b border-border/30">
+              <div className="px-5 py-4 flex items-center justify-between border-b border-border">
                 <p className="section-heading">Publisher Rankings</p>
                 <Button
                   variant="ghost"
@@ -232,8 +223,8 @@ const Analytics = () => {
                     onClick={() => navigate(`/publisher/${encodeURIComponent(pub.name)}`)}
                     className={cn(
                       "w-full flex items-center gap-3 p-3 rounded-xl transition-all duration-200",
-                      "bg-muted/30 border border-border/30",
-                      "hover:bg-primary/5 hover:border-primary/20 hover:shadow-[0_0_20px_hsl(var(--primary)/0.06)]"
+                      "bg-muted border border-border",
+                      "hover:bg-primary/5 hover:border-primary/20 hover:shadow-sm"
                     )}
                   >
                     <span className={cn(

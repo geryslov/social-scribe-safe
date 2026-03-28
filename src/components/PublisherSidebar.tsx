@@ -84,13 +84,13 @@ export function PublisherSidebar({ publishers, selectedPublisher, onSelectPublis
 
   return (
     <>
-      <div className="w-64 flex-shrink-0 h-[calc(100vh-56px)] overflow-y-auto bg-background border-r border-border/30">
+      <div className="w-64 flex-shrink-0 h-[calc(100vh-56px)] overflow-y-auto bg-white border-r border-border">
         <div className="p-4">
           <div className="flex items-center justify-between mb-4 px-1">
             <p className="section-heading">Publishers</p>
             <button
               onClick={handleAddPublisher}
-              className="h-6 w-6 rounded-md hover:bg-foreground/5 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+              className="h-6 w-6 rounded-md hover:bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
             >
               <Plus className="h-3.5 w-3.5" />
             </button>
@@ -103,13 +103,13 @@ export function PublisherSidebar({ publishers, selectedPublisher, onSelectPublis
               className={cn(
                 "w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left transition-all duration-200",
                 selectedPublisher === null
-                  ? "bg-warm/10 border border-warm/20 text-foreground"
-                  : "hover:bg-foreground/5 border border-transparent"
+                  ? "bg-primary/10 border border-primary/20 text-foreground"
+                  : "hover:bg-muted/50 border border-transparent"
               )}
             >
               <div className={cn(
                 "w-9 h-9 rounded-lg flex items-center justify-center",
-                selectedPublisher === null ? "bg-warm/20 text-warm" : "bg-foreground/5 text-muted-foreground"
+                selectedPublisher === null ? "bg-primary/15 text-primary" : "bg-foreground/5 text-muted-foreground"
               )}>
                 <Users className="h-4 w-4" />
               </div>
@@ -120,7 +120,7 @@ export function PublisherSidebar({ publishers, selectedPublisher, onSelectPublis
             </button>
 
             {/* Divider */}
-            <div className="my-3 h-px bg-border/40" />
+            <div className="my-3 h-px bg-border" />
 
             {/* Publisher List */}
             {publishers.map((publisher, index) => {
@@ -133,7 +133,7 @@ export function PublisherSidebar({ publishers, selectedPublisher, onSelectPublis
                   key={publisher.name}
                   className={cn(
                     "flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all duration-200 group relative",
-                    isSelected ? "bg-primary/[0.05]" : "hover:bg-foreground/[0.03]"
+                    isSelected ? "bg-primary/5" : "hover:bg-muted/50"
                   )}
                 >
                   {isSelected && (
@@ -178,8 +178,8 @@ export function PublisherSidebar({ publishers, selectedPublisher, onSelectPublis
                           </span>
                         )}
                         {scheduledCount > 0 && (
-                          <span className="flex items-center gap-1 text-accent/80">
-                            <span className="w-1.5 h-1.5 rounded-full bg-accent/60" />
+                          <span className="flex items-center gap-1 text-info">
+                            <span className="w-1.5 h-1.5 rounded-full bg-info/60" />
                             {scheduledCount}
                           </span>
                         )}

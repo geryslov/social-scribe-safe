@@ -86,21 +86,13 @@ export default function Auth() {
       {/* Left Panel - Brand / Features */}
       <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden flex-col justify-between p-12"
         style={{
-          background: 'linear-gradient(135deg, hsl(230 25% 8%) 0%, hsl(263 40% 12%) 50%, hsl(230 25% 8%) 100%)',
+          background: 'linear-gradient(135deg, #4338CA 0%, #4F46E5 50%, #6366F1 100%)',
         }}
       >
-        {/* Glow orbs */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[600px] rounded-full opacity-20"
-          style={{ background: 'radial-gradient(circle, hsl(263 70% 65% / 0.4) 0%, transparent 70%)' }}
-        />
-        <div className="absolute bottom-0 right-0 w-[400px] h-[400px] rounded-full opacity-15"
-          style={{ background: 'radial-gradient(circle, hsl(189 94% 48% / 0.4) 0%, transparent 70%)' }}
-        />
 
         <div className="relative z-10">
           <div className="flex items-center gap-3 mb-2">
-            <div className="h-10 w-10 rounded-xl gradient-bg flex items-center justify-center shadow-lg"
-              style={{ boxShadow: '0 0 30px hsl(263 70% 65% / 0.3)' }}
+            <div className="h-10 w-10 rounded-xl bg-white/20 flex items-center justify-center"
             >
               <Sparkles className="h-5 w-5 text-white" />
             </div>
@@ -113,7 +105,7 @@ export default function Auth() {
             <h2 className="text-4xl font-extrabold text-white leading-tight mb-4">
               Your LinkedIn
               <br />
-              <span className="gradient-text">Command Center</span>
+              <span className="text-white">Command Center</span>
             </h2>
             <p className="text-lg text-white/60 max-w-md">
               Manage publishers, schedule content, and track analytics — all from one powerful dashboard.
@@ -124,8 +116,8 @@ export default function Auth() {
             {features.map((f) => {
               const Icon = f.icon;
               return (
-                <div key={f.title} className="p-4 rounded-xl border border-white/10 bg-white/[0.03] backdrop-blur-sm">
-                  <Icon className="h-5 w-5 text-primary mb-3" />
+                <div key={f.title} className="p-4 rounded-xl border border-white/10 bg-white/[0.06]">
+                  <Icon className="h-5 w-5 text-white/80 mb-3" />
                   <h3 className="text-sm font-semibold text-white mb-1">{f.title}</h3>
                   <p className="text-xs text-white/50">{f.desc}</p>
                 </div>
@@ -143,17 +135,11 @@ export default function Auth() {
 
       {/* Right Panel - Login */}
       <div className="flex-1 flex items-center justify-center p-8 bg-background relative">
-        {/* Subtle background glow */}
-        <div className="absolute inset-0 opacity-30"
-          style={{
-            background: 'radial-gradient(circle at 50% 30%, hsl(263 70% 65% / 0.08) 0%, transparent 60%)'
-          }}
-        />
 
         <div className="relative z-10 w-full max-w-sm">
           {/* Mobile logo - only visible on small screens */}
           <div className="lg:hidden text-center mb-8">
-            <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-4 gradient-bg shadow-lg">
+            <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-4 bg-primary shadow-sm">
               <Sparkles className="h-7 w-7 text-white" />
             </div>
             <h1 className="text-2xl font-bold text-foreground">ThoughtOS</h1>

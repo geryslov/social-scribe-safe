@@ -152,15 +152,11 @@ export default function DocumentEditor() {
       <Header />
 
       <main id="main-content" className="px-8 py-6">
-        {/* Background glow */}
-        <div className="fixed inset-0 pointer-events-none -z-10" aria-hidden="true">
-          <div className="absolute top-1/4 left-1/2 w-[500px] h-[500px] rounded-full opacity-[0.03]" style={{ background: 'radial-gradient(circle, hsl(var(--warm)) 0%, transparent 70%)' }} />
-        </div>
 
         {/* Top Bar */}
-        <div className="flex items-center justify-between mb-6 pb-5 border-b border-border/30">
+        <div className="flex items-center justify-between mb-6 pb-5 border-b border-border">
           <div className="flex items-center gap-3">
-            <button onClick={() => navigate('/documents')} className="h-8 w-8 rounded-lg hover:bg-foreground/5 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors">
+            <button onClick={() => navigate('/documents')} className="h-8 w-8 rounded-lg hover:bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors">
               <ArrowLeft className="h-4 w-4" />
             </button>
             <div>
@@ -177,7 +173,7 @@ export default function DocumentEditor() {
 
           <div className="flex items-center gap-2">
             {hasChanges && (
-              <Button onClick={handleSave} disabled={updateDocument.isPending} className="btn-warm rounded-xl gap-1.5 h-8 text-sm">
+              <Button onClick={handleSave} disabled={updateDocument.isPending} className="bg-primary text-white hover:bg-primary/90 rounded-xl gap-1.5 h-8 text-sm">
                 <Save className="h-3.5 w-3.5" /> Save
               </Button>
             )}
@@ -203,14 +199,14 @@ export default function DocumentEditor() {
                   <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
                   Request Changes
                 </Button>
-                <Button onClick={() => handleStatusChange('approved')} className="btn-warm rounded-xl h-8 text-sm gap-1.5">
+                <Button onClick={() => handleStatusChange('approved')} className="bg-primary text-white hover:bg-primary/90 rounded-xl h-8 text-sm gap-1.5">
                   <CheckCircle className="h-3.5 w-3.5" /> Approve
                 </Button>
               </>
             )}
 
             {document.status === 'approved' && isAdmin && (
-              <Button onClick={() => setSplitModalOpen(true)} className="btn-warm rounded-xl h-8 text-sm gap-1.5">
+              <Button onClick={() => setSplitModalOpen(true)} className="bg-primary text-white hover:bg-primary/90 rounded-xl h-8 text-sm gap-1.5">
                 <Split className="h-3.5 w-3.5" /> Split to Posts
               </Button>
             )}
@@ -233,7 +229,7 @@ export default function DocumentEditor() {
               {/* Show content textarea only if no sections exist */}
               {sections.length === 0 && (
                 <>
-                  <div className="h-px bg-border/30 my-4" />
+                  <div className="h-px bg-border my-4" />
                   <Textarea
                     value={content}
                     onChange={(e) => setContent(e.target.value)}
@@ -413,7 +409,7 @@ export default function DocumentEditor() {
                   <p className="text-sm text-muted-foreground">No comments yet</p>
                 ) : (
                   comments.map(comment => (
-                    <div key={comment.id} className="text-sm pl-3 border-l-2 border-warm/20">
+                    <div key={comment.id} className="text-sm pl-3 border-l-2 border-primary/20">
                       <div className="flex items-center gap-2 mb-1">
                         <span className="font-medium">{comment.userEmail}</span>
                         <span className="text-xs text-muted-foreground">
@@ -434,13 +430,13 @@ export default function DocumentEditor() {
                   onChange={(e) => setNewComment(e.target.value)}
                   placeholder="Add a comment..."
                   onKeyDown={(e) => e.key === 'Enter' && handleAddComment()}
-                  className="rounded-xl bg-foreground/[0.03] border-border/40"
+                  className="rounded-xl bg-muted border-border"
                 />
                 <Button
                   size="icon"
                   onClick={handleAddComment}
                   disabled={!newComment.trim()}
-                  className="btn-warm rounded-lg h-9 w-9"
+                  className="bg-primary text-white hover:bg-primary/90 rounded-lg h-9 w-9"
                 >
                   <Send className="h-3.5 w-3.5" />
                 </Button>

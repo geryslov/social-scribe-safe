@@ -151,11 +151,6 @@ const PublisherAnalytics = () => {
       <Header />
 
       <main id="main-content" className="p-8 max-w-7xl mx-auto">
-        {/* Background glow — warm tones */}
-        <div className="fixed inset-0 pointer-events-none -z-10" aria-hidden="true">
-          <div className="absolute top-0 right-1/3 w-96 h-96 rounded-full opacity-[0.03]" style={{ background: 'radial-gradient(circle, hsl(var(--primary)) 0%, transparent 70%)' }} />
-          <div className="absolute bottom-1/3 left-1/4 w-96 h-96 rounded-full opacity-[0.02]" style={{ background: 'radial-gradient(circle, hsl(var(--warm)) 0%, transparent 70%)' }} />
-        </div>
 
         {/* Back Button — Minimal */}
         <button
@@ -173,7 +168,7 @@ const PublisherAnalytics = () => {
               <PublisherAvatar
                 name={publisher.name}
                 size="lg"
-                className="w-20 h-20 ring-2 ring-warm/20"
+                className="w-20 h-20 ring-2 ring-primary/20"
               />
               <div>
                 <h1 className="text-3xl font-display font-extrabold tracking-tight">{publisher.name}</h1>
@@ -214,7 +209,7 @@ const PublisherAnalytics = () => {
                 disabled={isSyncing || !publisher.linkedin_connected}
                 variant="outline"
                 size="sm"
-                className="gap-1.5 rounded-xl h-8 text-xs border-border/50"
+                className="gap-1.5 rounded-xl h-8 text-xs border-border"
               >
                 <RefreshCw className={cn("h-3.5 w-3.5", isSyncing && "animate-spin")} />
                 Sync
@@ -282,16 +277,16 @@ const PublisherAnalytics = () => {
           {/* Recent Activity — Bento card */}
           <div className="lg:col-span-2">
             <div className="bento-card overflow-hidden">
-              <div className="px-5 py-3 border-b border-border/30">
+              <div className="px-5 py-3 border-b border-border">
                 <p className="section-heading">Recent Activity</p>
               </div>
               <div className="p-3 space-y-1.5">
                 {topPosts.slice(0, 5).map((post, index) => (
                   <div
                     key={post.id}
-                    className="flex items-center gap-3 p-3 rounded-xl hover:bg-foreground/[0.03] transition-colors"
+                    className="flex items-center gap-3 p-3 rounded-xl hover:bg-muted transition-colors"
                   >
-                    <span className="w-6 h-6 rounded-lg bg-warm/10 text-warm flex items-center justify-center text-xs font-display font-bold">
+                    <span className="w-6 h-6 rounded-lg bg-primary/10 text-primary flex items-center justify-center text-xs font-display font-bold">
                       {index + 1}
                     </span>
                     <div className="flex-1 min-w-0">

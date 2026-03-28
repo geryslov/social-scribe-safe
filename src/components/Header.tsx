@@ -38,8 +38,7 @@ export function Header() {
 
   return (
     <header
-      className="sticky top-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border/30"
-      style={{ boxShadow: '0 1px 0 hsl(var(--border) / 0.3)' }}
+      className="sticky top-0 z-50 bg-white border-b border-border"
     >
       <a href="#main-content" className="skip-to-content">Skip to content</a>
 
@@ -62,13 +61,11 @@ export function Header() {
               <>
                 <div
                   className="h-8 w-8 rounded-lg flex items-center justify-center transition-all group-hover:scale-105"
-                  style={{ background: 'linear-gradient(135deg, hsl(var(--primary)), hsl(var(--warm)))' }}
+                  style={{ background: 'hsl(var(--primary))' }}
                 >
                   <Building2 className="h-4 w-4 text-white" />
                 </div>
-                <span className="text-base font-display font-extrabold tracking-tight hidden sm:block">
-                  ThoughtOS
-                </span>
+                <span className="text-base font-display font-extrabold tracking-tight hidden sm:block text-foreground">ThoughtOS</span>
               </>
             )}
           </div>
@@ -91,8 +88,8 @@ export function Header() {
                   className={cn(
                     "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 relative",
                     isActive
-                      ? "bg-foreground/10 text-foreground font-semibold"
-                      : "text-muted-foreground hover:text-foreground hover:bg-foreground/5",
+                      ? "bg-primary/10 text-primary font-semibold"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted",
                     hasNotification && !isActive && "text-primary"
                   )}
                 >
@@ -111,21 +108,21 @@ export function Header() {
 
         <div className="flex items-center gap-3">
           {isAdmin && (
-            <div className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full bg-warm/10 text-warm font-semibold">
+            <div className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full bg-primary/10 text-primary font-semibold">
               <Flame className="h-3 w-3" />
               Admin
             </div>
           )}
 
           {user ? (
-            <div className="flex items-center gap-2 bg-foreground/5 rounded-full pl-1 pr-2.5 py-0.5">
-              <div className="h-6 w-6 rounded-full bg-gradient-to-br from-primary/80 to-warm/80 flex items-center justify-center">
+            <div className="flex items-center gap-2 bg-muted rounded-full pl-1 pr-2.5 py-0.5">
+              <div className="h-6 w-6 rounded-full bg-primary flex items-center justify-center">
                 <span className="text-[10px] font-bold text-white">{user.email?.charAt(0).toUpperCase()}</span>
               </div>
               <span className="text-xs text-muted-foreground max-w-28 truncate">{user.email}</span>
               <button
                 onClick={handleSignOut}
-                className="h-6 w-6 rounded-full hover:bg-foreground/10 flex items-center justify-center transition-colors"
+                className="h-6 w-6 rounded-full hover:bg-muted flex items-center justify-center transition-colors"
               >
                 <LogOut className="h-3 w-3 text-muted-foreground" />
               </button>
