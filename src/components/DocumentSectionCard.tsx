@@ -288,13 +288,6 @@ export function DocumentSectionCard({
           </p>
         )}
 
-        {/* Appendix / Sources */}
-        {section.appendix && (
-          <div className="mt-3 p-3 rounded-lg bg-muted/30 border border-border/50">
-            <p className="text-xs font-medium text-muted-foreground mb-1">📎 Sources</p>
-            <p className="text-xs text-muted-foreground whitespace-pre-wrap">{section.appendix}</p>
-          </div>
-        )}
 
         {/* Publisher Assignment */}
         <div className="flex items-center gap-2 pt-3 border-t border-border/50">
