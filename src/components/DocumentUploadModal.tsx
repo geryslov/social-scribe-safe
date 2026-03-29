@@ -525,7 +525,7 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate, 
                               : "border-border hover:border-primary/30 hover:bg-muted/50"
                           )}
                         >
-                          <PublisherAvatar name={pub.name} avatarUrl={pub.avatar_url} size="sm" />
+                          <PublisherAvatar name={pub.name} size="sm" />
                           <span className={cn(
                             "text-xs font-medium",
                             isSelected ? "text-primary" : "text-foreground"
