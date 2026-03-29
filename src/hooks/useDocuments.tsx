@@ -119,13 +119,23 @@ export function useDocuments() {
       const document = mapDbToDocument(result as DbDocument);
       
       // Parse and create sections for each "Post" in the content
-      const sections = parsePostSections(data.content);
-      if (sections.length > 0) {
-        const sectionsToInsert = sections.map((content, index) => ({
+      const { sections: parsedSections, appendix: fullAppendix } = parsePostSections(data.content);
+      
+      // Store document-level appendix
+      if (fullAppendix) {
+        await supabase
+          .from('documents')
+          .update({ appendix: fullAppendix })
+          .eq('id', document.id);
+      }
+      
+      if (parsedSections.length > 0) {
+        const sectionsToInsert = parsedSections.map((content, index) => ({
           document_id: document.id,
           section_number: index + 1,
           content,
           status: 'pending',
+          appendix: fullAppendix ? extractPostAppendix(fullAppendix, index + 1) : null,
         }));
         
         const { error: sectionsError } = await supabase
