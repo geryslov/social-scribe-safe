@@ -93,6 +93,7 @@ export type Database = {
       }
       document_sections: {
         Row: {
+          appendix: string | null
           content: string
           created_at: string
           document_id: string
@@ -103,6 +104,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          appendix?: string | null
           content: string
           created_at?: string
           document_id: string
@@ -113,6 +115,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          appendix?: string | null
           content?: string
           created_at?: string
           document_id?: string
@@ -141,6 +144,7 @@ export type Database = {
       }
       documents: {
         Row: {
+          appendix: string | null
           approved_at: string | null
           approved_by: string | null
           content: string
@@ -158,6 +162,7 @@ export type Database = {
           workspace_id: string | null
         }
         Insert: {
+          appendix?: string | null
           approved_at?: string | null
           approved_by?: string | null
           content: string
@@ -175,6 +180,7 @@ export type Database = {
           workspace_id?: string | null
         }
         Update: {
+          appendix?: string | null
           approved_at?: string | null
           approved_by?: string | null
           content?: string
