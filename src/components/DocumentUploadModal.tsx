@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { Upload, FileText, X, Plus, Sparkles, Loader2, Globe, Paperclip, Mic, PenLine, Wand2, MessageSquare, Flame, Zap, BookOpen, User, Shield, Megaphone, ChevronDown, ChevronUp, Link2, GitMerge, Layers } from 'lucide-react';
+import { Upload, FileText, X, Plus, Sparkles, Loader2, Globe, Paperclip, Mic, PenLine, Wand2, MessageSquare, Flame, Zap, BookOpen, User, Shield, Megaphone, ChevronDown, ChevronUp, Link2, GitMerge, Layers, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -12,12 +12,15 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { Publisher } from '@/hooks/usePublishers';
+import { PublisherAvatar } from '@/components/PublisherAvatar';
 
 interface DocumentUploadModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSave: (data: { title: string; content: string; fileName?: string; fileUrl?: string }) => void;
   showAiCreate?: boolean;
+  publishers?: Publisher[];
 }
 
 const LENGTH_OPTIONS = [
@@ -45,7 +48,7 @@ const TONE_OPTIONS = [
   { value: 'provocative', label: 'Provocative', description: 'Debate-starter', icon: Megaphone, color: 'text-orange-500', example: '"Unpopular opinion: your \'company culture\' is just a nicer word for peer pressure."' },
 ] as const;
 
-export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate }: DocumentUploadModalProps) {
+export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate, publishers = [] }: DocumentUploadModalProps) {
   const [mode, setMode] = useState<'upload' | 'create' | 'ai'>('upload');
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
@@ -67,6 +70,7 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate }
   const [aiTone, setAiTone] = useState('default');
   const [isParsingRef, setIsParsingRef] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [selectedPublisherIds, setSelectedPublisherIds] = useState<string[]>([]);
   const refFileInputRef = useRef<HTMLInputElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -104,6 +108,7 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate }
     setAiPostCount('4-6');
     setAiTone('default');
     setShowAdvanced(false);
+    setSelectedPublisherIds([]);
   };
 
   const handleClose = () => {
@@ -217,11 +222,22 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate }
       toast.error('Please enter a topic');
       return;
     }
+    if (selectedPublisherIds.length === 0) {
+      toast.error('Please select at least one publisher');
+      return;
+    }
     setIsGenerating(true);
     const controller = new AbortController();
     abortControllerRef.current = controller;
     try {
       const validUrls = aiWebsiteUrls.map(u => u.trim()).filter(Boolean);
+      
+      // Gather selected publisher LinkedIn URLs
+      const publisherLinkedInUrls = selectedPublisherIds
+        .map(id => publishers.find(p => p.id === id))
+        .filter(p => p?.linkedin_url)
+        .map(p => ({ name: p!.name, linkedinUrl: p!.linkedin_url! }));
+
       const { data, error } = await supabase.functions.invoke('create-document', {
         body: {
           topic: aiTopic.trim(),
@@ -232,6 +248,7 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate }
           length: aiLength,
           postCount: aiPostCount,
           tone: aiTone !== 'default' ? aiTone : undefined,
+          publisherProfiles: publisherLinkedInUrls.length > 0 ? publisherLinkedInUrls : undefined,
         },
       });
       if (controller.signal.aborted) return;
@@ -484,6 +501,48 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate }
 
           {mode === 'ai' && !content && !isGenerating && (
             <div className="space-y-5 animate-fade-in">
+              {/* Publisher Selection */}
+              {publishers.length > 0 && (
+                <div>
+                  <label className="text-sm font-medium mb-2 block text-foreground">
+                    Who is writing? <span className="text-muted-foreground font-normal">(select publisher/s)</span>
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {publishers.map(pub => {
+                      const isSelected = selectedPublisherIds.includes(pub.id);
+                      return (
+                        <button
+                          key={pub.id}
+                          onClick={() => {
+                            setSelectedPublisherIds(prev =>
+                              isSelected ? prev.filter(id => id !== pub.id) : [...prev, pub.id]
+                            );
+                          }}
+                          className={cn(
+                            "flex items-center gap-2 px-3 py-2 rounded-lg border transition-all duration-200",
+                            isSelected
+                              ? "border-primary bg-primary/10 shadow-sm"
+                              : "border-border hover:border-primary/30 hover:bg-muted/50"
+                          )}
+                        >
+                          <PublisherAvatar name={pub.name} size="sm" />
+                          <span className={cn(
+                            "text-xs font-medium",
+                            isSelected ? "text-primary" : "text-foreground"
+                          )}>
+                            {pub.name}
+                          </span>
+                          {isSelected && <Check className="h-3.5 w-3.5 text-primary" />}
+                          {!pub.linkedin_url && (
+                            <span className="text-[10px] text-muted-foreground">(no URL)</span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               {/* Topic */}
               <div>
                 <label className="text-sm font-medium mb-1.5 block text-foreground">
