@@ -148,16 +148,46 @@ export function useDocuments() {
     },
   });
 
+// Helper function to extract the full appendix section from content
+function extractAppendix(content: string): { cleanContent: string; appendix: string | null } {
+  // Match APPENDIX section (various header formats)
+  const appendixRegex = /\n(?:#{1,3}\s*)?(?:APPENDIX|Appendix)[^\n]*\n/i;
+  const match = content.match(appendixRegex);
+  if (match && match.index !== undefined) {
+    const appendix = content.substring(match.index).trim();
+    const cleanContent = content.substring(0, match.index).trim();
+    return { cleanContent, appendix };
+  }
+  return { cleanContent: content, appendix: null };
+}
+
+// Helper to extract per-post appendix references from the full appendix
+function extractPostAppendix(fullAppendix: string, postIndex: number): string | null {
+  if (!fullAppendix) return null;
+  
+  // Look for "Post N:" sections within the appendix
+  const postPattern = new RegExp(
+    `Post\\s*${postIndex}\\s*:?[^\\n]*\\n([\\s\\S]*?)(?=Post\\s*\\d+\\s*:|$)`,
+    'i'
+  );
+  const match = fullAppendix.match(postPattern);
+  if (match && match[1]?.trim()) {
+    return match[1].trim();
+  }
+  return null;
+}
+
 // Helper function to parse "Post" sections from content
-function parsePostSections(content: string): string[] {
+function parsePostSections(content: string): { sections: string[]; appendix: string | null } {
+  const { cleanContent, appendix } = extractAppendix(content);
+  
   const sections: string[] = [];
-  const lines = content.split('\n');
+  const lines = cleanContent.split('\n');
   let currentSection: string[] = [];
   let foundFirstPost = false;
   
   const excludedPatterns = [
     /^data\s*sources?/i,
-    /^appendix/i,
     /^references?/i,
     /^sources?:/i,
   ];
@@ -193,13 +223,13 @@ function parsePostSections(content: string): string[] {
 
   // If no "Post N" markers were found, treat the entire content as a single section
   if (result.length === 0) {
-    const trimmed = content.trim();
+    const trimmed = cleanContent.trim();
     if (trimmed.length > 0) {
-      return [trimmed];
+      return { sections: [trimmed], appendix };
     }
   }
 
-  return result;
+  return { sections: result, appendix };
 }
 
   const updateDocument = useMutation({
