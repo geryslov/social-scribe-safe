@@ -48,7 +48,7 @@ const TONE_OPTIONS = [
   { value: 'provocative', label: 'Provocative', description: 'Debate-starter', icon: Megaphone, color: 'text-orange-500', example: '"Unpopular opinion: your \'company culture\' is just a nicer word for peer pressure."' },
 ] as const;
 
-export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate }: DocumentUploadModalProps) {
+export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate, publishers = [] }: DocumentUploadModalProps) {
   const [mode, setMode] = useState<'upload' | 'create' | 'ai'>('upload');
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
