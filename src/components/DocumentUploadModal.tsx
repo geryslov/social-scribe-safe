@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { Upload, FileText, X, Plus, Sparkles, Loader2, Globe, Paperclip, Mic, PenLine, Wand2, MessageSquare, Flame, Zap, BookOpen, User, Shield, Megaphone, ChevronDown, ChevronUp, Link2, GitMerge, Layers } from 'lucide-react';
+import { Upload, FileText, X, Plus, Sparkles, Loader2, Globe, Paperclip, Mic, PenLine, Wand2, MessageSquare, Flame, Zap, BookOpen, User, Shield, Megaphone, ChevronDown, ChevronUp, Link2, GitMerge, Layers, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -12,12 +12,15 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { Publisher } from '@/hooks/usePublishers';
+import { PublisherAvatar } from '@/components/PublisherAvatar';
 
 interface DocumentUploadModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSave: (data: { title: string; content: string; fileName?: string; fileUrl?: string }) => void;
   showAiCreate?: boolean;
+  publishers?: Publisher[];
 }
 
 const LENGTH_OPTIONS = [
