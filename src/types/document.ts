@@ -15,6 +15,7 @@ export interface Document {
   approvedAt: string | null;
   notes: string | null;
   publisherId: string | null;
+  appendix: string | null;
 }
 
 export interface DocumentComment {

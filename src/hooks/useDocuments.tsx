@@ -21,6 +21,7 @@ interface DbDocument {
   notes: string | null;
   workspace_id: string | null;
   publisher_id: string | null;
+  appendix: string | null;
 }
 
 interface DbComment {
@@ -47,6 +48,7 @@ const mapDbToDocument = (db: DbDocument): Document => ({
   approvedAt: db.approved_at,
   notes: db.notes,
   publisherId: db.publisher_id,
+  appendix: db.appendix,
 });
 
 const mapDbToComment = (db: DbComment): DocumentComment => ({
@@ -117,13 +119,23 @@ export function useDocuments() {
       const document = mapDbToDocument(result as DbDocument);
       
       // Parse and create sections for each "Post" in the content
-      const sections = parsePostSections(data.content);
-      if (sections.length > 0) {
-        const sectionsToInsert = sections.map((content, index) => ({
+      const { sections: parsedSections, appendix: fullAppendix } = parsePostSections(data.content);
+      
+      // Store document-level appendix
+      if (fullAppendix) {
+        await supabase
+          .from('documents')
+          .update({ appendix: fullAppendix })
+          .eq('id', document.id);
+      }
+      
+      if (parsedSections.length > 0) {
+        const sectionsToInsert = parsedSections.map((content, index) => ({
           document_id: document.id,
           section_number: index + 1,
           content,
           status: 'pending',
+          appendix: fullAppendix ? extractPostAppendix(fullAppendix, index + 1) : null,
         }));
         
         const { error: sectionsError } = await supabase
@@ -146,16 +158,46 @@ export function useDocuments() {
     },
   });
 
+// Helper function to extract the full appendix section from content
+function extractAppendix(content: string): { cleanContent: string; appendix: string | null } {
+  // Match APPENDIX section (various header formats)
+  const appendixRegex = /\n(?:#{1,3}\s*)?(?:APPENDIX|Appendix)[^\n]*\n/i;
+  const match = content.match(appendixRegex);
+  if (match && match.index !== undefined) {
+    const appendix = content.substring(match.index).trim();
+    const cleanContent = content.substring(0, match.index).trim();
+    return { cleanContent, appendix };
+  }
+  return { cleanContent: content, appendix: null };
+}
+
+// Helper to extract per-post appendix references from the full appendix
+function extractPostAppendix(fullAppendix: string, postIndex: number): string | null {
+  if (!fullAppendix) return null;
+  
+  // Look for "Post N:" sections within the appendix
+  const postPattern = new RegExp(
+    `Post\\s*${postIndex}\\s*:?[^\\n]*\\n([\\s\\S]*?)(?=Post\\s*\\d+\\s*:|$)`,
+    'i'
+  );
+  const match = fullAppendix.match(postPattern);
+  if (match && match[1]?.trim()) {
+    return match[1].trim();
+  }
+  return null;
+}
+
 // Helper function to parse "Post" sections from content
-function parsePostSections(content: string): string[] {
+function parsePostSections(content: string): { sections: string[]; appendix: string | null } {
+  const { cleanContent, appendix } = extractAppendix(content);
+  
   const sections: string[] = [];
-  const lines = content.split('\n');
+  const lines = cleanContent.split('\n');
   let currentSection: string[] = [];
   let foundFirstPost = false;
   
   const excludedPatterns = [
     /^data\s*sources?/i,
-    /^appendix/i,
     /^references?/i,
     /^sources?:/i,
   ];
@@ -191,13 +233,13 @@ function parsePostSections(content: string): string[] {
 
   // If no "Post N" markers were found, treat the entire content as a single section
   if (result.length === 0) {
-    const trimmed = content.trim();
+    const trimmed = cleanContent.trim();
     if (trimmed.length > 0) {
-      return [trimmed];
+      return { sections: [trimmed], appendix };
     }
   }
 
-  return result;
+  return { sections: result, appendix };
 }
 
   const updateDocument = useMutation({
@@ -453,6 +495,7 @@ export interface DocumentSection {
   content: string;
   status: string;
   publisherId: string | null;
+  appendix: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -464,6 +507,7 @@ interface DbSection {
   content: string;
   status: string;
   publisher_id: string | null;
+  appendix: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -475,6 +519,7 @@ const mapDbToSection = (db: DbSection): DocumentSection => ({
   content: db.content,
   status: db.status,
   publisherId: db.publisher_id,
+  appendix: db.appendix,
   createdAt: db.created_at,
   updatedAt: db.updated_at,
 });
