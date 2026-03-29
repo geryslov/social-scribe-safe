@@ -106,9 +106,9 @@ Hook patterns:
 - When you DO use a real stat or data point, note the source so it can be included in the appendix
 
 ## REASONING & DIFFERENTIATION
-- Every post must answer "so what?" — why should the reader care?
+- Every post must answer "so what?". Why should the reader care?
 - Don't just state facts. Interpret them. What's the implication?
-- Leave room for the reader to think differently — challenge assumptions, offer a contrarian take, or complement a mainstream idea with a differentiated angle
+- Leave room for the reader to think differently. Challenge assumptions, offer a contrarian take, or complement a mainstream idea with a differentiated angle
 - The best posts make people stop and reconsider what they thought they knew
 
 ## POWER PHRASES
@@ -131,7 +131,31 @@ Post 2: [Hook-based title]
 
 (Continue for each post)
 
-Create 3-7 posts depending on the depth of the topic. Each post must be self-contained and follow the structural requirements above.
+## APPENDIX (MANDATORY)
+
+After ALL posts, create an APPENDIX section that lists every data point, statistic, and factual claim used across the document with its source.
+
+Format:
+
+---
+APPENDIX: Sources & References
+
+Post 1: [Post title]
+- "[Stat or claim used]" → Source: [where it came from, e.g. company website, uploaded PDF page X, provided reference material]
+
+Post 2: [Post title]
+- "[Stat or claim used]" → Source: [source]
+
+(Continue for each post)
+---
+
+Rules for the appendix:
+- Every number, percentage, dollar figure, or factual claim in any post MUST appear in the appendix with its source
+- If a stat came from the provided reference material, say so
+- If a stat came from the website content, cite the URL
+- If a stat came from the writer's guidance, note "provided by author"
+- If you used a qualitative statement because no hard data was available, note "qualitative observation, no hard data cited"
+- This appendix is for internal reference, not for publishing. It helps the team verify claims before posting.
 
 ---
 
