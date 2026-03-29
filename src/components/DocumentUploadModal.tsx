@@ -501,6 +501,48 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate, 
 
           {mode === 'ai' && !content && !isGenerating && (
             <div className="space-y-5 animate-fade-in">
+              {/* Publisher Selection */}
+              {publishers.length > 0 && (
+                <div>
+                  <label className="text-sm font-medium mb-2 block text-foreground">
+                    Who is writing? <span className="text-muted-foreground font-normal">(select publisher/s)</span>
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {publishers.map(pub => {
+                      const isSelected = selectedPublisherIds.includes(pub.id);
+                      return (
+                        <button
+                          key={pub.id}
+                          onClick={() => {
+                            setSelectedPublisherIds(prev =>
+                              isSelected ? prev.filter(id => id !== pub.id) : [...prev, pub.id]
+                            );
+                          }}
+                          className={cn(
+                            "flex items-center gap-2 px-3 py-2 rounded-lg border transition-all duration-200",
+                            isSelected
+                              ? "border-primary bg-primary/10 shadow-sm"
+                              : "border-border hover:border-primary/30 hover:bg-muted/50"
+                          )}
+                        >
+                          <PublisherAvatar name={pub.name} avatarUrl={pub.avatar_url} size="sm" />
+                          <span className={cn(
+                            "text-xs font-medium",
+                            isSelected ? "text-primary" : "text-foreground"
+                          )}>
+                            {pub.name}
+                          </span>
+                          {isSelected && <Check className="h-3.5 w-3.5 text-primary" />}
+                          {!pub.linkedin_url && (
+                            <span className="text-[10px] text-muted-foreground">(no URL)</span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               {/* Topic */}
               <div>
                 <label className="text-sm font-medium mb-1.5 block text-foreground">
