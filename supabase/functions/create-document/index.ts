@@ -87,7 +87,7 @@ Hook patterns:
 - Maximum 3 sentences per paragraph, most should be 1-2
 - RANDOMIZE list/bullet symbols across posts. Randomly pick from: - , // , → for each listicle. Do NOT always use the same symbol. Each post should feel different.
 - NEVER use double dashes (--) or ASCII arrows (-->, ->). Use the Unicode arrow symbol → when needed.
-- NEVER use em dashes (. ). Use periods, commas, or line breaks instead. Em dashes are a telltale sign of AI-generated text.
+- NEVER use em dashes. Use periods, commas, or line breaks instead. Em dashes are a telltale sign of AI-generated text.
 - No bold text unless explicitly requested
 - Vary sentence length deliberately: Long. Then short. Then long again.
 - ADD EMPTY LINES between every paragraph for readability. Posts must breathe. No wall of text. Each thought block should be separated by a blank line.
@@ -212,7 +212,7 @@ Every piece of content follows these structural elements:
 
 ### No Double Dashes, ASCII Arrows, or Em Dashes
 → NEVER use -- or --> or -> anywhere in the content
-→ NEVER use em dashes (. ) anywhere. They scream "AI wrote this."
+→ NEVER use em dashes anywhere. They scream "AI wrote this."
 → Use the Unicode arrow → for lists only
 → Use periods, commas, or line breaks for pauses
 
