@@ -222,11 +222,22 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate, 
       toast.error('Please enter a topic');
       return;
     }
+    if (selectedPublisherIds.length === 0) {
+      toast.error('Please select at least one publisher');
+      return;
+    }
     setIsGenerating(true);
     const controller = new AbortController();
     abortControllerRef.current = controller;
     try {
       const validUrls = aiWebsiteUrls.map(u => u.trim()).filter(Boolean);
+      
+      // Gather selected publisher LinkedIn URLs
+      const publisherLinkedInUrls = selectedPublisherIds
+        .map(id => publishers.find(p => p.id === id))
+        .filter(p => p?.linkedin_url)
+        .map(p => ({ name: p!.name, linkedinUrl: p!.linkedin_url! }));
+
       const { data, error } = await supabase.functions.invoke('create-document', {
         body: {
           topic: aiTopic.trim(),
@@ -237,6 +248,7 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate, 
           length: aiLength,
           postCount: aiPostCount,
           tone: aiTone !== 'default' ? aiTone : undefined,
+          publisherProfiles: publisherLinkedInUrls.length > 0 ? publisherLinkedInUrls : undefined,
         },
       });
       if (controller.signal.aborted) return;
