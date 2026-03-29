@@ -658,7 +658,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { topic, guidance, websiteUrl, websiteUrls, urlStrategy, referenceContent, length, postCount, tone } = await req.json();
+    const { topic, guidance, websiteUrl, websiteUrls, urlStrategy, referenceContent, length, postCount, tone, publisherProfiles } = await req.json();
 
     if (!topic) {
       return new Response(
