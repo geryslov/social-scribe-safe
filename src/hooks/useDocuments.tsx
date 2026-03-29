@@ -21,6 +21,7 @@ interface DbDocument {
   notes: string | null;
   workspace_id: string | null;
   publisher_id: string | null;
+  appendix: string | null;
 }
 
 interface DbComment {
@@ -47,6 +48,7 @@ const mapDbToDocument = (db: DbDocument): Document => ({
   approvedAt: db.approved_at,
   notes: db.notes,
   publisherId: db.publisher_id,
+  appendix: db.appendix,
 });
 
 const mapDbToComment = (db: DbComment): DocumentComment => ({
@@ -453,6 +455,7 @@ export interface DocumentSection {
   content: string;
   status: string;
   publisherId: string | null;
+  appendix: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -464,6 +467,7 @@ interface DbSection {
   content: string;
   status: string;
   publisher_id: string | null;
+  appendix: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -475,6 +479,7 @@ const mapDbToSection = (db: DbSection): DocumentSection => ({
   content: db.content,
   status: db.status,
   publisherId: db.publisher_id,
+  appendix: db.appendix,
   createdAt: db.created_at,
   updatedAt: db.updated_at,
 });
