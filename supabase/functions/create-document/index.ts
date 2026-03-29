@@ -750,6 +750,15 @@ Deno.serve(async (req) => {
     console.log('Creating document with Claude for topic:', topic, 'tone:', tone || 'default', 'urls:', fetchedSites.length, 'strategy:', urlStrategy || 'cross');
 
     let userMessage = `Create a LinkedIn thought leadership content document about: ${topic}`;
+    
+    // Inject publisher/writer LinkedIn profiles
+    if (publisherProfiles && Array.isArray(publisherProfiles) && publisherProfiles.length > 0) {
+      userMessage += `\n\n--- WRITER PROFILE(S) ---\nAnalyze the following LinkedIn profile(s) and write AS these people. Study their professional background, expertise, and voice. The posts should feel authentically written by them.\n\n`;
+      for (const profile of publisherProfiles) {
+        userMessage += `Writer: ${profile.name}\nLinkedIn: ${profile.linkedinUrl}\n\n`;
+      }
+    }
+    
     if (guidance) userMessage += `\n\nAdditional guidance: ${guidance}`;
     if (lengthInstruction) userMessage += `\n\n${lengthInstruction}`;
     if (postCountInstruction) userMessage += `\n\n${postCountInstruction}`;
