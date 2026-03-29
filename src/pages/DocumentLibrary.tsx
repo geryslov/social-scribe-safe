@@ -201,6 +201,7 @@ export default function DocumentLibrary() {
         onOpenChange={setUploadModalOpen}
         onSave={handleCreateDocument}
         showAiCreate={canUseAiCreate}
+        publishers={publishers}
       />
 
       <DocumentSplitModal
