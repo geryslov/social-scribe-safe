@@ -394,6 +394,14 @@ export default function DocumentEditor() {
               </div>
             )}
 
+            {/* Document Appendix */}
+            {document.appendix && (
+              <div className="bento-card p-4">
+                <p className="section-heading mb-3">📎 Appendix / Sources</p>
+                <p className="text-xs text-muted-foreground whitespace-pre-wrap max-h-64 overflow-y-auto">{document.appendix}</p>
+              </div>
+            )}
+
             {/* Edit History */}
             <DocumentEditHistory documentId={id || ''} />
 
