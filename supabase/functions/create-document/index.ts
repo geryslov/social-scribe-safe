@@ -200,7 +200,7 @@ Every piece of content follows these structural elements:
 
 ### Listicle Symbols (RANDOMIZE)
 → Randomly alternate between these symbols for list items: - , // , →
-→ Never use the same symbol for every post — mix it up across posts
+→ Never use the same symbol for every post. Mix it up across posts
 → Keep list items parallel in structure
 → Each list point should be scannable
 
@@ -210,10 +210,11 @@ Every piece of content follows these structural elements:
 → Let the content carry the weight
 → Italics are also avoided
 
-### No Double Dashes or ASCII Arrows
+### No Double Dashes, ASCII Arrows, or Em Dashes
 → NEVER use -- or --> or -> anywhere in the content
-→ Use the Unicode arrow → instead
-→ Use commas, periods, or em dashes (—) for pauses
+→ NEVER use em dashes (—) anywhere. They scream "AI wrote this."
+→ Use the Unicode arrow → for lists only
+→ Use periods, commas, or line breaks for pauses
 
 ### Sentence Rhythm
 → Vary sentence length deliberately
@@ -222,7 +223,7 @@ Every piece of content follows these structural elements:
 → Mix rhythm: long → short → long → short
 
 ### Line Breaks & Spacing
-→ ALWAYS add an empty line between every paragraph — no exceptions
+→ ALWAYS add an empty line between every paragraph. No exceptions
 → Use double line breaks between major sections
 → Posts must feel airy and easy to scan on mobile
 → Strategic white space improves readability dramatically
