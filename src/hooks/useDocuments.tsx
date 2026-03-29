@@ -160,12 +160,20 @@ export function useDocuments() {
 
 // Helper function to extract the full appendix section from content
 function extractAppendix(content: string): { cleanContent: string; appendix: string | null } {
-  // Match APPENDIX section (various header formats)
-  const appendixRegex = /\n(?:#{1,3}\s*)?(?:APPENDIX|Appendix)[^\n]*\n/i;
+  // Match APPENDIX section (various header formats, with or without leading newline)
+  const appendixRegex = /(?:^|\n)\s*(?:#{1,3}\s*)?(?:APPENDIX|Appendix|appendix|📎\s*Appendix)[:\s\-—]*[^\n]*\n/i;
   const match = content.match(appendixRegex);
   if (match && match.index !== undefined) {
     const appendix = content.substring(match.index).trim();
     const cleanContent = content.substring(0, match.index).trim();
+    return { cleanContent, appendix };
+  }
+  // Fallback: check for "Sources & References" or similar
+  const fallbackRegex = /(?:^|\n)\s*(?:#{1,3}\s*)?(?:Sources?\s*(?:&|and)?\s*References?|References?\s*(?:&|and)?\s*Sources?)[:\s\-—]*[^\n]*\n/i;
+  const fallbackMatch = content.match(fallbackRegex);
+  if (fallbackMatch && fallbackMatch.index !== undefined) {
+    const appendix = content.substring(fallbackMatch.index).trim();
+    const cleanContent = content.substring(0, fallbackMatch.index).trim();
     return { cleanContent, appendix };
   }
   return { cleanContent: content, appendix: null };
