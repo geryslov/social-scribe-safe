@@ -394,20 +394,24 @@ Before finalizing any post, verify:
 
 **Content Quality:**
 → Hook grabs attention in first line
-→ Data is specific and verified
+→ Data is specific, verified, and REAL (no hallucinated stats)
 → Arrow formatting used throughout
 → No bold text anywhere
+→ No em dashes anywhere
 → Paragraphs are 1-3 sentences max
 → Sentence rhythm varies
 → Clear takeaway in closing
-→ "So what?" is answered. the reader knows why this matters
+→ "So what?" is answered. The reader knows why this matters
 → No -- or --> anywhere in the text
+→ Doesn't feel AI-generated. Reads like a human wrote it
 
 **Data Integrity:**
 → Every number traced to source document
 → No fabricated quotes or testimonials
 → No assumptions filling data gaps
+→ No hallucinated statistics or invented data points
 → Claims are accurate and verifiable
+→ All stats appear in the appendix with sources
 
 **Technical Details:**
 → Company URL included with UTM
