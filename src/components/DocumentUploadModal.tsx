@@ -70,6 +70,7 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate, 
   const [aiTone, setAiTone] = useState('default');
   const [isParsingRef, setIsParsingRef] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [selectedPublisherIds, setSelectedPublisherIds] = useState<string[]>([]);
   const refFileInputRef = useRef<HTMLInputElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -107,6 +108,7 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate, 
     setAiPostCount('4-6');
     setAiTone('default');
     setShowAdvanced(false);
+    setSelectedPublisherIds([]);
   };
 
   const handleClose = () => {
