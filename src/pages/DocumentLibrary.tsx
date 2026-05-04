@@ -24,6 +24,13 @@ const statusFilters: Array<{ value: DocumentStatus | 'all'; label: string }> = [
   { value: 'split', label: 'Split' },
 ];
 
+const MINEOS_CREATOR_LINKEDIN_URLS = [
+  'https://www.linkedin.com/in/gilaloni/',
+  'https://www.linkedin.com/in/lihi-lotker',
+];
+
+const normalizeLinkedInUrl = (url?: string | null) => (url || '').replace(/\/$/, '').toLowerCase();
+
 export default function DocumentLibrary() {
   const navigate = useNavigate();
   const { documents, isLoading, isAdmin, createDocument, deleteDocument, updateStatus } = useDocuments();
@@ -31,8 +38,12 @@ export default function DocumentLibrary() {
   const { publishers } = usePublishers();
   const { currentWorkspace } = useWorkspace();
   const { user } = useAuth();
-  const AI_CREATE_ALLOWED_EMAILS = ['geryslov@gmail.com', 'gilaloni1@gmail.com', 'lihilotker@gmail.com'];
-  const canUseAiCreate = !!user?.email && AI_CREATE_ALLOWED_EMAILS.includes(user.email);
+  const mineOsCreatorUrls = MINEOS_CREATOR_LINKEDIN_URLS.map(normalizeLinkedInUrl);
+  const isMineOsLinkedInCreator = !!user && currentWorkspace?.slug === 'mineos' && publishers.some(p =>
+    p.user_id === user.id && mineOsCreatorUrls.includes(normalizeLinkedInUrl(p.linkedin_url))
+  );
+  const canCreateContent = isAdmin || isMineOsLinkedInCreator;
+  const canUseAiCreate = canCreateContent;
 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<DocumentStatus | 'all'>('all');
@@ -121,7 +132,7 @@ export default function DocumentLibrary() {
             <h1 className="text-4xl font-display font-extrabold tracking-tight">Documents</h1>
             <p className="text-sm text-muted-foreground mt-2">Long-form content to LinkedIn posts</p>
           </div>
-          {isAdmin && (
+          {canCreateContent && (
             <Button className="bg-primary text-white hover:bg-primary/90 rounded-xl gap-2" onClick={() => setUploadModalOpen(true)}>
               <Plus className="h-4 w-4" /> New Document
             </Button>
@@ -169,7 +180,7 @@ export default function DocumentLibrary() {
                 : 'Upload long-form content to split into LinkedIn posts'
               }
             </p>
-            {isAdmin && !searchQuery && statusFilter === 'all' && (
+            {canCreateContent && !searchQuery && statusFilter === 'all' && (
               <Button
                 variant="outline"
                 className="rounded-xl gap-2"
