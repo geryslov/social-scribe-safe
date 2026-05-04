@@ -54,7 +54,8 @@ const Posts = () => {
   const [reactorsPanelTab, setReactorsPanelTab] = useState<'profiles' | 'comments'>('profiles');
   const { createDocument } = useDocuments();
   const { currentWorkspace } = useWorkspace();
-  const canUseAiCreate = user?.email === 'geryslov@gmail.com';
+  const AI_CREATE_ALLOWED_EMAILS = ['geryslov@gmail.com', 'gilaloni1@gmail.com', 'lihilotker@gmail.com'];
+  const canUseAiCreate = !!user?.email && AI_CREATE_ALLOWED_EMAILS.includes(user.email);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Redirect to auth if not logged in

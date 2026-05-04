@@ -31,7 +31,8 @@ export default function DocumentLibrary() {
   const { publishers } = usePublishers();
   const { currentWorkspace } = useWorkspace();
   const { user } = useAuth();
-  const canUseAiCreate = user?.email === 'geryslov@gmail.com';
+  const AI_CREATE_ALLOWED_EMAILS = ['geryslov@gmail.com', 'gilaloni1@gmail.com', 'lihilotker@gmail.com'];
+  const canUseAiCreate = !!user?.email && AI_CREATE_ALLOWED_EMAILS.includes(user.email);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<DocumentStatus | 'all'>('all');
