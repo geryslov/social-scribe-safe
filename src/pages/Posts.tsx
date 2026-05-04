@@ -28,6 +28,13 @@ import { AllReactorsPanel } from '@/components/AllReactorsPanel';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
+const MINEOS_CREATOR_LINKEDIN_URLS = [
+  'https://www.linkedin.com/in/gilaloni/',
+  'https://www.linkedin.com/in/lihi-lotker',
+];
+
+const normalizeLinkedInUrl = (url?: string | null) => (url || '').replace(/\/$/, '').toLowerCase();
+
 const Posts = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -54,8 +61,12 @@ const Posts = () => {
   const [reactorsPanelTab, setReactorsPanelTab] = useState<'profiles' | 'comments'>('profiles');
   const { createDocument } = useDocuments();
   const { currentWorkspace } = useWorkspace();
-  const AI_CREATE_ALLOWED_EMAILS = ['geryslov@gmail.com', 'gilaloni1@gmail.com', 'lihilotker@gmail.com'];
-  const canUseAiCreate = !!user?.email && AI_CREATE_ALLOWED_EMAILS.includes(user.email);
+  const mineOsCreatorUrls = MINEOS_CREATOR_LINKEDIN_URLS.map(normalizeLinkedInUrl);
+  const isMineOsLinkedInCreator = !!user && currentWorkspace?.slug === 'mineos' && dbPublishers.some(p =>
+    p.user_id === user.id && mineOsCreatorUrls.includes(normalizeLinkedInUrl(p.linkedin_url))
+  );
+  const canCreateContent = isAdmin || isMineOsLinkedInCreator;
+  const canUseAiCreate = canCreateContent;
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Redirect to auth if not logged in
@@ -155,7 +166,7 @@ const Posts = () => {
     if (postData.id && editingPost) {
       updatePost.mutate({ post: { ...postData, id: postData.id } as Post, previousPost: editingPost });
     } else {
-      if (!isAdmin) return;
+      if (!canCreateContent) return;
       createPost.mutate(postData);
     }
     setEditingPost(null);
@@ -169,7 +180,7 @@ const Posts = () => {
   };
 
   const handleNewPost = () => {
-    if (!isAdmin) return;
+    if (!canCreateContent) return;
     setIsDocUploadOpen(true);
   };
 
@@ -288,16 +299,20 @@ const Posts = () => {
                   )}
                 </div>
 
-                {isAdmin && (
+                {canCreateContent && (
                   <div className="flex gap-2">
-                    <Button onClick={() => setIsTrackPostOpen(true)} variant="outline" className="gap-2 rounded-xl border-border">
-                      <LinkIcon className="h-4 w-4" />
-                      Track
-                    </Button>
-                    <Button onClick={() => setIsBulkUploadOpen(true)} variant="outline" className="gap-2 rounded-xl border-border">
-                      <Upload className="h-4 w-4" />
-                      Import
-                    </Button>
+                    {isAdmin && (
+                      <>
+                        <Button onClick={() => setIsTrackPostOpen(true)} variant="outline" className="gap-2 rounded-xl border-border">
+                          <LinkIcon className="h-4 w-4" />
+                          Track
+                        </Button>
+                        <Button onClick={() => setIsBulkUploadOpen(true)} variant="outline" className="gap-2 rounded-xl border-border">
+                          <Upload className="h-4 w-4" />
+                          Import
+                        </Button>
+                      </>
+                    )}
                     <Button onClick={handleNewPost} className="gap-2 bg-primary text-white hover:bg-primary/90 rounded-xl">
                       <Plus className="h-4 w-4" />
                       New Post
@@ -350,7 +365,7 @@ const Posts = () => {
                   <p className="text-muted-foreground mb-6 max-w-sm mx-auto text-sm">
                     {selectedPublisher ? `No scheduled posts for ${selectedPublisher}` : 'Start creating content for your thought leaders'}
                   </p>
-                  {isAdmin && (
+                  {canCreateContent && (
                     <Button onClick={handleNewPost} className="bg-primary text-white hover:bg-primary/90 rounded-xl gap-2">
                       <Plus className="h-4 w-4" /> Create Post
                     </Button>
