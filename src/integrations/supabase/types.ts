@@ -959,6 +959,14 @@ export type Database = {
         }
         Returns: boolean
       }
+      user_can_create_document_section: {
+        Args: { _document_id: string }
+        Returns: boolean
+      }
+      user_can_create_in_workspace: {
+        Args: { _workspace_id: string }
+        Returns: boolean
+      }
       user_has_workspace_access: {
         Args: { _workspace_id: string }
         Returns: boolean
