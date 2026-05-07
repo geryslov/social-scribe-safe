@@ -44,7 +44,7 @@ function updateTimestamps(row: AggRow, ts: string | null) {
 }
 
 async function fetchAllPaged<T>(
-  build: (from: number, to: number) => Promise<{ data: T[] | null; error: any }>
+  build: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: any }>
 ): Promise<T[]> {
   const all: T[] = [];
   const pageSize = 1000;
