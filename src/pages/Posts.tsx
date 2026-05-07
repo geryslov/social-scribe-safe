@@ -69,6 +69,20 @@ const Posts = () => {
   const canCreateContent = isAdmin || isMineOsLinkedInCreator;
   const canUseAiCreate = canCreateContent;
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+
+  const handleExportReactors = async () => {
+    if (!currentWorkspace) return;
+    setIsExporting(true);
+    try {
+      const { rows } = await exportWorkspaceReactors(currentWorkspace.id, currentWorkspace.slug, { includeCommenters: true });
+      toast.success(`Exported ${rows} engager${rows === 1 ? '' : 's'}`);
+    } catch (e: any) {
+      toast.error(e?.message || 'Export failed');
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   // Redirect to auth if not logged in
   useEffect(() => {
