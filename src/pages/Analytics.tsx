@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Eye, Users, Heart, MessageCircle, TrendingUp, Loader2, RefreshCw, BarChart3 } from 'lucide-react';
+import { Eye, Users, Heart, MessageCircle, TrendingUp, Loader2, RefreshCw, BarChart3, Download } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { useAuth } from '@/hooks/useAuth';
 import { useAnalytics } from '@/hooks/useAnalytics';
@@ -15,6 +15,8 @@ import { CountUp } from '@/components/CountUp';
 import { PublisherAvatar } from '@/components/PublisherAvatar';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
+import { exportWorkspaceReactors } from '@/lib/exportReactors';
+import { toast } from '@/hooks/use-toast';
 
 
 
@@ -22,11 +24,30 @@ const Analytics = () => {
   const navigate = useNavigate();
   const { user, isLoading: authLoading } = useAuth();
   const { publishers: dbPublishers, refreshAllAvatars } = usePublishers();
+  const { currentWorkspace } = useWorkspace();
 
   const [timeRange, setTimeRange] = useState<'7d' | '30d' | '90d'>('30d');
+  const [isExporting, setIsExporting] = useState(false);
 
   // Auto-sync LinkedIn analytics on login
   const { isSyncing: isAutoSyncing, lastSyncTime } = useAutoSync(dbPublishers, user?.id);
+
+  const handleExport = async (includeCommenters: boolean) => {
+    if (!currentWorkspace) return;
+    setIsExporting(true);
+    try {
+      const { rows } = await exportWorkspaceReactors(
+        currentWorkspace.id,
+        currentWorkspace.slug,
+        { includeCommenters }
+      );
+      toast({ title: 'Export ready', description: `${rows} engager${rows === 1 ? '' : 's'} exported.` });
+    } catch (e: any) {
+      toast({ title: 'Export failed', description: e?.message || 'Could not export', variant: 'destructive' });
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   const { stats, trendData, topPosts, publisherRanking, isLoading } = useAnalytics(null, timeRange);
 
@@ -123,6 +144,24 @@ const Analytics = () => {
                 Last sync: {format(new Date(lastSyncTime), 'HH:mm')}
               </span>
             )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleExport(false)}
+              disabled={isExporting || !currentWorkspace}
+            >
+              {isExporting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
+              Export reactors
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleExport(true)}
+              disabled={isExporting || !currentWorkspace}
+              title="Include reactors and commenters"
+            >
+              + comments
+            </Button>
           </div>
         </div>
 
