@@ -314,26 +314,40 @@ const Posts = () => {
                   )}
                 </div>
 
-                {canCreateContent && (
-                  <div className="flex gap-2">
-                    {isAdmin && (
-                      <>
-                        <Button onClick={() => setIsTrackPostOpen(true)} variant="outline" className="gap-2 rounded-xl border-border">
-                          <LinkIcon className="h-4 w-4" />
-                          Track
-                        </Button>
-                        <Button onClick={() => setIsBulkUploadOpen(true)} variant="outline" className="gap-2 rounded-xl border-border">
-                          <Upload className="h-4 w-4" />
-                          Import
-                        </Button>
-                      </>
-                    )}
-                    <Button onClick={handleNewPost} className="gap-2 bg-primary text-white hover:bg-primary/90 rounded-xl">
-                      <Plus className="h-4 w-4" />
-                      New Post
+                <div className="flex gap-2">
+                  {currentWorkspace && (
+                    <Button
+                      onClick={handleExportReactors}
+                      disabled={isExporting}
+                      variant="outline"
+                      className="gap-2 rounded-xl border-border"
+                      title="Export reactors + commenters as CSV"
+                    >
+                      {isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                      Export engagers
                     </Button>
-                  </div>
-                )}
+                  )}
+                  {canCreateContent && (
+                    <>
+                      {isAdmin && (
+                        <>
+                          <Button onClick={() => setIsTrackPostOpen(true)} variant="outline" className="gap-2 rounded-xl border-border">
+                            <LinkIcon className="h-4 w-4" />
+                            Track
+                          </Button>
+                          <Button onClick={() => setIsBulkUploadOpen(true)} variant="outline" className="gap-2 rounded-xl border-border">
+                            <Upload className="h-4 w-4" />
+                            Import
+                          </Button>
+                        </>
+                      )}
+                      <Button onClick={handleNewPost} className="gap-2 bg-primary text-white hover:bg-primary/90 rounded-xl">
+                        <Plus className="h-4 w-4" />
+                        New Post
+                      </Button>
+                    </>
+                  )}
+                </div>
               </div>
 
               {/* Bento Stats Grid */}
