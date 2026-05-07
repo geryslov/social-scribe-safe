@@ -19,7 +19,8 @@ import { useDocuments } from '@/hooks/useDocuments';
 import { useWorkspace } from '@/hooks/useWorkspace';
 
 import { Button } from '@/components/ui/button';
-import { Plus, Inbox, ExternalLink, Loader2, Upload, Users, Eye, Heart, TrendingUp, MessageCircle, Repeat2, LinkIcon, Menu, X, LayoutDashboard } from 'lucide-react';
+import { Plus, Inbox, ExternalLink, Loader2, Upload, Users, Eye, Heart, TrendingUp, MessageCircle, Repeat2, LinkIcon, Menu, X, LayoutDashboard, Download } from 'lucide-react';
+import { exportWorkspaceReactors } from '@/lib/exportReactors';
 import { useAnalytics } from '@/hooks/useAnalytics';
 import { CountUp } from '@/components/CountUp';
 import { Card, CardContent } from '@/components/ui/card';
@@ -68,6 +69,20 @@ const Posts = () => {
   const canCreateContent = isAdmin || isMineOsLinkedInCreator;
   const canUseAiCreate = canCreateContent;
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+
+  const handleExportReactors = async () => {
+    if (!currentWorkspace) return;
+    setIsExporting(true);
+    try {
+      const { rows } = await exportWorkspaceReactors(currentWorkspace.id, currentWorkspace.slug, { includeCommenters: true });
+      toast.success(`Exported ${rows} engager${rows === 1 ? '' : 's'}`);
+    } catch (e: any) {
+      toast.error(e?.message || 'Export failed');
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   // Redirect to auth if not logged in
   useEffect(() => {
@@ -299,26 +314,40 @@ const Posts = () => {
                   )}
                 </div>
 
-                {canCreateContent && (
-                  <div className="flex gap-2">
-                    {isAdmin && (
-                      <>
-                        <Button onClick={() => setIsTrackPostOpen(true)} variant="outline" className="gap-2 rounded-xl border-border">
-                          <LinkIcon className="h-4 w-4" />
-                          Track
-                        </Button>
-                        <Button onClick={() => setIsBulkUploadOpen(true)} variant="outline" className="gap-2 rounded-xl border-border">
-                          <Upload className="h-4 w-4" />
-                          Import
-                        </Button>
-                      </>
-                    )}
-                    <Button onClick={handleNewPost} className="gap-2 bg-primary text-white hover:bg-primary/90 rounded-xl">
-                      <Plus className="h-4 w-4" />
-                      New Post
+                <div className="flex gap-2">
+                  {currentWorkspace && (
+                    <Button
+                      onClick={handleExportReactors}
+                      disabled={isExporting}
+                      variant="outline"
+                      className="gap-2 rounded-xl border-border"
+                      title="Export reactors + commenters as CSV"
+                    >
+                      {isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                      Export engagers
                     </Button>
-                  </div>
-                )}
+                  )}
+                  {canCreateContent && (
+                    <>
+                      {isAdmin && (
+                        <>
+                          <Button onClick={() => setIsTrackPostOpen(true)} variant="outline" className="gap-2 rounded-xl border-border">
+                            <LinkIcon className="h-4 w-4" />
+                            Track
+                          </Button>
+                          <Button onClick={() => setIsBulkUploadOpen(true)} variant="outline" className="gap-2 rounded-xl border-border">
+                            <Upload className="h-4 w-4" />
+                            Import
+                          </Button>
+                        </>
+                      )}
+                      <Button onClick={handleNewPost} className="gap-2 bg-primary text-white hover:bg-primary/90 rounded-xl">
+                        <Plus className="h-4 w-4" />
+                        New Post
+                      </Button>
+                    </>
+                  )}
+                </div>
               </div>
 
               {/* Bento Stats Grid */}
