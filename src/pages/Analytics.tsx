@@ -144,6 +144,24 @@ const Analytics = () => {
                 Last sync: {format(new Date(lastSyncTime), 'HH:mm')}
               </span>
             )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleExport(false)}
+              disabled={isExporting || !currentWorkspace}
+            >
+              {isExporting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
+              Export reactors
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleExport(true)}
+              disabled={isExporting || !currentWorkspace}
+              title="Include reactors and commenters"
+            >
+              + comments
+            </Button>
           </div>
         </div>
 
