@@ -24,11 +24,30 @@ const Analytics = () => {
   const navigate = useNavigate();
   const { user, isLoading: authLoading } = useAuth();
   const { publishers: dbPublishers, refreshAllAvatars } = usePublishers();
+  const { currentWorkspace } = useWorkspace();
 
   const [timeRange, setTimeRange] = useState<'7d' | '30d' | '90d'>('30d');
+  const [isExporting, setIsExporting] = useState(false);
 
   // Auto-sync LinkedIn analytics on login
   const { isSyncing: isAutoSyncing, lastSyncTime } = useAutoSync(dbPublishers, user?.id);
+
+  const handleExport = async (includeCommenters: boolean) => {
+    if (!currentWorkspace) return;
+    setIsExporting(true);
+    try {
+      const { rows } = await exportWorkspaceReactors(
+        currentWorkspace.id,
+        currentWorkspace.slug,
+        { includeCommenters }
+      );
+      toast({ title: 'Export ready', description: `${rows} engager${rows === 1 ? '' : 's'} exported.` });
+    } catch (e: any) {
+      toast({ title: 'Export failed', description: e?.message || 'Could not export', variant: 'destructive' });
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   const { stats, trendData, topPosts, publisherRanking, isLoading } = useAnalytics(null, timeRange);
 
