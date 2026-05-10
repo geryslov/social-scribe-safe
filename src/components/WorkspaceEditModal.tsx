@@ -45,6 +45,7 @@ export function WorkspaceEditModal({ workspace, open, onOpenChange }: WorkspaceE
     setLogoUrl(workspace.logoUrl || '');
     setTheme((workspace.theme as WorkspaceTheme) || {});
     setSystemPrompt(workspace.systemPrompt || '');
+    setSlackWebhookUrl(workspace.slackWebhookUrl || '');
   }, [workspace.id]);
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
