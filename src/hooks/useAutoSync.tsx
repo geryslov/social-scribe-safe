@@ -39,6 +39,7 @@ export function useAutoSync(publishers: Publisher[], userId: string | undefined)
             publisherName: publisher.name,
             success: false,
             syncedCount: 0,
+            slackNotifiedCount: 0,
           });
         }
       }
