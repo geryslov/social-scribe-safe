@@ -18,6 +18,7 @@ interface SyncResult {
   publisherName: string;
   success: boolean;
   syncedCount: number;
+  slackNotifiedCount?: number;
 }
 
 const LAST_SYNC_KEY = 'lastAutoSyncTimestamp';
