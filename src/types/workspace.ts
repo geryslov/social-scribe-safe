@@ -63,6 +63,7 @@ export const mapDbToWorkspace = (db: DbWorkspace): Workspace => ({
   description: db.description,
   theme: db.theme || {},
   systemPrompt: db.system_prompt,
+  slackWebhookUrl: db.slack_webhook_url ?? null,
   isTestWorkspace: db.is_test_workspace,
   createdAt: db.created_at,
   updatedAt: db.updated_at,
