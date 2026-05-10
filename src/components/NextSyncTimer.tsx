@@ -114,6 +114,7 @@ export function NextSyncTimer({ className, compact = false }: NextSyncTimerProps
 
   const successCount = last.results.filter((r) => r.success).length;
   const totalSynced = last.results.reduce((sum, r) => sum + r.syncedCount, 0);
+  const totalSlackNotified = last.results.reduce((sum, r) => sum + (r.slackNotifiedCount || 0), 0);
 
   return (
     <Popover>
