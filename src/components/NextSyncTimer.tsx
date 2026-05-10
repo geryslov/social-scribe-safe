@@ -87,6 +87,9 @@ export function NextSyncTimer({ className, compact = false }: NextSyncTimerProps
       toast.error(err.message || 'Sync failed');
     },
   });
+
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(t);
   }, []);
 
