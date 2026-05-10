@@ -14,7 +14,7 @@ export function useAutoSync(publishers: Publisher[], userId: string | undefined)
 
   const syncAllMutation = useMutation({
     mutationFn: async (connectedPublishers: Publisher[]) => {
-      const results: { publisherId: string; success: boolean; syncedCount: number }[] = [];
+      const results: { publisherId: string; publisherName: string; success: boolean; syncedCount: number }[] = [];
       
       for (const publisher of connectedPublishers) {
         try {
@@ -27,6 +27,7 @@ export function useAutoSync(publishers: Publisher[], userId: string | undefined)
           
           results.push({
             publisherId: publisher.id,
+            publisherName: publisher.name,
             success: true,
             syncedCount: data.syncedCount || 0,
           });
@@ -34,6 +35,7 @@ export function useAutoSync(publishers: Publisher[], userId: string | undefined)
           console.error(`Failed to sync publisher ${publisher.name}:`, err);
           results.push({
             publisherId: publisher.id,
+            publisherName: publisher.name,
             success: false,
             syncedCount: 0,
           });
@@ -54,8 +56,10 @@ export function useAutoSync(publishers: Publisher[], userId: string | undefined)
         toast.success(`Analytics synced for ${successCount} publisher${successCount !== 1 ? 's' : ''}`);
       }
       
-      // Store last sync timestamp
+      // Store last sync timestamp + per-publisher results
       localStorage.setItem(LAST_SYNC_KEY, Date.now().toString());
+      localStorage.setItem(LAST_SYNC_RESULTS_KEY, JSON.stringify(results));
+      window.dispatchEvent(new CustomEvent('autoSyncCompleted'));
     },
     onError: (error) => {
       console.error('Auto-sync failed:', error);
