@@ -58,32 +58,23 @@ serve(async (req) => {
     const namePart = actor_headline ? `${nameLink} — _${actor_headline}_` : nameLink;
     const reactionLabel = totalReactions === 1 ? '1 reaction' : `${totalReactions} reactions`;
 
+    const reactedToTarget = postUrl
+      ? `<${postUrl}|${publisher}'s post>`
+      : `${publisher}'s post`;
+    const titlePart = actor_headline ? `, ${actor_headline}` : '';
+
     const message = {
       blocks: [
         {
           type: 'section',
           text: {
             type: 'mrkdwn',
-            text: `${emoji} ${namePart} reacted to *${publisher}*'s post in _${workspaceName}_`,
+            text: `${emoji} ${nameLink}${titlePart}, reacted to ${reactedToTarget}`,
           },
         },
         {
           type: 'context',
           elements: [{ type: 'mrkdwn', text: `📊 ${reactionLabel} from this person in _${workspaceName}_` }],
-        },
-        ...(preview ? [{
-          type: 'section',
-          text: { type: 'mrkdwn', text: `> ${preview.replace(/\n/g, '\n> ')}` },
-        }] : []),
-        {
-          type: 'context',
-          elements: [{
-            type: 'mrkdwn',
-            text: [
-              actor_profile_url ? `<${actor_profile_url}|View profile>` : null,
-              postUrl ? `<${postUrl}|View post>` : null,
-            ].filter(Boolean).join(' · ') || ' ',
-          }],
         },
       ],
     };
