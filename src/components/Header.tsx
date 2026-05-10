@@ -60,12 +60,11 @@ export function Header() {
               />
             ) : (
               <>
-                <div
-                  className="h-8 w-8 rounded-lg flex items-center justify-center transition-all group-hover:scale-105"
-                  style={{ background: 'hsl(var(--primary))' }}
-                >
-                  <Building2 className="h-4 w-4 text-white" />
-                </div>
+                <img
+                  src="/app-logo.png"
+                  alt="ThoughtOS"
+                  className="h-8 w-8 rounded-lg transition-transform group-hover:scale-105"
+                />
                 <span className="text-base font-display font-extrabold tracking-tight hidden sm:block text-foreground">ThoughtOS</span>
               </>
             )}
