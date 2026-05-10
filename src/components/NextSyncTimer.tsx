@@ -180,6 +180,19 @@ export function NextSyncTimer({ className, compact = false }: NextSyncTimerProps
               </div>
             </>
           )}
+
+          <div className="pt-2 border-t">
+            <Button
+              size="sm"
+              variant="outline"
+              className="w-full h-8 text-xs"
+              onClick={() => syncNow.mutate()}
+              disabled={syncNow.isPending || publishers.filter((p) => p.linkedin_connected).length === 0}
+            >
+              <RefreshCw className={cn('h-3 w-3', syncNow.isPending && 'animate-spin')} />
+              {syncNow.isPending ? 'Syncing…' : 'Sync now'}
+            </Button>
+          </div>
         </div>
       </PopoverContent>
     </Popover>
