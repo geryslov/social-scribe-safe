@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import { useDocuments } from '@/hooks/useDocuments';
 import { WorkspaceSwitcher } from '@/components/WorkspaceSwitcher';
 import { useWorkspace } from '@/hooks/useWorkspace';
+import { NextSyncTimer } from '@/components/NextSyncTimer';
 
 interface WorkspaceTheme {
   primaryColor?: string;
@@ -107,6 +108,8 @@ export function Header() {
         </div>
 
         <div className="flex items-center gap-3">
+          {currentWorkspace?.slackWebhookUrl && <NextSyncTimer />}
+
           {isAdmin && (
             <div className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full bg-primary/10 text-primary font-semibold">
               <Flame className="h-3 w-3" />
