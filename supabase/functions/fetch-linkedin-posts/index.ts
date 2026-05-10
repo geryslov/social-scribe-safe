@@ -1078,7 +1078,7 @@ Deno.serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ success: true, syncedCount, followerCount, message: `Synced analytics for ${syncedCount} posts` }),
+      JSON.stringify({ success: true, syncedCount, slackNotifiedCount, followerCount, message: `Synced analytics for ${syncedCount} posts` }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
