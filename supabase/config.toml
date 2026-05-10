@@ -6,6 +6,9 @@ verify_jwt = false
 [functions.notify-slack]
 verify_jwt = false
 
+[functions.notify-slack-reaction]
+verify_jwt = false
+
 [functions.parse-document]
 verify_jwt = false
 
