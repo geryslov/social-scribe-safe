@@ -293,6 +293,7 @@ export function usePosts() {
             publisherName,
             publishedAt: new Date().toISOString(),
             workspaceUrl: window.location.origin,
+            workspaceId: currentWorkspace?.id,
           },
         }).catch((err) => {
           console.error('Failed to send Slack notification:', err);
