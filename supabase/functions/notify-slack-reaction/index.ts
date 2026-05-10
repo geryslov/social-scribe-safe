@@ -15,7 +15,7 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
   try {
-    const { post_id, actor_name, actor_headline, actor_profile_url, reaction_type } = await req.json();
+    const { post_id, actor_name, actor_headline, actor_profile_url, actor_urn, reaction_type } = await req.json();
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
@@ -38,11 +38,24 @@ serve(async (req) => {
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
+    // Total times this actor has reacted across the workspace's posts
+    let totalReactions = 1;
+    if (actor_urn && (post as any)?.workspace_id) {
+      const { data: reactionRows } = await supabase
+        .from('post_reactors')
+        .select('id, posts!inner(workspace_id)')
+        .eq('actor_urn', actor_urn)
+        .eq('posts.workspace_id', (post as any).workspace_id);
+      if (reactionRows && reactionRows.length > 0) totalReactions = reactionRows.length;
+    }
+
     const emoji = REACTION_EMOJI[(reaction_type || '').toUpperCase()] || '👍';
     const workspaceName = (post as any)?.workspaces?.name || 'Workspace';
     const publisher = post?.publisher_name || 'a publisher';
     const preview = (post?.content || '').slice(0, 140) + ((post?.content?.length || 0) > 140 ? '…' : '');
     const postUrl = post?.linkedin_post_url;
+    const nameLink = actor_profile_url ? `<${actor_profile_url}|${actor_name}>` : `*${actor_name}*`;
+    const reactionLabel = totalReactions === 1 ? '1 reaction' : `${totalReactions} reactions`;
 
     const message = {
       blocks: [
@@ -50,13 +63,17 @@ serve(async (req) => {
           type: 'section',
           text: {
             type: 'mrkdwn',
-            text: `${emoji} *${actor_name}* reacted to *${publisher}*'s post in _${workspaceName}_`,
+            text: `${emoji} ${nameLink} reacted to *${publisher}*'s post in _${workspaceName}_`,
           },
         },
         ...(actor_headline ? [{
           type: 'context',
           elements: [{ type: 'mrkdwn', text: actor_headline }],
         }] : []),
+        {
+          type: 'context',
+          elements: [{ type: 'mrkdwn', text: `📊 ${reactionLabel} from this person in _${workspaceName}_` }],
+        },
         ...(preview ? [{
           type: 'section',
           text: { type: 'mrkdwn', text: `> ${preview.replace(/\n/g, '\n> ')}` },
