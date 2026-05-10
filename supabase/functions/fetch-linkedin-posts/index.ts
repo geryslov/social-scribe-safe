@@ -925,6 +925,7 @@ Deno.serve(async (req) => {
     console.log(`Found ${appPosts.length} app-published posts to fetch analytics for`);
 
     let syncedCount = 0;
+    let slackNotifiedCount = 0;
     for (const post of appPosts) {
       try {
         const analyticsWithReactors = await fetchPostAnalytics(accessToken, post.linkedin_post_urn);
