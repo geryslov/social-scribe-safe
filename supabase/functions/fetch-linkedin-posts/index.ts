@@ -447,10 +447,18 @@ async function storeReactors(
   supabase: any,
   postId: string,
   reactors: ReactorData[]
-): Promise<void> {
-  if (reactors.length === 0) return;
-  
+): Promise<number> {
+  if (reactors.length === 0) return 0;
+
+  let newCount = 0;
   try {
+    // Look up existing actor URNs for this post to detect new reactors (which trigger Slack)
+    const { data: existing } = await supabase
+      .from('post_reactors')
+      .select('actor_urn')
+      .eq('post_id', postId);
+    const existingUrns = new Set((existing || []).map((r: any) => r.actor_urn));
+
     const rows = reactors.map(r => ({
       post_id: postId,
       actor_urn: r.actor_urn,
@@ -460,6 +468,8 @@ async function storeReactors(
       actor_avatar_url: r.actor_avatar_url,
       reaction_type: r.reaction_type,
     }));
+
+    newCount = rows.filter(r => !existingUrns.has(r.actor_urn)).length;
 
     // Upsert in batches of 50
     for (let i = 0; i < rows.length; i += 50) {
@@ -472,10 +482,11 @@ async function storeReactors(
         console.error('Failed to upsert reactors batch:', error);
       }
     }
-    console.log(`Stored ${rows.length} reactors for post ${postId}`);
+    console.log(`Stored ${rows.length} reactors for post ${postId} (${newCount} new)`);
   } catch (error) {
     console.error('Error storing reactors:', error);
   }
+  return newCount;
 }
 
 // Store comments in database
@@ -914,6 +925,7 @@ Deno.serve(async (req) => {
     console.log(`Found ${appPosts.length} app-published posts to fetch analytics for`);
 
     let syncedCount = 0;
+    let slackNotifiedCount = 0;
     for (const post of appPosts) {
       try {
         const analyticsWithReactors = await fetchPostAnalytics(accessToken, post.linkedin_post_urn);
@@ -1014,7 +1026,8 @@ Deno.serve(async (req) => {
           await saveAnalyticsSnapshot(supabase, post.id, analytics);
           
           // Store reactors
-          await storeReactors(supabase, post.id, reactors);
+          const newReactors = await storeReactors(supabase, post.id, reactors);
+          slackNotifiedCount += newReactors;
           
           // Fetch and store comments using resolved URN
           const commentUrn = resolvedUrn || post.linkedin_post_urn;
@@ -1065,7 +1078,7 @@ Deno.serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ success: true, syncedCount, followerCount, message: `Synced analytics for ${syncedCount} posts` }),
+      JSON.stringify({ success: true, syncedCount, slackNotifiedCount, followerCount, message: `Synced analytics for ${syncedCount} posts` }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 

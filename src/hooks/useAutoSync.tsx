@@ -14,7 +14,7 @@ export function useAutoSync(publishers: Publisher[], userId: string | undefined)
 
   const syncAllMutation = useMutation({
     mutationFn: async (connectedPublishers: Publisher[]) => {
-      const results: { publisherId: string; publisherName: string; success: boolean; syncedCount: number }[] = [];
+      const results: { publisherId: string; publisherName: string; success: boolean; syncedCount: number; slackNotifiedCount: number }[] = [];
       
       for (const publisher of connectedPublishers) {
         try {
@@ -30,6 +30,7 @@ export function useAutoSync(publishers: Publisher[], userId: string | undefined)
             publisherName: publisher.name,
             success: true,
             syncedCount: data.syncedCount || 0,
+            slackNotifiedCount: data.slackNotifiedCount || 0,
           });
         } catch (err) {
           console.error(`Failed to sync publisher ${publisher.name}:`, err);
@@ -38,6 +39,7 @@ export function useAutoSync(publishers: Publisher[], userId: string | undefined)
             publisherName: publisher.name,
             success: false,
             syncedCount: 0,
+            slackNotifiedCount: 0,
           });
         }
       }

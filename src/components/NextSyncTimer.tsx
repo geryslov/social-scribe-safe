@@ -18,6 +18,7 @@ interface SyncResult {
   publisherName: string;
   success: boolean;
   syncedCount: number;
+  slackNotifiedCount?: number;
 }
 
 const LAST_SYNC_KEY = 'lastAutoSyncTimestamp';
@@ -64,10 +65,10 @@ export function NextSyncTimer({ className, compact = false }: NextSyncTimerProps
           });
           if (error) throw error;
           if (data?.error) throw new Error(data.error);
-          results.push({ publisherId: p.id, publisherName: p.name, success: true, syncedCount: data?.syncedCount || 0 });
+          results.push({ publisherId: p.id, publisherName: p.name, success: true, syncedCount: data?.syncedCount || 0, slackNotifiedCount: data?.slackNotifiedCount || 0 });
         } catch (err) {
           console.error(`Failed to sync ${p.name}:`, err);
-          results.push({ publisherId: p.id, publisherName: p.name, success: false, syncedCount: 0 });
+          results.push({ publisherId: p.id, publisherName: p.name, success: false, syncedCount: 0, slackNotifiedCount: 0 });
         }
       }
       return results;
@@ -113,6 +114,7 @@ export function NextSyncTimer({ className, compact = false }: NextSyncTimerProps
 
   const successCount = last.results.filter((r) => r.success).length;
   const totalSynced = last.results.reduce((sum, r) => sum + r.syncedCount, 0);
+  const totalSlackNotified = last.results.reduce((sum, r) => sum + (r.slackNotifiedCount || 0), 0);
 
   return (
     <Popover>
@@ -158,6 +160,10 @@ export function NextSyncTimer({ className, compact = false }: NextSyncTimerProps
                   </>
                 )}
               </div>
+              <div className="text-xs text-muted-foreground">
+                <span className="font-semibold text-foreground">{totalSlackNotified}</span> profile
+                {totalSlackNotified !== 1 ? 's' : ''} sent to Slack
+              </div>
               <div className="max-h-48 overflow-y-auto space-y-1 pt-1 border-t">
                 {last.results.map((r) => (
                   <div
@@ -173,7 +179,9 @@ export function NextSyncTimer({ className, compact = false }: NextSyncTimerProps
                       <span className="truncate">{r.publisherName}</span>
                     </div>
                     <span className="text-muted-foreground tabular-nums">
-                      {r.success ? `${r.syncedCount} posts` : 'failed'}
+                      {r.success
+                        ? `${r.syncedCount} posts${(r.slackNotifiedCount || 0) > 0 ? ` · ${r.slackNotifiedCount} → Slack` : ''}`
+                        : 'failed'}
                     </span>
                   </div>
                 ))}
