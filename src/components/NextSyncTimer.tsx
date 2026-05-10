@@ -1,7 +1,12 @@
 import { useEffect, useState } from 'react';
-import { Clock, CheckCircle2, XCircle } from 'lucide-react';
+import { Clock, CheckCircle2, XCircle, RefreshCw } from 'lucide-react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Button } from '@/components/ui/button';
+import { supabase } from '@/integrations/supabase/client';
+import { usePublishers } from '@/hooks/usePublishers';
 
 interface NextSyncTimerProps {
   className?: string;
@@ -44,6 +49,44 @@ function formatRelative(ts: number) {
 export function NextSyncTimer({ className, compact = false }: NextSyncTimerProps) {
   const [now, setNow] = useState(() => new Date());
   const [last, setLast] = useState(() => readResults());
+  const { publishers } = usePublishers();
+  const queryClient = useQueryClient();
+
+  const syncNow = useMutation({
+    mutationFn: async () => {
+      const connected = publishers.filter((p) => p.linkedin_connected);
+      if (connected.length === 0) throw new Error('No LinkedIn-connected publishers');
+      const results: SyncResult[] = [];
+      for (const p of connected) {
+        try {
+          const { data, error } = await supabase.functions.invoke('fetch-linkedin-posts', {
+            body: { publisherId: p.id },
+          });
+          if (error) throw error;
+          if (data?.error) throw new Error(data.error);
+          results.push({ publisherId: p.id, publisherName: p.name, success: true, syncedCount: data?.syncedCount || 0 });
+        } catch (err) {
+          console.error(`Failed to sync ${p.name}:`, err);
+          results.push({ publisherId: p.id, publisherName: p.name, success: false, syncedCount: 0 });
+        }
+      }
+      return results;
+    },
+    onSuccess: (results) => {
+      const successCount = results.filter((r) => r.success).length;
+      localStorage.setItem(LAST_SYNC_KEY, Date.now().toString());
+      localStorage.setItem(LAST_SYNC_RESULTS_KEY, JSON.stringify(results));
+      window.dispatchEvent(new CustomEvent('autoSyncCompleted'));
+      queryClient.invalidateQueries({ queryKey: ['app-published-posts'] });
+      queryClient.invalidateQueries({ queryKey: ['analytics-posts'] });
+      queryClient.invalidateQueries({ queryKey: ['posts'] });
+      setLast(readResults());
+      toast.success(`Synced ${successCount} of ${results.length} publisher${results.length !== 1 ? 's' : ''}`);
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || 'Sync failed');
+    },
+  });
 
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 1000);
@@ -137,6 +180,19 @@ export function NextSyncTimer({ className, compact = false }: NextSyncTimerProps
               </div>
             </>
           )}
+
+          <div className="pt-2 border-t">
+            <Button
+              size="sm"
+              variant="outline"
+              className="w-full h-8 text-xs"
+              onClick={() => syncNow.mutate()}
+              disabled={syncNow.isPending || publishers.filter((p) => p.linkedin_connected).length === 0}
+            >
+              <RefreshCw className={cn('h-3 w-3', syncNow.isPending && 'animate-spin')} />
+              {syncNow.isPending ? 'Syncing…' : 'Sync now'}
+            </Button>
+          </div>
         </div>
       </PopoverContent>
     </Popover>
