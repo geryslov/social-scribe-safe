@@ -6,6 +6,7 @@ import { Publisher } from './usePublishers';
 
 const SYNC_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes cooldown between syncs
 const LAST_SYNC_KEY = 'lastAutoSyncTimestamp';
+const LAST_SYNC_RESULTS_KEY = 'lastAutoSyncResults';
 
 export function useAutoSync(publishers: Publisher[], userId: string | undefined) {
   const queryClient = useQueryClient();
