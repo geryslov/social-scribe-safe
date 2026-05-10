@@ -31,6 +31,7 @@ export function WorkspaceEditModal({ workspace, open, onOpenChange }: WorkspaceE
   const [logoUrl, setLogoUrl] = useState(workspace.logoUrl || '');
   const [theme, setTheme] = useState<WorkspaceTheme>((workspace.theme as WorkspaceTheme) || {});
   const [systemPrompt, setSystemPrompt] = useState(workspace.systemPrompt || '');
+  const [slackWebhookUrl, setSlackWebhookUrl] = useState(workspace.slackWebhookUrl || '');
   const [isUploading, setIsUploading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
