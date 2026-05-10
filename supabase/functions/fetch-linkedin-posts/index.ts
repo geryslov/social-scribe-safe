@@ -1026,7 +1026,8 @@ Deno.serve(async (req) => {
           await saveAnalyticsSnapshot(supabase, post.id, analytics);
           
           // Store reactors
-          await storeReactors(supabase, post.id, reactors);
+          const newReactors = await storeReactors(supabase, post.id, reactors);
+          slackNotifiedCount += newReactors;
           
           // Fetch and store comments using resolved URN
           const commentUrn = resolvedUrn || post.linkedin_post_urn;
