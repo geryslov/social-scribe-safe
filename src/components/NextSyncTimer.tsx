@@ -49,9 +49,44 @@ function formatRelative(ts: number) {
 export function NextSyncTimer({ className, compact = false }: NextSyncTimerProps) {
   const [now, setNow] = useState(() => new Date());
   const [last, setLast] = useState(() => readResults());
+  const { publishers } = usePublishers();
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    const t = setInterval(() => setNow(new Date()), 1000);
+  const syncNow = useMutation({
+    mutationFn: async () => {
+      const connected = publishers.filter((p) => p.linkedin_connected);
+      if (connected.length === 0) throw new Error('No LinkedIn-connected publishers');
+      const results: SyncResult[] = [];
+      for (const p of connected) {
+        try {
+          const { data, error } = await supabase.functions.invoke('fetch-linkedin-posts', {
+            body: { publisherId: p.id },
+          });
+          if (error) throw error;
+          if (data?.error) throw new Error(data.error);
+          results.push({ publisherId: p.id, publisherName: p.name, success: true, syncedCount: data?.syncedCount || 0 });
+        } catch (err) {
+          console.error(`Failed to sync ${p.name}:`, err);
+          results.push({ publisherId: p.id, publisherName: p.name, success: false, syncedCount: 0 });
+        }
+      }
+      return results;
+    },
+    onSuccess: (results) => {
+      const successCount = results.filter((r) => r.success).length;
+      localStorage.setItem(LAST_SYNC_KEY, Date.now().toString());
+      localStorage.setItem(LAST_SYNC_RESULTS_KEY, JSON.stringify(results));
+      window.dispatchEvent(new CustomEvent('autoSyncCompleted'));
+      queryClient.invalidateQueries({ queryKey: ['app-published-posts'] });
+      queryClient.invalidateQueries({ queryKey: ['analytics-posts'] });
+      queryClient.invalidateQueries({ queryKey: ['posts'] });
+      setLast(readResults());
+      toast.success(`Synced ${successCount} of ${results.length} publisher${results.length !== 1 ? 's' : ''}`);
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || 'Sync failed');
+    },
+  });
     return () => clearInterval(t);
   }, []);
 
