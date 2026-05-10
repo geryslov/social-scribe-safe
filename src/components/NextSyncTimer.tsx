@@ -179,7 +179,9 @@ export function NextSyncTimer({ className, compact = false }: NextSyncTimerProps
                       <span className="truncate">{r.publisherName}</span>
                     </div>
                     <span className="text-muted-foreground tabular-nums">
-                      {r.success ? `${r.syncedCount} posts` : 'failed'}
+                      {r.success
+                        ? `${r.syncedCount} posts${(r.slackNotifiedCount || 0) > 0 ? ` · ${r.slackNotifiedCount} → Slack` : ''}`
+                        : 'failed'}
                     </span>
                   </div>
                 ))}
