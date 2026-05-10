@@ -160,6 +160,10 @@ export function NextSyncTimer({ className, compact = false }: NextSyncTimerProps
                   </>
                 )}
               </div>
+              <div className="text-xs text-muted-foreground">
+                <span className="font-semibold text-foreground">{totalSlackNotified}</span> profile
+                {totalSlackNotified !== 1 ? 's' : ''} sent to Slack
+              </div>
               <div className="max-h-48 overflow-y-auto space-y-1 pt-1 border-t">
                 {last.results.map((r) => (
                   <div
