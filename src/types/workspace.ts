@@ -9,6 +9,7 @@ export interface Workspace {
   description: string | null;
   theme: Record<string, unknown>;
   systemPrompt: string | null;
+  slackWebhookUrl: string | null;
   isTestWorkspace: boolean;
   createdAt: string;
   updatedAt: string;
