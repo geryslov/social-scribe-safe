@@ -91,6 +91,7 @@ export function WorkspaceEditModal({ workspace, open, onOpenChange }: WorkspaceE
         logoUrl: logoUrl || undefined,
         theme: theme as Record<string, unknown>,
         systemPrompt: systemPrompt || null,
+        slackWebhookUrl: slackWebhookUrl.trim() || null,
       });
       onOpenChange(false);
     } finally {
