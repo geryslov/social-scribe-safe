@@ -10,7 +10,32 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useWorkspaces } from '@/hooks/useWorkspaces';
 import { Workspace } from '@/types/workspace';
 import { supabase } from '@/integrations/supabase/client';
-import { Building2, Upload, Trash2, Loader2, Sparkles } from 'lucide-react';
+import { Building2, Upload, Trash2, Loader2, Sparkles, Clock } from 'lucide-react';
+
+function NextSyncTimer() {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(t);
+  }, []);
+  const next = new Date(now);
+  next.setHours(next.getHours() + 1, 0, 0, 0);
+  const diff = Math.max(0, next.getTime() - now.getTime());
+  const m = Math.floor(diff / 60000);
+  const s = Math.floor((diff % 60000) / 1000);
+  return (
+    <div className="flex items-center gap-2 rounded-md border bg-muted/40 px-3 py-2 text-xs">
+      <Clock className="h-3.5 w-3.5 text-primary" />
+      <span className="text-muted-foreground">Next sync in</span>
+      <span className="font-mono font-semibold tabular-nums">
+        {String(m).padStart(2, '0')}:{String(s).padStart(2, '0')}
+      </span>
+      <span className="text-muted-foreground">
+        · at {next.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+      </span>
+    </div>
+  );
+}
 import { toast } from 'sonner';
 import { WorkspaceThemeEditor, WorkspaceTheme } from './WorkspaceThemeEditor';
 
