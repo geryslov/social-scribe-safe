@@ -176,6 +176,21 @@ export function WorkspaceEditModal({ workspace, open, onOpenChange }: WorkspaceE
                 onCheckedChange={setInviteEnabled}
               />
             </div>
+
+            {/* Slack webhook */}
+            <div className="space-y-2">
+              <Label htmlFor="slack-webhook">Slack Webhook URL</Label>
+              <Input
+                id="slack-webhook"
+                type="url"
+                value={slackWebhookUrl}
+                onChange={(e) => setSlackWebhookUrl(e.target.value)}
+                placeholder="https://hooks.slack.com/services/..."
+              />
+              <p className="text-xs text-muted-foreground">
+                Reaction & publish notifications for this workspace will be sent to this Slack channel. Create an Incoming Webhook in Slack pointing to the channel you want, then paste the URL here.
+              </p>
+            </div>
           </TabsContent>
 
           <TabsContent value="branding" className="space-y-4 mt-4">
