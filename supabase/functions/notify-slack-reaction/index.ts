@@ -55,6 +55,7 @@ serve(async (req) => {
     const preview = (post?.content || '').slice(0, 140) + ((post?.content?.length || 0) > 140 ? '…' : '');
     const postUrl = post?.linkedin_post_url;
     const nameLink = actor_profile_url ? `<${actor_profile_url}|${actor_name}>` : `*${actor_name}*`;
+    const namePart = actor_headline ? `${nameLink} — _${actor_headline}_` : nameLink;
     const reactionLabel = totalReactions === 1 ? '1 reaction' : `${totalReactions} reactions`;
 
     const message = {
@@ -63,13 +64,9 @@ serve(async (req) => {
           type: 'section',
           text: {
             type: 'mrkdwn',
-            text: `${emoji} ${nameLink} reacted to *${publisher}*'s post in _${workspaceName}_`,
+            text: `${emoji} ${namePart} reacted to *${publisher}*'s post in _${workspaceName}_`,
           },
         },
-        ...(actor_headline ? [{
-          type: 'context',
-          elements: [{ type: 'mrkdwn', text: actor_headline }],
-        }] : []),
         {
           type: 'context',
           elements: [{ type: 'mrkdwn', text: `📊 ${reactionLabel} from this person in _${workspaceName}_` }],
