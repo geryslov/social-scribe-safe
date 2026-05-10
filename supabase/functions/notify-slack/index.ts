@@ -10,6 +10,7 @@ interface SlackNotificationRequest {
   publisherName: string;
   publishedAt: string;
   workspaceUrl: string;
+  workspaceId?: string;
 }
 
 serve(async (req) => {
@@ -19,17 +20,36 @@ serve(async (req) => {
   }
 
   try {
-    const slackWebhookUrl = Deno.env.get('SLACK_WEBHOOK_URL');
-    
+    const { workspaceName, publisherName, publishedAt, workspaceUrl, workspaceId }: SlackNotificationRequest = await req.json();
+
+    // Resolve per-workspace webhook (fallback to global env)
+    let slackWebhookUrl: string | null = null;
+    if (workspaceId) {
+      try {
+        const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2.45.0');
+        const supabase = createClient(
+          Deno.env.get('SUPABASE_URL')!,
+          Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+        );
+        const { data: ws } = await supabase
+          .from('workspaces')
+          .select('slack_webhook_url')
+          .eq('id', workspaceId)
+          .maybeSingle();
+        slackWebhookUrl = (ws?.slack_webhook_url as string | null) || null;
+      } catch (e) {
+        console.error('Failed to fetch workspace webhook', e);
+      }
+    }
+    if (!slackWebhookUrl) slackWebhookUrl = Deno.env.get('SLACK_WEBHOOK_URL') ?? null;
+
     if (!slackWebhookUrl) {
-      console.error('SLACK_WEBHOOK_URL not configured');
+      console.log('No Slack webhook configured. Skipping.');
       return new Response(
-        JSON.stringify({ error: 'Slack webhook URL not configured' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ skipped: true }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-
-    const { workspaceName, publisherName, publishedAt, workspaceUrl }: SlackNotificationRequest = await req.json();
 
     console.log('Sending Slack notification:', { workspaceName, publisherName, publishedAt, workspaceUrl });
 
