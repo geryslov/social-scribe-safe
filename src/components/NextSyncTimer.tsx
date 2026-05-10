@@ -65,10 +65,10 @@ export function NextSyncTimer({ className, compact = false }: NextSyncTimerProps
           });
           if (error) throw error;
           if (data?.error) throw new Error(data.error);
-          results.push({ publisherId: p.id, publisherName: p.name, success: true, syncedCount: data?.syncedCount || 0 });
+          results.push({ publisherId: p.id, publisherName: p.name, success: true, syncedCount: data?.syncedCount || 0, slackNotifiedCount: data?.slackNotifiedCount || 0 });
         } catch (err) {
           console.error(`Failed to sync ${p.name}:`, err);
-          results.push({ publisherId: p.id, publisherName: p.name, success: false, syncedCount: 0 });
+          results.push({ publisherId: p.id, publisherName: p.name, success: false, syncedCount: 0, slackNotifiedCount: 0 });
         }
       }
       return results;
