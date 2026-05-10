@@ -908,6 +908,7 @@ export type Database = {
           is_test_workspace: boolean | null
           logo_url: string | null
           name: string
+          slack_webhook_url: string | null
           slug: string
           system_prompt: string | null
           theme: Json | null
@@ -924,6 +925,7 @@ export type Database = {
           is_test_workspace?: boolean | null
           logo_url?: string | null
           name: string
+          slack_webhook_url?: string | null
           slug: string
           system_prompt?: string | null
           theme?: Json | null
@@ -940,6 +942,7 @@ export type Database = {
           is_test_workspace?: boolean | null
           logo_url?: string | null
           name?: string
+          slack_webhook_url?: string | null
           slug?: string
           system_prompt?: string | null
           theme?: Json | null
