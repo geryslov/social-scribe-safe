@@ -36,6 +36,7 @@ export interface DbWorkspace {
   description: string | null;
   theme: Record<string, unknown>;
   system_prompt: string | null;
+  slack_webhook_url: string | null;
   is_test_workspace: boolean;
   created_at: string;
   updated_at: string;
