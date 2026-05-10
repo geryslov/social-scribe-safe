@@ -9,6 +9,7 @@ export interface Workspace {
   description: string | null;
   theme: Record<string, unknown>;
   systemPrompt: string | null;
+  slackWebhookUrl: string | null;
   isTestWorkspace: boolean;
   createdAt: string;
   updatedAt: string;
@@ -35,6 +36,7 @@ export interface DbWorkspace {
   description: string | null;
   theme: Record<string, unknown>;
   system_prompt: string | null;
+  slack_webhook_url: string | null;
   is_test_workspace: boolean;
   created_at: string;
   updated_at: string;
@@ -61,6 +63,7 @@ export const mapDbToWorkspace = (db: DbWorkspace): Workspace => ({
   description: db.description,
   theme: db.theme || {},
   systemPrompt: db.system_prompt,
+  slackWebhookUrl: db.slack_webhook_url ?? null,
   isTestWorkspace: db.is_test_workspace,
   createdAt: db.created_at,
   updatedAt: db.updated_at,

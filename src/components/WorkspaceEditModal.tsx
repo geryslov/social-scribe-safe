@@ -31,6 +31,7 @@ export function WorkspaceEditModal({ workspace, open, onOpenChange }: WorkspaceE
   const [logoUrl, setLogoUrl] = useState(workspace.logoUrl || '');
   const [theme, setTheme] = useState<WorkspaceTheme>((workspace.theme as WorkspaceTheme) || {});
   const [systemPrompt, setSystemPrompt] = useState(workspace.systemPrompt || '');
+  const [slackWebhookUrl, setSlackWebhookUrl] = useState(workspace.slackWebhookUrl || '');
   const [isUploading, setIsUploading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -44,6 +45,7 @@ export function WorkspaceEditModal({ workspace, open, onOpenChange }: WorkspaceE
     setLogoUrl(workspace.logoUrl || '');
     setTheme((workspace.theme as WorkspaceTheme) || {});
     setSystemPrompt(workspace.systemPrompt || '');
+    setSlackWebhookUrl(workspace.slackWebhookUrl || '');
   }, [workspace.id]);
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -89,6 +91,7 @@ export function WorkspaceEditModal({ workspace, open, onOpenChange }: WorkspaceE
         logoUrl: logoUrl || undefined,
         theme: theme as Record<string, unknown>,
         systemPrompt: systemPrompt || null,
+        slackWebhookUrl: slackWebhookUrl.trim() || null,
       });
       onOpenChange(false);
     } finally {
@@ -172,6 +175,21 @@ export function WorkspaceEditModal({ workspace, open, onOpenChange }: WorkspaceE
                 checked={inviteEnabled}
                 onCheckedChange={setInviteEnabled}
               />
+            </div>
+
+            {/* Slack webhook */}
+            <div className="space-y-2">
+              <Label htmlFor="slack-webhook">Slack Webhook URL</Label>
+              <Input
+                id="slack-webhook"
+                type="url"
+                value={slackWebhookUrl}
+                onChange={(e) => setSlackWebhookUrl(e.target.value)}
+                placeholder="https://hooks.slack.com/services/..."
+              />
+              <p className="text-xs text-muted-foreground">
+                Reaction & publish notifications for this workspace will be sent to this Slack channel. Create an Incoming Webhook in Slack pointing to the channel you want, then paste the URL here.
+              </p>
             </div>
           </TabsContent>
 

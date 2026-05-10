@@ -105,6 +105,7 @@ export function useWorkspaces() {
       logoUrl?: string;
       theme?: Record<string, unknown>;
       systemPrompt?: string | null;
+      slackWebhookUrl?: string | null;
     }) => {
       const updates: Record<string, unknown> = {};
       if (data.name !== undefined) updates.name = data.name;
@@ -114,6 +115,7 @@ export function useWorkspaces() {
       if (data.logoUrl !== undefined) updates.logo_url = data.logoUrl;
       if (data.theme !== undefined) updates.theme = data.theme;
       if (data.systemPrompt !== undefined) updates.system_prompt = data.systemPrompt;
+      if (data.slackWebhookUrl !== undefined) updates.slack_webhook_url = data.slackWebhookUrl;
       
       const { error } = await supabase
         .from('workspaces')
