@@ -15,12 +15,6 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
   try {
-    const slackWebhookUrl = Deno.env.get('SLACK_WEBHOOK_URL');
-    if (!slackWebhookUrl) {
-      return new Response(JSON.stringify({ error: 'SLACK_WEBHOOK_URL not configured' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-    }
-
     const { post_id, actor_name, actor_headline, actor_profile_url, reaction_type } = await req.json();
 
     const supabase = createClient(
@@ -28,12 +22,21 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
 
-    // Fetch post + workspace context
+    // Fetch post + workspace context (incl. per-workspace webhook)
     const { data: post } = await supabase
       .from('posts')
-      .select('id, content, publisher_name, linkedin_post_url, workspace_id, workspaces(name)')
+      .select('id, content, publisher_name, linkedin_post_url, workspace_id, workspaces(name, slack_webhook_url)')
       .eq('id', post_id)
       .maybeSingle();
+
+    const workspaceWebhook = (post as any)?.workspaces?.slack_webhook_url as string | null | undefined;
+    const slackWebhookUrl = workspaceWebhook || Deno.env.get('SLACK_WEBHOOK_URL');
+
+    if (!slackWebhookUrl) {
+      console.log('No Slack webhook configured for workspace and no global fallback. Skipping.');
+      return new Response(JSON.stringify({ skipped: true }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
 
     const emoji = REACTION_EMOJI[(reaction_type || '').toUpperCase()] || '👍';
     const workspaceName = (post as any)?.workspaces?.name || 'Workspace';
