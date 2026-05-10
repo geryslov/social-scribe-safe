@@ -215,7 +215,7 @@ export function WorkspaceEditModal({ workspace, open, onOpenChange }: WorkspaceE
               <p className="text-xs text-muted-foreground">
                 Reaction & publish notifications for this workspace will be sent to this Slack channel. Create an Incoming Webhook in Slack pointing to the channel you want, then paste the URL here.
               </p>
-              {workspace.slackWebhookUrl && <NextSyncTimer />}
+              {slackWebhookUrl.trim() && <NextSyncTimer />}
             </div>
           </TabsContent>
 
