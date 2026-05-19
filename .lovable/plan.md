@@ -1,45 +1,79 @@
-## Per-Workspace Reactors Export
+## Deliverable
 
-Add an in-app button so each workspace can export its own engagers (reactors + commenters) as a CSV — same shape as the file I just generated, but scoped to the current workspace and runnable by any workspace member.
+A polished, investor/sales-oriented PDF saved to `/mnt/documents/ThoughtOS-Features-Overview.pdf` covering every feature in the product, with a "what it does" and "how it works under the hood" section for each.
 
-### Where the button goes
+Tone: confident, benefits-led, technically credible (so it doubles as a sales leave-behind and a due-diligence primer). No fluff, no emojis, ThoughtOS brand colors (violet `#7C3AED` + cyan `#06B6D4`).
 
-Add an "Export engagers (CSV)" button in the Analytics page header (`src/pages/Analytics.tsx`), next to the existing time range / filter controls. Visible to any user with workspace access (no admin gate — they only get their own workspace's data via RLS).
+## Structure of the PDF
 
-### How the export works (client-side)
-
-1. Read `currentWorkspace.id` from `useWorkspace()`.
-2. Query `posts` filtered by `workspace_id` to get post IDs + publisher_name + scheduled/published date (RLS already restricts this to the user's workspace).
-3. Query `post_reactors` where `post_id IN (...workspace post ids...)`.
-4. Query `post_comments` where `post_id IN (...)` (optional second sheet — see below).
-5. Aggregate in the browser by `actor_urn` (or `actor_profile_url` fallback):
-   - name, headline, profile URL
-   - total_reactions, posts_engaged
-   - breakdown per reaction type (like / celebrate / love / insightful / support / funny / curious)
-   - first_reaction, last_reaction
-6. Convert to CSV string and trigger download via a Blob + `<a download>` — no server roundtrip needed.
-
-### CSV columns
-
-```
-actor_name, actor_headline, actor_profile_url,
-total_reactions, posts_engaged,
-likes, celebrate, love, insightful, support, funny, curious,
-first_reaction, last_reaction
+```text
+Cover
+  - ThoughtOS logo, tagline, date
+Executive summary
+  - One paragraph on the category (multi-publisher LinkedIn orchestration)
+  - 4 KPI tiles: # of feature pillars, integrations, AI models, data points tracked
+Section 1 — Workspaces & access
+Section 2 — Publishers & LinkedIn identity
+Section 3 — Content creation (AI documents, sections, drafts)
+Section 4 — Publishing pipeline (scheduling, direct push, media)
+Section 5 — Analytics & intelligence
+Section 6 — Audience & engagers (reactors, commenters, export)
+Section 7 — Slack & notifications
+Section 8 — Automation & sync engine
+Section 9 — Security & multi-tenant isolation
+Appendix — Tech stack and AI model routing
 ```
 
-Filename: `{workspace-slug}-engagers-{YYYY-MM-DD}.csv`
+Each feature card uses the same two-block format:
 
-### Optional: include commenters
+```text
+┌─────────────────────────────────────────┐
+│ FEATURE NAME                            │
+│ What it does (1–3 sentences, benefit)   │
+│ ───────────────────────────────────────│
+│ How it works (data flow, models, APIs)  │
+└─────────────────────────────────────────┘
+```
 
-Add a small dropdown on the button: "Reactors only" / "Reactors + Commenters". When commenters are included, add columns `total_comments` and `total_engagements` (reactions + comments) and merge by profile URL.
+## Features that will be documented
 
-### Files to change
+Drawn from project memory + codebase:
 
-- `src/pages/Analytics.tsx` — add button + handler
-- `src/lib/exportReactors.ts` (new) — pure function `exportWorkspaceReactors(workspaceId, workspaceSlug, opts)` that does the queries, aggregation, CSV build, and download trigger
+1. **Multi-tenant workspaces** — invite links, `/w/:slug` routing, RLS isolation, workspace switcher, custom branding (logo, theme CSS vars).
+2. **Admin role & access control** — global admin dashboard, role-based gating, signup restrictions.
+3. **LinkedIn SSO & publisher identity** — OpenID Connect, Base64 state param, scope set, avatar snapshotting, vanity URL derivation, company enrichment.
+4. **Publisher sidebar & assignment** — bulk assignment tool, document/section ownership, deletion constraints.
+5. **AI document creation** — Claude 4.5 Sonnet for high-volume parsing/generation, Gemini for rewrites, tone personas, multi-source URL ingestion, PDF chunked extraction with vision fallback, mandatory appendix architecture.
+6. **Document editor** — section parsing (markdown + unstructured), auto-draft creation per section, edit history with LCS diffing, comments (workspace-scoped).
+7. **Content framework** — hook-driven micro-paragraphs, no-bold rule, sourced appendix.
+8. **Post creation & media** — image/video upload, file-size bounds, inline media edits in feed.
+9. **Direct LinkedIn publishing** — push-button posting, scheduling via pg_cron auto-publish scheduler.
+10. **LinkedIn analytics** — internal + external post tracking via URNs, snapshot history, unique reach vs impressions, momentum/week-over-week velocity, reaction-type breakdown, video milestones, conversation depth, link clicks, organic vs paid (Ads API).
+11. **Follower growth tracking** — snapshot history charting.
+12. **Post-level analytics UI** — PostRow metrics, drill-down filters on the Posts page.
+13. **Engagers** — reactor + commenter tracking, deduplicated audience view, per-workspace CSV export.
+14. **Slack notifications** — published-post alerts + new-reaction alerts via `net.http_post` trigger.
+15. **Sync engine** — auto-sync timer, manual "Sync now", per-publisher results popover with Slack-notification counts, API versioning + cooldown caching.
+16. **Security** — publisher OAuth token isolation, RLS everywhere, workspace authorization rules.
 
-### Notes
+## How the PDF will be built
 
-- No DB / RLS changes needed — `post_reactors` is already SELECT-public and `posts` is workspace-scoped, so joining on workspace post IDs naturally restricts the export.
-- For very large workspaces we'll page the `post_reactors` query in chunks of 1000 (Supabase default limit).
+- Python + ReportLab Platypus (already covered by the bundled PDF skill).
+- Brand palette applied via custom `ParagraphStyle`s; section dividers in violet, accent rules in cyan.
+- Cover page with large wordmark, subtle gradient band.
+- Body in a clean sans (Helvetica fallback — ReportLab built-in to avoid font-embedding issues).
+- Two-column feature cards on letter-size pages with generous whitespace.
+- Page numbers + footer with "ThoughtOS — Confidential".
+
+## Process
+
+1. Read a small set of files to confirm current feature surface (Posts page, Analytics page, NextSyncTimer, useAutoSync, fetch-linkedin-posts edge function, workspace hooks) — purely to make claims accurate.
+2. Generate `/tmp/build_features_pdf.py` and run it.
+3. QA: render every page to JPG via `pdftoppm`, inspect for overflow/clipping/contrast, iterate until clean.
+4. Deliver via `<presentation-artifact>` pointing at `ThoughtOS-Features-Overview.pdf`.
+
+## Out of scope
+
+- No code or UI changes in the app.
+- No screenshots of the live product (kept text-only for speed; can add in a follow-up if you want a richer deck).
+- No pricing, roadmap, or financials — features only.
