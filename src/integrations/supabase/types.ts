@@ -950,6 +950,307 @@ export type Database = {
         }
         Relationships: []
       }
+      // =====================================================================
+      // Intelligence Layer tables
+      // =====================================================================
+      intelligence_items: {
+        Row: {
+          id: string
+          workspace_id: string
+          publisher_id: string
+          research_run_id: string | null
+          topic_id: string | null
+          source_type: string
+          title: string
+          url: string
+          content_snippet: string | null
+          author: string | null
+          published_at: string | null
+          engagement_score: number
+          upvotes: number
+          comments_count: number
+          views: number
+          points: number
+          source_metadata: Json
+          is_used_in_document: boolean
+          used_in_document_id: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          workspace_id: string
+          publisher_id: string
+          research_run_id?: string | null
+          topic_id?: string | null
+          source_type: string
+          title: string
+          url: string
+          content_snippet?: string | null
+          author?: string | null
+          published_at?: string | null
+          engagement_score?: number
+          upvotes?: number
+          comments_count?: number
+          views?: number
+          points?: number
+          source_metadata?: Json
+          is_used_in_document?: boolean
+          used_in_document_id?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          workspace_id?: string
+          publisher_id?: string
+          research_run_id?: string | null
+          topic_id?: string | null
+          source_type?: string
+          title?: string
+          url?: string
+          content_snippet?: string | null
+          author?: string | null
+          published_at?: string | null
+          engagement_score?: number
+          upvotes?: number
+          comments_count?: number
+          views?: number
+          points?: number
+          source_metadata?: Json
+          is_used_in_document?: boolean
+          used_in_document_id?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "intelligence_items_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "intelligence_items_publisher_id_fkey"
+            columns: ["publisher_id"]
+            isOneToOne: false
+            referencedRelation: "publishers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "intelligence_items_research_run_id_fkey"
+            columns: ["research_run_id"]
+            isOneToOne: false
+            referencedRelation: "research_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "intelligence_items_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "monitoring_topics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "intelligence_items_used_in_document_id_fkey"
+            columns: ["used_in_document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      monitoring_topics: {
+        Row: {
+          id: string
+          workspace_id: string
+          publisher_id: string
+          topic_type: string
+          topic_value: string
+          is_active: boolean
+          created_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          workspace_id: string
+          publisher_id: string
+          topic_type: string
+          topic_value: string
+          is_active?: boolean
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          workspace_id?: string
+          publisher_id?: string
+          topic_type?: string
+          topic_value?: string
+          is_active?: boolean
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "monitoring_topics_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "monitoring_topics_publisher_id_fkey"
+            columns: ["publisher_id"]
+            isOneToOne: false
+            referencedRelation: "publishers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      research_runs: {
+        Row: {
+          id: string
+          workspace_id: string
+          publisher_id: string
+          status: string
+          trigger_type: string
+          sources_used: string[]
+          topics_searched: string[]
+          items_found: number
+          started_at: string | null
+          completed_at: string | null
+          error_message: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          workspace_id: string
+          publisher_id: string
+          status?: string
+          trigger_type?: string
+          sources_used?: string[]
+          topics_searched?: string[]
+          items_found?: number
+          started_at?: string | null
+          completed_at?: string | null
+          error_message?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          workspace_id?: string
+          publisher_id?: string
+          status?: string
+          trigger_type?: string
+          sources_used?: string[]
+          topics_searched?: string[]
+          items_found?: number
+          started_at?: string | null
+          completed_at?: string | null
+          error_message?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "research_runs_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "research_runs_publisher_id_fkey"
+            columns: ["publisher_id"]
+            isOneToOne: false
+            referencedRelation: "publishers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workspace_api_keys: {
+        Row: {
+          id: string
+          workspace_id: string
+          service_name: string
+          api_key_encrypted: string
+          key_hint: string | null
+          is_valid: boolean | null
+          last_validated_at: string | null
+          created_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          workspace_id: string
+          service_name: string
+          api_key_encrypted: string
+          key_hint?: string | null
+          is_valid?: boolean | null
+          last_validated_at?: string | null
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          workspace_id?: string
+          service_name?: string
+          api_key_encrypted?: string
+          key_hint?: string | null
+          is_valid?: boolean | null
+          last_validated_at?: string | null
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workspace_api_keys_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workspace_research_settings: {
+        Row: {
+          id: string
+          workspace_id: string
+          schedule_frequency: string
+          schedule_enabled: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          workspace_id: string
+          schedule_frequency?: string
+          schedule_enabled?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          workspace_id?: string
+          schedule_frequency?: string
+          schedule_enabled?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workspace_research_settings_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: true
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

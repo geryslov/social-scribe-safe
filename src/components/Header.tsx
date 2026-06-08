@@ -1,4 +1,4 @@
-import { Flame, LogOut, LogIn, FileText, LayoutDashboard, BarChart3, Building2 } from 'lucide-react';
+import { Flame, LogOut, LogIn, FileText, LayoutDashboard, BarChart3, Building2, Zap } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -34,6 +34,7 @@ export function Header() {
     { path: '/', label: 'Posts', icon: LayoutDashboard, badge: 0 },
     { path: '/analytics', label: 'Analytics', icon: BarChart3, badge: 0 },
     { path: '/documents', label: 'Documents', icon: FileText, badge: documentsInReview },
+    { path: '/intelligence', label: 'Intelligence', icon: Zap, badge: 0 },
     ...(isAdmin ? [{ path: '/admin', label: 'Admin', icon: Flame, badge: 0 }] : []),
   ];
 
