@@ -37,7 +37,7 @@ function timeAgoShort(dateStr: string | null): string {
 
 export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarget }: ContactListProps) {
   const { currentWorkspace } = useWorkspace();
-  const { targets, isLoading, createTarget } = useEngagementTargets(publisher.id);
+  const { targets, isLoading, createTarget, enrichTarget } = useEngagementTargets(publisher.id);
   const fetchPosts = useFetchTargetPosts();
 
   const [search, setSearch] = useState('');
