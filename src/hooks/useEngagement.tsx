@@ -82,6 +82,11 @@ export function useEngagementTargets(publisherId: string | null) {
       return data as EngagementTarget[];
     },
     enabled: !!currentWorkspace && !!publisherId,
+    // Poll while any target is mid-enrichment so the UI updates when Apify finishes
+    refetchInterval: (query) => {
+      const data = query.state.data as EngagementTarget[] | undefined;
+      return data?.some((t) => t.enrichment_status === 'pending') ? 4000 : false;
+    },
   });
 
   const createTarget = useMutation({
