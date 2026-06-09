@@ -148,6 +148,30 @@ async function fetchApifyDataset(
   return Array.isArray(items) ? items : [];
 }
 
+function parseTimestamp(v: unknown): string | null {
+  if (!v) return null;
+  if (typeof v === 'string') {
+    const d = new Date(v);
+    return isNaN(d.getTime()) ? null : d.toISOString();
+  }
+  if (typeof v === 'number') {
+    const d = new Date(v);
+    return isNaN(d.getTime()) ? null : d.toISOString();
+  }
+  if (typeof v === 'object') {
+    const o = v as Record<string, unknown>;
+    if (typeof o.date === 'string') {
+      const d = new Date(o.date);
+      if (!isNaN(d.getTime())) return d.toISOString();
+    }
+    if (typeof o.timestamp === 'number') {
+      const d = new Date(o.timestamp);
+      if (!isNaN(d.getTime())) return d.toISOString();
+    }
+  }
+  return null;
+}
+
 function parseApifyItems(items: Record<string, unknown>[]): FetchedPost[] {
   const posts: FetchedPost[] = [];
 
@@ -185,7 +209,7 @@ function parseApifyItems(items: Record<string, unknown>[]): FetchedPost[] {
       linkedin_post_url: postUrl,
       linkedin_post_urn: postId,
       content: (item.content as string) || (item.text as string) || (item.commentary as string) || null,
-      published_at: (item.postedAt as string) || (item.publishedAt as string) || (item.postedDate as string) || null,
+      published_at: parseTimestamp(item.postedAt) || parseTimestamp(item.publishedAt) || parseTimestamp(item.postedDate) || null,
       likes_count: likes,
       comments_count: comments,
       shares_count: shares,
