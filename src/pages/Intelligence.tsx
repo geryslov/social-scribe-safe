@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { IntelligenceFeed } from '@/components/intelligence/IntelligenceFeed';
 import { TopicConfig } from '@/components/intelligence/TopicConfig';
 import { ResearchSettingsPanel } from '@/components/intelligence/ResearchSettingsPanel';
+import { Zap, Radar, Settings } from 'lucide-react';
 
 export default function Intelligence() {
   const { user, isAdmin } = useAuth();
@@ -18,7 +19,6 @@ export default function Intelligence() {
 
   if (!user) return <Navigate to="/auth" replace />;
 
-  // Auto-select first publisher when loaded
   if (!selectedPublisherId && publishers.length > 0) {
     setSelectedPublisherId(publishers[0].id);
   }
@@ -28,21 +28,25 @@ export default function Intelligence() {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <main id="main-content" className="max-w-7xl mx-auto px-5 py-6">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">Intelligence</h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Research feed powered by community signal
-            </p>
+      <main id="main-content" className="max-w-5xl mx-auto px-5 py-8">
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
+              <Zap className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <h1 className="text-xl font-display font-bold tracking-tight">Intelligence</h1>
+              <p className="text-sm text-muted-foreground">
+                Research feed powered by community signal
+              </p>
+            </div>
           </div>
 
-          {/* Publisher selector */}
           <Select
             value={selectedPublisherId || ''}
             onValueChange={setSelectedPublisherId}
           >
-            <SelectTrigger className="w-[220px]">
+            <SelectTrigger className="w-[200px] focus:ring-primary/30">
               <SelectValue placeholder="Select publisher" />
             </SelectTrigger>
             <SelectContent>
@@ -56,15 +60,26 @@ export default function Intelligence() {
         </div>
 
         {!selectedPublisher ? (
-          <div className="text-center py-16 text-muted-foreground">
+          <div className="text-center py-20 text-muted-foreground">
             {pubsLoading ? 'Loading publishers...' : 'No publishers in this workspace. Add a publisher first.'}
           </div>
         ) : (
-          <Tabs defaultValue="feed" className="space-y-4">
-            <TabsList>
-              <TabsTrigger value="feed">Feed</TabsTrigger>
-              <TabsTrigger value="topics">Topics</TabsTrigger>
-              {isAdmin && <TabsTrigger value="settings">Settings</TabsTrigger>}
+          <Tabs defaultValue="feed" className="space-y-6">
+            <TabsList className="bg-muted/50">
+              <TabsTrigger value="feed" className="gap-1.5 data-[state=active]:text-primary">
+                <Zap className="h-3.5 w-3.5" />
+                Feed
+              </TabsTrigger>
+              <TabsTrigger value="topics" className="gap-1.5 data-[state=active]:text-primary">
+                <Radar className="h-3.5 w-3.5" />
+                Topics
+              </TabsTrigger>
+              {isAdmin && (
+                <TabsTrigger value="settings" className="gap-1.5 data-[state=active]:text-primary">
+                  <Settings className="h-3.5 w-3.5" />
+                  Settings
+                </TabsTrigger>
+              )}
             </TabsList>
 
             <TabsContent value="feed">
