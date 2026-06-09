@@ -214,6 +214,202 @@ export type Database = {
           },
         ]
       }
+      engagement_comments: {
+        Row: {
+          comment_text: string
+          created_at: string
+          created_by: string | null
+          error_message: string | null
+          id: string
+          linkedin_comment_urn: string | null
+          post_id: string
+          posted_at: string | null
+          publisher_id: string
+          status: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          comment_text: string
+          created_at?: string
+          created_by?: string | null
+          error_message?: string | null
+          id?: string
+          linkedin_comment_urn?: string | null
+          post_id: string
+          posted_at?: string | null
+          publisher_id: string
+          status?: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          comment_text?: string
+          created_at?: string
+          created_by?: string | null
+          error_message?: string | null
+          id?: string
+          linkedin_comment_urn?: string | null
+          post_id?: string
+          posted_at?: string | null
+          publisher_id?: string
+          status?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "engagement_comments_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "engagement_posts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "engagement_comments_publisher_id_fkey"
+            columns: ["publisher_id"]
+            isOneToOne: false
+            referencedRelation: "publishers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "engagement_comments_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      engagement_posts: {
+        Row: {
+          comments_count: number
+          content: string | null
+          created_at: string
+          id: string
+          likes_count: number
+          linkedin_post_url: string
+          linkedin_post_urn: string | null
+          post_metadata: Json
+          published_at: string | null
+          shares_count: number
+          target_id: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          comments_count?: number
+          content?: string | null
+          created_at?: string
+          id?: string
+          likes_count?: number
+          linkedin_post_url: string
+          linkedin_post_urn?: string | null
+          post_metadata?: Json
+          published_at?: string | null
+          shares_count?: number
+          target_id: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          comments_count?: number
+          content?: string | null
+          created_at?: string
+          id?: string
+          likes_count?: number
+          linkedin_post_url?: string
+          linkedin_post_urn?: string | null
+          post_metadata?: Json
+          published_at?: string | null
+          shares_count?: number
+          target_id?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "engagement_posts_target_id_fkey"
+            columns: ["target_id"]
+            isOneToOne: false
+            referencedRelation: "engagement_targets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "engagement_posts_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      engagement_targets: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          created_by: string | null
+          headline: string | null
+          id: string
+          is_active: boolean
+          last_fetched_at: string | null
+          linkedin_url: string
+          linkedin_username: string | null
+          name: string
+          notes: string | null
+          publisher_id: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          created_by?: string | null
+          headline?: string | null
+          id?: string
+          is_active?: boolean
+          last_fetched_at?: string | null
+          linkedin_url: string
+          linkedin_username?: string | null
+          name: string
+          notes?: string | null
+          publisher_id: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          created_by?: string | null
+          headline?: string | null
+          id?: string
+          is_active?: boolean
+          last_fetched_at?: string | null
+          linkedin_url?: string
+          linkedin_username?: string | null
+          name?: string
+          notes?: string | null
+          publisher_id?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "engagement_targets_publisher_id_fkey"
+            columns: ["publisher_id"]
+            isOneToOne: false
+            referencedRelation: "publishers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "engagement_targets_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       follower_history: {
         Row: {
           created_at: string | null
