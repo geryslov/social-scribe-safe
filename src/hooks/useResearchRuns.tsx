@@ -25,7 +25,7 @@ export function useResearchRuns(publisherId: string | null) {
     queryFn: async () => {
       if (!currentWorkspace || !publisherId) return [];
 
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('research_runs')
         .select('*')
         .eq('workspace_id', currentWorkspace.id)

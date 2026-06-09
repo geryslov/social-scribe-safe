@@ -21,7 +21,7 @@ export function useResearchSettings() {
     queryFn: async () => {
       if (!currentWorkspace) return null;
 
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('workspace_research_settings')
         .select('*')
         .eq('workspace_id', currentWorkspace.id)
@@ -37,7 +37,7 @@ export function useResearchSettings() {
     mutationFn: async (data: { schedule_frequency: string; schedule_enabled: boolean }) => {
       if (!currentWorkspace) throw new Error('No workspace selected');
 
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('workspace_research_settings')
         .upsert(
           {
