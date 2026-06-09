@@ -113,13 +113,12 @@ Deno.serve(async (req) => {
     const encodedUrn = encodeURIComponent(activityUrn);
 
     const linkedinRes = await fetch(
-      `https://api.linkedin.com/rest/socialActions/${encodedUrn}/comments`,
+      `https://api.linkedin.com/v2/socialActions/${encodedUrn}/comments`,
       {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${tokenRow.linkedin_access_token}`,
           'Content-Type': 'application/json',
-          'Linkedin-Version': '202605',
           'X-Restli-Protocol-Version': '2.0.0',
         },
         body: JSON.stringify({
@@ -134,17 +133,24 @@ Deno.serve(async (req) => {
       const errBody = await linkedinRes.text();
       console.error(`LinkedIn comment failed (${linkedinRes.status}):`, errBody);
 
+      let friendly = `LinkedIn API ${linkedinRes.status}: ${errBody.slice(0, 300)}`;
+      if (linkedinRes.status === 403) {
+        friendly = 'LinkedIn denied the comment (403). The publisher token is missing the w_member_social scope, or LinkedIn does not allow commenting on this post via the API. Reconnect the publisher to LinkedIn.';
+      } else if (linkedinRes.status === 401) {
+        friendly = 'LinkedIn access token is expired or invalid. Please reconnect the publisher.';
+      }
+
       // Update engagement_comment status to failed
       if (engagement_comment_id) {
         await supabase.from('engagement_comments').update({
           status: 'failed',
-          error_message: `LinkedIn API ${linkedinRes.status}: ${errBody.slice(0, 500)}`,
+          error_message: friendly,
         }).eq('id', engagement_comment_id);
       }
 
       return new Response(
-        JSON.stringify({ success: false, error: `LinkedIn API error: ${linkedinRes.status}` }),
-        { status: linkedinRes.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        JSON.stringify({ success: false, error: friendly, linkedin_status: linkedinRes.status }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }
 
