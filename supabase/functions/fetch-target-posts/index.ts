@@ -148,6 +148,30 @@ async function fetchApifyDataset(
   return Array.isArray(items) ? items : [];
 }
 
+function parseTimestamp(v: unknown): string | null {
+  if (!v) return null;
+  if (typeof v === 'string') {
+    const d = new Date(v);
+    return isNaN(d.getTime()) ? null : d.toISOString();
+  }
+  if (typeof v === 'number') {
+    const d = new Date(v);
+    return isNaN(d.getTime()) ? null : d.toISOString();
+  }
+  if (typeof v === 'object') {
+    const o = v as Record<string, unknown>;
+    if (typeof o.date === 'string') {
+      const d = new Date(o.date);
+      if (!isNaN(d.getTime())) return d.toISOString();
+    }
+    if (typeof o.timestamp === 'number') {
+      const d = new Date(o.timestamp);
+      if (!isNaN(d.getTime())) return d.toISOString();
+    }
+  }
+  return null;
+}
+
 function parseApifyItems(items: Record<string, unknown>[]): FetchedPost[] {
   const posts: FetchedPost[] = [];
 
