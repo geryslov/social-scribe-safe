@@ -111,7 +111,7 @@ export function useEngagementTargets(publisherId: string | null) {
 
   const deleteTarget = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('engagement_targets').delete().eq('id', id);
+      const { error } = await (supabase as any).from('engagement_targets').delete().eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => {
