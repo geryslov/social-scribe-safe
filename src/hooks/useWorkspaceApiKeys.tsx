@@ -42,6 +42,15 @@ export function useWorkspaceApiKeys() {
     mutationFn: async (data: { service_name: string; api_key: string }) => {
       if (!currentWorkspace) throw new Error('No workspace selected');
 
+      // Validate the token via edge function before saving
+      const { data: validation, error: vErr } = await supabase.functions.invoke('validate-api-key', {
+        body: { service: data.service_name, api_key: data.api_key },
+      });
+      if (vErr) throw new Error(vErr.message);
+      if (!validation?.valid) {
+        throw new Error(validation?.error || 'Token validation failed');
+      }
+
       const keyHint = '...' + data.api_key.slice(-4);
 
       const { error } = await supabase
@@ -60,10 +69,11 @@ export function useWorkspaceApiKeys() {
         );
 
       if (error) throw error;
+      return validation as { valid: boolean; info?: string };
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['workspace-api-keys'] });
-      toast.success('API key saved');
+      toast.success(result?.info ? `API key saved — ${result.info}` : 'API key saved');
     },
     onError: (error) => {
       toast.error('Failed to save API key: ' + error.message);
