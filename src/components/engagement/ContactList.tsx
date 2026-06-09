@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useEngagementTargets, useFetchTargetPosts, EngagementTarget } from '@/hooks/useEngagement';
@@ -46,6 +46,7 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
   const [newUrl, setNewUrl] = useState('');
   const [fetchingAll, setFetchingAll] = useState(false);
   const [fetchingTargetId, setFetchingTargetId] = useState<string | null>(null);
+  const prevAutoName = useRef<string>('');
 
   // Unseen post counts
   const { data: unseenCounts = {} } = useQuery({
@@ -84,9 +85,11 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
 
   // Auto-fetch after adding a target
   const handleAdd = useCallback(() => {
-    if (!newName.trim() || !newUrl.trim() || !currentWorkspace) return;
+    if (!newUrl.trim() || !currentWorkspace) return;
+    // Use entered name, or extract from URL as fallback
+    const name = newName.trim() || newUrl.match(/linkedin\.com\/in\/([^/?#]+)/)?.[1]?.replace(/-/g, ' ')?.replace(/\b\w/g, (c) => c.toUpperCase()) || 'Unknown';
     createTarget.mutate(
-      { publisher_id: publisher.id, name: newName.trim(), linkedin_url: newUrl.trim() },
+      { publisher_id: publisher.id, name, linkedin_url: newUrl.trim() },
       {
         onSuccess: (data: any) => {
           setNewName('');
@@ -288,32 +291,44 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
           <DialogHeader>
             <DialogTitle className="font-display">Add Profile</DialogTitle>
             <DialogDescription>
-              Paste a LinkedIn URL. We'll fetch their picture, title, and company automatically.
+              Paste a LinkedIn profile URL. Name, title, company, and photo will be fetched automatically.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-3 py-2">
             <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Name</label>
+              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">LinkedIn URL</label>
               <Input
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-                placeholder="e.g. Jane Smith"
-                className="focus-visible:ring-primary/30"
+                value={newUrl}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setNewUrl(val);
+                  // Auto-extract name from URL
+                  const match = val.match(/linkedin\.com\/in\/([^/?#]+)/);
+                  if (match && (!newName || newName === prevAutoName.current)) {
+                    const username = match[1].replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+                    setNewName(username);
+                    prevAutoName.current = username;
+                  }
+                }}
+                placeholder="https://linkedin.com/in/janesmith"
+                className="font-mono text-sm focus-visible:ring-primary/30"
                 autoFocus
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">LinkedIn URL</label>
+              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+                Display Name <span className="text-muted-foreground/50">(auto-filled, editable)</span>
+              </label>
               <Input
-                value={newUrl}
-                onChange={(e) => setNewUrl(e.target.value)}
-                placeholder="https://linkedin.com/in/janesmith"
-                className="font-mono text-sm focus-visible:ring-primary/30"
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                placeholder="Will be updated after fetch"
+                className="focus-visible:ring-primary/30"
                 onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
               />
-              <p className="text-[10px] text-muted-foreground/60 mt-1">
-                Title, company, and photo will be fetched automatically
+              <p className="text-[10px] text-muted-foreground/50 mt-1.5">
+                Real name, title, company, and photo are fetched from LinkedIn after adding.
               </p>
             </div>
           </div>
@@ -322,7 +337,7 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
             <Button variant="ghost" onClick={() => setShowAddDialog(false)}>Cancel</Button>
             <Button
               onClick={handleAdd}
-              disabled={!newName.trim() || !newUrl.trim() || createTarget.isPending}
+              disabled={!newUrl.trim() || createTarget.isPending}
               className="gap-1.5"
             >
               {createTarget.isPending ? (
