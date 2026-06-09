@@ -5,7 +5,9 @@ import { useWorkspace } from '@/hooks/useWorkspace';
 import { usePublishers, Publisher } from '@/hooks/usePublishers';
 import { Navigate } from 'react-router-dom';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { TargetList } from '@/components/engagement/TargetList';
+import { ContactList } from '@/components/engagement/ContactList';
+import { PostPanel } from '@/components/engagement/PostPanel';
+import { EngagementTarget } from '@/hooks/useEngagement';
 import { MessageCircle } from 'lucide-react';
 
 export default function Engagement() {
@@ -13,6 +15,7 @@ export default function Engagement() {
   const { currentWorkspace } = useWorkspace();
   const { publishers, isLoading: pubsLoading } = usePublishers();
   const [selectedPublisherId, setSelectedPublisherId] = useState<string | null>(null);
+  const [selectedTarget, setSelectedTarget] = useState<EngagementTarget | null>(null);
 
   if (!user) return <Navigate to="/auth" replace />;
 
@@ -25,22 +28,23 @@ export default function Engagement() {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <main id="main-content" className="max-w-4xl mx-auto px-5 py-8">
-        <div className="flex items-center justify-between mb-8">
+      <main id="main-content" className="h-[calc(100vh-3.5rem)] flex flex-col">
+        {/* Top bar */}
+        <div className="flex items-center justify-between px-5 py-3 border-b bg-background">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
-              <MessageCircle className="h-5 w-5 text-primary" />
+            <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+              <MessageCircle className="h-4 w-4 text-primary" />
             </div>
             <div>
-              <h1 className="text-xl font-display font-bold tracking-tight">Engagement</h1>
-              <p className="text-sm text-muted-foreground">
-                Monitor people, fetch posts, comment as your publisher
+              <h1 className="text-base font-display font-bold tracking-tight leading-none">Engagement</h1>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                Monitor profiles, fetch posts, engage
               </p>
             </div>
           </div>
 
-          <Select value={selectedPublisherId || ''} onValueChange={setSelectedPublisherId}>
-            <SelectTrigger className="w-[200px] focus:ring-primary/30">
+          <Select value={selectedPublisherId || ''} onValueChange={(id) => { setSelectedPublisherId(id); setSelectedTarget(null); }}>
+            <SelectTrigger className="w-[180px] h-8 text-sm focus:ring-primary/30">
               <SelectValue placeholder="Select publisher" />
             </SelectTrigger>
             <SelectContent>
@@ -51,12 +55,32 @@ export default function Engagement() {
           </Select>
         </div>
 
+        {/* Master-detail layout */}
         {!selectedPublisher ? (
-          <div className="text-center py-20 text-muted-foreground">
+          <div className="flex-1 flex items-center justify-center text-muted-foreground">
             {pubsLoading ? 'Loading publishers...' : 'No publishers in this workspace.'}
           </div>
         ) : (
-          <TargetList publisher={selectedPublisher} isAdmin={isAdmin} />
+          <div className="flex-1 flex overflow-hidden">
+            {/* Left: Contact list (fixed 340px) */}
+            <div className="w-[340px] flex-shrink-0 border-r flex flex-col bg-muted/20">
+              <ContactList
+                publisher={selectedPublisher}
+                isAdmin={isAdmin}
+                selectedTargetId={selectedTarget?.id || null}
+                onSelectTarget={setSelectedTarget}
+              />
+            </div>
+
+            {/* Right: Post detail panel */}
+            <div className="flex-1 flex flex-col overflow-hidden">
+              <PostPanel
+                target={selectedTarget}
+                publisher={selectedPublisher}
+                isAdmin={isAdmin}
+              />
+            </div>
+          </div>
         )}
       </main>
     </div>
