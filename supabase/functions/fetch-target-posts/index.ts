@@ -351,9 +351,35 @@ Deno.serve(async (req) => {
       const firstItem = rawItems[0];
       const author = (firstItem.author || {}) as Record<string, unknown>;
 
-      // Avatar
-      if (author.avatar && typeof author.avatar === 'string') {
-        targetUpdate.avatar_url = author.avatar;
+      // Avatar — try many possible field names from different Apify actors
+      const pickAvatar = (a: Record<string, unknown>): string | null => {
+        const candidates: unknown[] = [
+          a.avatar,
+          a.profilePicture,
+          a.profilePictureUrl,
+          a.pictureUrl,
+          a.picture,
+          a.image,
+          a.imageUrl,
+          a.photo,
+          a.photoUrl,
+          a.profileImage,
+          a.profileImageUrl,
+          (a.avatar as Record<string, unknown> | undefined)?.url,
+          (a.profilePicture as Record<string, unknown> | undefined)?.url,
+        ];
+        for (const c of candidates) {
+          if (typeof c === 'string' && c.startsWith('http')) return c;
+        }
+        return null;
+      };
+      const avatar = pickAvatar(author) ||
+        pickAvatar((firstItem as Record<string, unknown>) || {});
+      if (avatar) {
+        targetUpdate.avatar_url = avatar;
+        console.log('Found avatar:', avatar);
+      } else {
+        console.log('No avatar found. Author keys:', Object.keys(author));
       }
 
       // Full headline for display
