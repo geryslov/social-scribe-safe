@@ -159,8 +159,8 @@ export function ResearchSettingsPanel({ publisher }: ResearchSettingsPanelProps)
                 className="h-8 font-mono text-sm"
               />
             </div>
-            <Button size="sm" className="h-8" onClick={handleSaveKey} disabled={!newKeyValue.trim()}>
-              Save
+            <Button size="sm" className="h-8" onClick={handleSaveKey} disabled={!newKeyValue.trim() || upsertApiKey.isPending}>
+              {upsertApiKey.isPending ? <><Loader2 className="h-3 w-3 mr-1 animate-spin" />Validating</> : 'Save'}
             </Button>
           </div>
         </Card>
