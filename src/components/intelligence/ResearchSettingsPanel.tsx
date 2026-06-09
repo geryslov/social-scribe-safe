@@ -105,13 +105,22 @@ export function ResearchSettingsPanel({ publisher }: ResearchSettingsPanelProps)
           {/* Existing keys */}
           {apiKeys.map((key) => (
             <div key={key.id} className="flex items-center justify-between py-2 border-b last:border-0">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <Badge variant="secondary" className="text-[10px]">{key.service_name}</Badge>
                 <span className="text-sm text-muted-foreground font-mono">{key.key_hint}</span>
                 {key.is_valid ? (
-                  <CheckCircle2 className="h-3 w-3 text-green-600" />
+                  <Badge variant="secondary" className="bg-green-100 text-green-700 text-[10px] gap-1">
+                    <CheckCircle2 className="h-3 w-3" /> Valid
+                  </Badge>
                 ) : (
-                  <XCircle className="h-3 w-3 text-red-500" />
+                  <Badge variant="secondary" className="bg-red-100 text-red-700 text-[10px] gap-1">
+                    <XCircle className="h-3 w-3" /> Invalid
+                  </Badge>
+                )}
+                {key.last_validated_at && (
+                  <span className="text-[10px] text-muted-foreground">
+                    checked {new Date(key.last_validated_at).toLocaleString()}
+                  </span>
                 )}
               </div>
               <Button
