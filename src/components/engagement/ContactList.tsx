@@ -248,8 +248,11 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
 
                   {/* Info */}
                   <div className="flex-1 min-w-0">
-                    <div className="font-display font-semibold text-[13px] leading-tight truncate">
+                    <div className="font-display font-semibold text-[13px] leading-tight truncate flex items-center gap-1.5">
                       {target.name}
+                      {target.enrichment_status === 'pending' && (
+                        <Loader2 className="h-3 w-3 animate-spin text-primary/60" />
+                      )}
                     </div>
                     {target.title && (
                       <p className="text-[11px] text-muted-foreground truncate mt-0.5 leading-tight">
@@ -267,6 +270,18 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
                       <p className="text-[11px] text-muted-foreground truncate mt-0.5 leading-tight">
                         {target.headline}
                       </p>
+                    )}
+                    {target.enrichment_status === 'failed' && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          enrichTarget.mutate(target.id);
+                        }}
+                        className="text-[10px] text-destructive hover:underline mt-0.5"
+                      >
+                        Auto-fill failed · Retry
+                      </button>
                     )}
                   </div>
 
