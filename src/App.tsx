@@ -17,6 +17,7 @@ import DocumentEditor from "./pages/DocumentEditor";
 import JoinWorkspace from "./pages/JoinWorkspace";
 import AdminDashboard from "./pages/AdminDashboard";
 import Intelligence from "./pages/Intelligence";
+import Engagement from "./pages/Engagement";
 
 const App = () => {
   const [queryClient] = React.useState(() => new QueryClient());
@@ -39,6 +40,7 @@ const App = () => {
                   <Route path="/documents/:id" element={<DocumentEditor />} />
                   <Route path="/join/:token" element={<JoinWorkspace />} />
                   <Route path="/intelligence" element={<Intelligence />} />
+                  <Route path="/engagement" element={<Engagement />} />
                   <Route path="/admin" element={<AdminDashboard />} />
                   {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                   <Route path="*" element={<NotFound />} />

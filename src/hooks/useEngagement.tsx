@@ -1,0 +1,270 @@
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+import { useWorkspace } from './useWorkspace';
+import { useAuth } from './useAuth';
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+export interface EngagementTarget {
+  id: string;
+  workspace_id: string;
+  publisher_id: string;
+  name: string;
+  linkedin_url: string;
+  linkedin_username: string | null;
+  headline: string | null;
+  avatar_url: string | null;
+  notes: string | null;
+  is_active: boolean;
+  last_fetched_at: string | null;
+  created_at: string;
+}
+
+export interface EngagementPost {
+  id: string;
+  workspace_id: string;
+  target_id: string;
+  linkedin_post_urn: string | null;
+  linkedin_post_url: string;
+  content: string | null;
+  published_at: string | null;
+  likes_count: number;
+  comments_count: number;
+  shares_count: number;
+  post_metadata: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface EngagementComment {
+  id: string;
+  workspace_id: string;
+  publisher_id: string;
+  post_id: string;
+  comment_text: string;
+  status: string;
+  linkedin_comment_urn: string | null;
+  posted_at: string | null;
+  error_message: string | null;
+  created_at: string;
+}
+
+// ---------------------------------------------------------------------------
+// Targets
+// ---------------------------------------------------------------------------
+
+export function useEngagementTargets(publisherId: string | null) {
+  const { currentWorkspace } = useWorkspace();
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  const { data: targets = [], isLoading } = useQuery({
+    queryKey: ['engagement-targets', currentWorkspace?.id, publisherId],
+    queryFn: async () => {
+      if (!currentWorkspace || !publisherId) return [];
+      const { data, error } = await supabase
+        .from('engagement_targets')
+        .select('*')
+        .eq('workspace_id', currentWorkspace.id)
+        .eq('publisher_id', publisherId)
+        .order('name');
+      if (error) throw error;
+      return data as EngagementTarget[];
+    },
+    enabled: !!currentWorkspace && !!publisherId,
+  });
+
+  const createTarget = useMutation({
+    mutationFn: async (data: { publisher_id: string; name: string; linkedin_url: string; headline?: string; notes?: string }) => {
+      if (!currentWorkspace) throw new Error('No workspace selected');
+      // Extract username from URL
+      const match = data.linkedin_url.match(/linkedin\.com\/in\/([^/?#]+)/);
+      const username = match ? match[1] : null;
+
+      const { data: result, error } = await supabase
+        .from('engagement_targets')
+        .insert({
+          workspace_id: currentWorkspace.id,
+          publisher_id: data.publisher_id,
+          name: data.name,
+          linkedin_url: data.linkedin_url,
+          linkedin_username: username,
+          headline: data.headline || null,
+          notes: data.notes || null,
+          created_by: user?.id || null,
+        })
+        .select()
+        .single();
+      if (error) throw error;
+      return result;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['engagement-targets'] });
+      toast.success('Target added');
+    },
+    onError: (error) => {
+      toast.error('Failed to add target: ' + error.message);
+    },
+  });
+
+  const deleteTarget = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('engagement_targets').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['engagement-targets'] });
+      toast.success('Target removed');
+    },
+    onError: (error) => {
+      toast.error('Failed to remove target: ' + error.message);
+    },
+  });
+
+  return { targets, isLoading, createTarget, deleteTarget };
+}
+
+// ---------------------------------------------------------------------------
+// Posts for a target
+// ---------------------------------------------------------------------------
+
+export function useEngagementPosts(targetId: string | null) {
+  const { currentWorkspace } = useWorkspace();
+
+  const { data: posts = [], isLoading } = useQuery({
+    queryKey: ['engagement-posts', currentWorkspace?.id, targetId],
+    queryFn: async () => {
+      if (!currentWorkspace || !targetId) return [];
+      const { data, error } = await supabase
+        .from('engagement_posts')
+        .select('*')
+        .eq('workspace_id', currentWorkspace.id)
+        .eq('target_id', targetId)
+        .order('published_at', { ascending: false });
+      if (error) throw error;
+      return data as EngagementPost[];
+    },
+    enabled: !!currentWorkspace && !!targetId,
+  });
+
+  return { posts, isLoading };
+}
+
+// ---------------------------------------------------------------------------
+// Fetch posts for a target (calls Edge Function)
+// ---------------------------------------------------------------------------
+
+export function useFetchTargetPosts() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ workspace_id, target_id }: { workspace_id: string; target_id: string }) => {
+      const { data, error } = await supabase.functions.invoke('fetch-target-posts', {
+        body: { workspace_id, target_id },
+      });
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || 'Failed to fetch posts');
+      return data as { success: boolean; posts_found: number };
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['engagement-posts'] });
+      queryClient.invalidateQueries({ queryKey: ['engagement-targets'] });
+      toast.success(`Found ${data.posts_found} posts`);
+    },
+    onError: (error) => {
+      toast.error('Fetch failed: ' + error.message);
+    },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Comments for a post
+// ---------------------------------------------------------------------------
+
+export function useEngagementComments(postId: string | null) {
+  const { currentWorkspace } = useWorkspace();
+
+  const { data: comments = [], isLoading } = useQuery({
+    queryKey: ['engagement-comments', currentWorkspace?.id, postId],
+    queryFn: async () => {
+      if (!currentWorkspace || !postId) return [];
+      const { data, error } = await supabase
+        .from('engagement_comments')
+        .select('*')
+        .eq('workspace_id', currentWorkspace.id)
+        .eq('post_id', postId)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data as EngagementComment[];
+    },
+    enabled: !!currentWorkspace && !!postId,
+  });
+
+  return { comments, isLoading };
+}
+
+// ---------------------------------------------------------------------------
+// Draft + Post a comment
+// ---------------------------------------------------------------------------
+
+export function usePostComment() {
+  const queryClient = useQueryClient();
+  const { currentWorkspace } = useWorkspace();
+  const { user } = useAuth();
+
+  // Save draft comment to DB
+  const saveDraft = useMutation({
+    mutationFn: async ({ publisher_id, post_id, comment_text }: { publisher_id: string; post_id: string; comment_text: string }) => {
+      if (!currentWorkspace) throw new Error('No workspace');
+      const { data, error } = await supabase
+        .from('engagement_comments')
+        .insert({
+          workspace_id: currentWorkspace.id,
+          publisher_id,
+          post_id,
+          comment_text,
+          status: 'draft',
+          created_by: user?.id || null,
+        })
+        .select()
+        .single();
+      if (error) throw error;
+      return data as EngagementComment;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['engagement-comments'] });
+    },
+  });
+
+  // Post comment via Edge Function
+  const postComment = useMutation({
+    mutationFn: async ({ engagement_comment_id, publisher_id, post_id, comment_text }: {
+      engagement_comment_id: string; publisher_id: string; post_id: string; comment_text: string;
+    }) => {
+      if (!currentWorkspace) throw new Error('No workspace');
+      const { data, error } = await supabase.functions.invoke('post-linkedin-comment', {
+        body: {
+          workspace_id: currentWorkspace.id,
+          publisher_id,
+          post_id,
+          comment_text,
+          engagement_comment_id,
+        },
+      });
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || 'Failed to post comment');
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['engagement-comments'] });
+      toast.success('Comment posted to LinkedIn');
+    },
+    onError: (error) => {
+      toast.error('Failed to post comment: ' + error.message);
+    },
+  });
+
+  return { saveDraft, postComment };
+}
