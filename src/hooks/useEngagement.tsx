@@ -16,6 +16,8 @@ export interface EngagementTarget {
   linkedin_url: string;
   linkedin_username: string | null;
   headline: string | null;
+  first_name: string | null;
+  last_name: string | null;
   title: string | null;
   company_name: string | null;
   avatar_url: string | null;
@@ -23,6 +25,8 @@ export interface EngagementTarget {
   is_active: boolean;
   last_fetched_at: string | null;
   last_seen_at: string | null;
+  enrichment_status: 'pending' | 'succeeded' | 'failed' | null;
+  enriched_at: string | null;
   created_at: string;
 }
 
@@ -78,38 +82,78 @@ export function useEngagementTargets(publisherId: string | null) {
       return data as EngagementTarget[];
     },
     enabled: !!currentWorkspace && !!publisherId,
+    // Poll while any target is mid-enrichment so the UI updates when Apify finishes
+    refetchInterval: (query) => {
+      const data = query.state.data as EngagementTarget[] | undefined;
+      return data?.some((t) => t.enrichment_status === 'pending') ? 4000 : false;
+    },
   });
 
   const createTarget = useMutation({
-    mutationFn: async (data: { publisher_id: string; name: string; linkedin_url: string; headline?: string; notes?: string }) => {
+    mutationFn: async (data: { publisher_id: string; name?: string; linkedin_url: string; headline?: string; notes?: string }) => {
       if (!currentWorkspace) throw new Error('No workspace selected');
       // Extract username from URL
       const match = data.linkedin_url.match(/linkedin\.com\/in\/([^/?#]+)/);
       const username = match ? match[1] : null;
+
+      // Fallback name: user-provided > username > URL
+      const fallbackName = (data.name && data.name.trim()) || username || data.linkedin_url;
 
       const { data: result, error } = await (supabase as any)
         .from('engagement_targets')
         .insert({
           workspace_id: currentWorkspace.id,
           publisher_id: data.publisher_id,
-          name: data.name,
+          name: fallbackName,
           linkedin_url: data.linkedin_url,
           linkedin_username: username,
           headline: data.headline || null,
           notes: data.notes || null,
+          enrichment_status: 'pending',
           created_by: user?.id || null,
         })
         .select()
         .single();
       if (error) throw error;
+
+      // Kick off Apify profile enrichment in the background; refresh the
+      // target list when it completes so the populated fields appear.
+      (async () => {
+        try {
+          await supabase.functions.invoke('enrich-engagement-target', {
+            body: { target_id: result.id },
+          });
+        } catch (err) {
+          console.error('Enrichment invoke failed:', err);
+        } finally {
+          queryClient.invalidateQueries({ queryKey: ['engagement-targets'] });
+        }
+      })();
+
       return result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['engagement-targets'] });
-      toast.success('Target added');
+      toast.success('Target added — auto-filling from LinkedIn…');
     },
     onError: (error) => {
       toast.error('Failed to add target: ' + error.message);
+    },
+  });
+
+  const enrichTarget = useMutation({
+    mutationFn: async (targetId: string) => {
+      const { error } = await supabase.functions.invoke('enrich-engagement-target', {
+        body: { target_id: targetId },
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['engagement-targets'] });
+      toast.success('Profile refreshed');
+    },
+    onError: (error) => {
+      toast.error('Enrichment failed: ' + error.message);
     },
   });
 
@@ -140,7 +184,7 @@ export function useEngagementTargets(publisherId: string | null) {
     },
   });
 
-  return { targets, isLoading, createTarget, deleteTarget, markSeen };
+  return { targets, isLoading, createTarget, deleteTarget, markSeen, enrichTarget };
 }
 
 // ---------------------------------------------------------------------------

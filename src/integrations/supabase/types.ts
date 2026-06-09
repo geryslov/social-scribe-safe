@@ -347,49 +347,67 @@ export type Database = {
       engagement_targets: {
         Row: {
           avatar_url: string | null
+          company_name: string | null
           created_at: string
           created_by: string | null
+          enriched_at: string | null
+          enrichment_status: string | null
+          first_name: string | null
           headline: string | null
           id: string
           is_active: boolean
           last_fetched_at: string | null
+          last_name: string | null
           linkedin_url: string
           linkedin_username: string | null
           name: string
           notes: string | null
           publisher_id: string
+          title: string | null
           updated_at: string
           workspace_id: string
         }
         Insert: {
           avatar_url?: string | null
+          company_name?: string | null
           created_at?: string
           created_by?: string | null
+          enriched_at?: string | null
+          enrichment_status?: string | null
+          first_name?: string | null
           headline?: string | null
           id?: string
           is_active?: boolean
           last_fetched_at?: string | null
+          last_name?: string | null
           linkedin_url: string
           linkedin_username?: string | null
           name: string
           notes?: string | null
           publisher_id: string
+          title?: string | null
           updated_at?: string
           workspace_id: string
         }
         Update: {
           avatar_url?: string | null
+          company_name?: string | null
           created_at?: string
           created_by?: string | null
+          enriched_at?: string | null
+          enrichment_status?: string | null
+          first_name?: string | null
           headline?: string | null
           id?: string
           is_active?: boolean
           last_fetched_at?: string | null
+          last_name?: string | null
           linkedin_url?: string
           linkedin_username?: string | null
           name?: string
           notes?: string | null
           publisher_id?: string
+          title?: string | null
           updated_at?: string
           workspace_id?: string
         }
