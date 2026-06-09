@@ -190,7 +190,7 @@ Deno.serve(async (req) => {
 
       const { data: result, error: insertErr } = await supabase
         .from('engagement_posts')
-        .upsert(rows, { onConflict: 'workspace_id,linkedin_post_url', ignoreDuplicates: false })
+        .upsert(rows, { onConflict: 'target_id,linkedin_post_urn', ignoreDuplicates: false })
         .select('id');
 
       if (insertErr) {
