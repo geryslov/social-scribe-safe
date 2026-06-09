@@ -183,12 +183,17 @@ export function useFetchTargetPosts() {
       });
       if (error) throw error;
       if (!data?.success) throw new Error(data?.error || 'Failed to fetch posts');
-      return data as { success: boolean; posts_found: number };
+      return data as { success: boolean; posts_found: number; profile?: { name?: string; title?: string; company_name?: string; avatar_url?: string } };
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['engagement-posts'] });
       queryClient.invalidateQueries({ queryKey: ['engagement-targets'] });
-      toast.success(`Found ${data.posts_found} posts`);
+      const profile = data.profile;
+      if (profile?.name || profile?.title) {
+        toast.success(`${data.posts_found} posts · ${[profile.name, profile.title, profile.company_name].filter(Boolean).join(' · ')}`);
+      } else {
+        toast.success(`Found ${data.posts_found} posts`);
+      }
     },
     onError: (error) => {
       toast.error('Fetch failed: ' + error.message);

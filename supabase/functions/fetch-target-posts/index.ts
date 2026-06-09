@@ -433,9 +433,26 @@ Deno.serve(async (req) => {
       .eq('id', target.id);
 
     console.log(`Done: ${inserted} posts stored for target ${target.id}`);
+    console.log('Profile data extracted:', JSON.stringify({
+      name: targetUpdate.name,
+      title: targetUpdate.title,
+      company_name: targetUpdate.company_name,
+      avatar_url: targetUpdate.avatar_url ? 'found' : 'not found',
+      headline: targetUpdate.headline,
+    }));
 
     return new Response(
-      JSON.stringify({ success: true, posts_found: inserted }),
+      JSON.stringify({
+        success: true,
+        posts_found: inserted,
+        profile: {
+          name: targetUpdate.name || null,
+          title: targetUpdate.title || null,
+          company_name: targetUpdate.company_name || null,
+          avatar_url: targetUpdate.avatar_url || null,
+          headline: targetUpdate.headline || null,
+        },
+      }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     );
 
