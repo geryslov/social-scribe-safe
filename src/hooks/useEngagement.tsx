@@ -20,6 +20,7 @@ export interface EngagementTarget {
   notes: string | null;
   is_active: boolean;
   last_fetched_at: string | null;
+  last_seen_at: string | null;
   created_at: string;
 }
 
@@ -34,6 +35,7 @@ export interface EngagementPost {
   likes_count: number;
   comments_count: number;
   shares_count: number;
+  is_commented: boolean;
   post_metadata: Record<string, unknown>;
   created_at: string;
 }
@@ -123,7 +125,20 @@ export function useEngagementTargets(publisherId: string | null) {
     },
   });
 
-  return { targets, isLoading, createTarget, deleteTarget };
+  const markSeen = useMutation({
+    mutationFn: async (targetId: string) => {
+      const { error } = await (supabase as any)
+        .from('engagement_targets')
+        .update({ last_seen_at: new Date().toISOString() })
+        .eq('id', targetId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['engagement-targets'] });
+    },
+  });
+
+  return { targets, isLoading, createTarget, deleteTarget, markSeen };
 }
 
 // ---------------------------------------------------------------------------
@@ -257,7 +272,15 @@ export function usePostComment() {
       if (!data?.success) throw new Error(data?.error || 'Failed to post comment');
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
+      // Mark the post as commented
+      (supabase as any)
+        .from('engagement_posts')
+        .update({ is_commented: true })
+        .eq('id', variables.post_id)
+        .then(() => {
+          queryClient.invalidateQueries({ queryKey: ['engagement-posts'] });
+        });
       queryClient.invalidateQueries({ queryKey: ['engagement-comments'] });
       toast.success('Comment posted to LinkedIn');
     },

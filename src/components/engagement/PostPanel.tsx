@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   ExternalLink, ThumbsUp, MessageSquare, Share2, MessageCircle,
-  TrendingUp, RefreshCw, Loader2, Linkedin, Trash2, Users,
+  TrendingUp, RefreshCw, Loader2, Linkedin, Trash2, Users, CheckCircle2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { CommentComposer } from './CommentComposer';
@@ -208,22 +208,32 @@ export function PostPanel({ target, publisher, isAdmin }: PostPanelProps) {
                   <Card
                     className={cn(
                       'p-4 transition-all duration-200 hover:shadow-sm group',
-                      tier === 'hot' && 'border-l-[3px] border-l-primary bg-primary/[0.02]',
-                      tier === 'warm' && 'border-l-[3px] border-l-primary/40',
+                      post.is_commented && 'border-l-[3px] border-l-emerald-400 bg-emerald-50/30',
+                      !post.is_commented && tier === 'hot' && 'border-l-[3px] border-l-primary bg-primary/[0.02]',
+                      !post.is_commented && tier === 'warm' && 'border-l-[3px] border-l-primary/40',
                       isCommenting && 'ring-1 ring-primary/20',
                     )}
                   >
-                    {tier === 'hot' && (
-                      <div className="flex items-center gap-1 text-[10px] font-semibold text-primary uppercase tracking-wider mb-2">
-                        <TrendingUp className="h-3 w-3" />
-                        High engagement
-                      </div>
-                    )}
+                    {/* Status badges */}
+                    <div className="flex items-center gap-2 mb-2">
+                      {tier === 'hot' && (
+                        <span className="flex items-center gap-1 text-[10px] font-semibold text-primary uppercase tracking-wider">
+                          <TrendingUp className="h-3 w-3" />
+                          High engagement
+                        </span>
+                      )}
+                      {post.is_commented && (
+                        <span className="flex items-center gap-1 text-[10px] font-semibold text-emerald-600 uppercase tracking-wider">
+                          <CheckCircle2 className="h-3 w-3" />
+                          Commented
+                        </span>
+                      )}
+                    </div>
 
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1 min-w-0">
                         {post.content ? (
-                          <p className="text-sm leading-relaxed line-clamp-4 whitespace-pre-wrap text-foreground/90">
+                          <p className="text-sm leading-relaxed whitespace-pre-wrap text-foreground/90">
                             {post.content}
                           </p>
                         ) : (

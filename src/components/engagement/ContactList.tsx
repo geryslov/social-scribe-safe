@@ -1,4 +1,6 @@
 import { useState, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { useEngagementTargets, useFetchTargetPosts, EngagementTarget } from '@/hooks/useEngagement';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { Publisher } from '@/hooks/usePublishers';
@@ -45,6 +47,29 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
   const [newHeadline, setNewHeadline] = useState('');
   const [newCompany, setNewCompany] = useState('');
   const [fetchingAll, setFetchingAll] = useState(false);
+
+  // Fetch unseen post counts per target
+  const { data: unseenCounts = {} } = useQuery({
+    queryKey: ['unseen-counts', currentWorkspace?.id, publisher.id, targets.map((t) => t.last_seen_at).join(',')],
+    queryFn: async () => {
+      if (!currentWorkspace || targets.length === 0) return {};
+      const counts: Record<string, number> = {};
+      // For each target, count posts newer than last_seen_at
+      for (const target of targets) {
+        let query = (supabase as any)
+          .from('engagement_posts')
+          .select('id', { count: 'exact', head: true })
+          .eq('target_id', target.id);
+        if (target.last_seen_at) {
+          query = query.gt('created_at', target.last_seen_at);
+        }
+        const { count } = await query;
+        if (count && count > 0) counts[target.id] = count;
+      }
+      return counts;
+    },
+    enabled: !!currentWorkspace && targets.length > 0,
+  });
 
   const filtered = useMemo(() => {
     if (!search.trim()) return targets;
@@ -218,8 +243,13 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
                     )}
                   </div>
 
-                  {/* Last fetched */}
-                  <div className="flex-shrink-0 text-right">
+                  {/* Unseen badge + last fetched */}
+                  <div className="flex-shrink-0 flex flex-col items-end gap-0.5">
+                    {unseenCounts[target.id] && unseenCounts[target.id] > 0 && (
+                      <span className="h-[18px] min-w-[18px] px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center">
+                        {unseenCounts[target.id]}
+                      </span>
+                    )}
                     <span className="text-[10px] text-muted-foreground/50 tabular-nums">
                       {timeAgoShort(target.last_fetched_at)}
                     </span>

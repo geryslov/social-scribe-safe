@@ -7,7 +7,7 @@ import { Navigate } from 'react-router-dom';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ContactList } from '@/components/engagement/ContactList';
 import { PostPanel } from '@/components/engagement/PostPanel';
-import { EngagementTarget } from '@/hooks/useEngagement';
+import { EngagementTarget, useEngagementTargets } from '@/hooks/useEngagement';
 import { MessageCircle } from 'lucide-react';
 
 export default function Engagement() {
@@ -16,6 +16,13 @@ export default function Engagement() {
   const { publishers, isLoading: pubsLoading } = usePublishers();
   const [selectedPublisherId, setSelectedPublisherId] = useState<string | null>(null);
   const [selectedTarget, setSelectedTarget] = useState<EngagementTarget | null>(null);
+  const { markSeen } = useEngagementTargets(selectedPublisherId);
+
+  const handleSelectTarget = (target: EngagementTarget) => {
+    setSelectedTarget(target);
+    // Mark as seen to clear the unseen badge
+    markSeen.mutate(target.id);
+  };
 
   if (!user) return <Navigate to="/auth" replace />;
 
@@ -68,7 +75,7 @@ export default function Engagement() {
                 publisher={selectedPublisher}
                 isAdmin={isAdmin}
                 selectedTargetId={selectedTarget?.id || null}
-                onSelectTarget={setSelectedTarget}
+                onSelectTarget={handleSelectTarget}
               />
             </div>
 

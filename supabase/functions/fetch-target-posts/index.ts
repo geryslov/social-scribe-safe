@@ -339,11 +339,30 @@ Deno.serve(async (req) => {
       }
     }
 
-    // --- Update target last_fetched_at ---
+    // --- Extract profile data from first post's author info ---
     const username = target.linkedin_url.match(/linkedin\.com\/in\/([^/?#]+)/)?.[1] || null;
+    const targetUpdate: Record<string, unknown> = {
+      last_fetched_at: new Date().toISOString(),
+      linkedin_username: username,
+    };
+
+    // Try to get author info from Apify response (first raw item)
+    if (rawItems.length > 0) {
+      const firstItem = rawItems[0];
+      const author = (firstItem.author || {}) as Record<string, unknown>;
+      if (author.avatar && typeof author.avatar === 'string') {
+        targetUpdate.avatar_url = author.avatar;
+      }
+      // Build headline from author info
+      const authorInfo = (author.info as string) || '';
+      if (authorInfo) {
+        targetUpdate.headline = authorInfo;
+      }
+    }
+
     await supabase
       .from('engagement_targets')
-      .update({ last_fetched_at: new Date().toISOString(), linkedin_username: username })
+      .update(targetUpdate)
       .eq('id', target.id);
 
     console.log(`Done: ${inserted} posts stored for target ${target.id}`);
