@@ -4,6 +4,8 @@
 // Uses Apify actor "harvestapi/linkedin-profile-posts" (no cookies, PAYG).
 // Workspace stores an Apify API token in workspace_api_keys (service: "apify").
 //
+// Flow: start actor run → poll until finished → fetch dataset items.
+//
 // Input:  { workspace_id, target_id }
 // Output: { success, posts_found }
 // =============================================================================
@@ -25,89 +27,178 @@ interface FetchedPost {
 }
 
 // ---------------------------------------------------------------------------
-// Normalise a LinkedIn profile URL to a clean format
+// Normalise a LinkedIn profile URL
 // ---------------------------------------------------------------------------
 function normaliseProfileUrl(raw: string): string {
   let url = raw.trim();
   if (!url.startsWith('http')) url = `https://${url}`;
-  // Strip trailing slashes and query params
   url = url.replace(/\/+$/, '').split('?')[0];
+  // Ensure it ends with a trailing slash (some actors need this)
+  if (!url.endsWith('/')) url += '/';
   return url;
 }
 
 // ---------------------------------------------------------------------------
-// Apify: harvestapi/linkedin-profile-posts  (sync endpoint)
-//
-// Docs: https://apify.com/harvestapi/linkedin-profile-posts/api
-// Pricing: ~$1.50-2.00 per 1,000 posts, no cookies, no subscription
+// Sleep helper
 // ---------------------------------------------------------------------------
-async function fetchPostsApify(
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// ---------------------------------------------------------------------------
+// Apify: harvestapi/linkedin-profile-posts
+//
+// Step 1: Start run (async)
+// Step 2: Poll run status until SUCCEEDED/FAILED/TIMED-OUT
+// Step 3: Fetch dataset items
+// ---------------------------------------------------------------------------
+
+const APIFY_ACTOR = 'harvestapi~linkedin-profile-posts';
+const APIFY_BASE = 'https://api.apify.com/v2';
+
+async function startApifyRun(
   profileUrl: string,
   apifyToken: string,
-  maxPosts = 10,
-): Promise<FetchedPost[]> {
-  const posts: FetchedPost[] = [];
+  maxPosts: number,
+): Promise<string | null> {
+  const url = `${APIFY_BASE}/acts/${APIFY_ACTOR}/runs?token=${apifyToken}`;
 
-  try {
-    // Sync endpoint — returns dataset items directly in the response
-    const url = `https://api.apify.com/v2/acts/harvestapi~linkedin-profile-posts/run-sync-get-dataset-items?token=${apifyToken}`;
+  console.log('Starting Apify run for:', profileUrl);
 
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        targetUrls: [profileUrl],
-        maxPosts,
-        scrapeReactions: false,
-        scrapeComments: false,
-      }),
-    });
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      targetUrls: [profileUrl],
+      maxPosts,
+      scrapeReactions: false,
+      scrapeComments: false,
+    }),
+  });
+
+  if (!res.ok) {
+    const errText = await res.text();
+    console.error(`Apify start failed (${res.status}):`, errText);
+    return null;
+  }
+
+  const data = await res.json();
+  const runId = data?.data?.id;
+  console.log('Apify run started:', runId);
+  return runId || null;
+}
+
+async function pollApifyRun(
+  runId: string,
+  apifyToken: string,
+  maxWaitMs = 50000,
+): Promise<{ status: string; datasetId: string | null }> {
+  const startTime = Date.now();
+
+  while (Date.now() - startTime < maxWaitMs) {
+    const url = `${APIFY_BASE}/actor-runs/${runId}?token=${apifyToken}`;
+    const res = await fetch(url);
 
     if (!res.ok) {
-      const errText = await res.text();
-      console.error(`Apify call failed (${res.status}):`, errText);
-      return posts;
+      console.error(`Apify poll failed (${res.status})`);
+      return { status: 'FAILED', datasetId: null };
     }
 
-    const items: Record<string, unknown>[] = await res.json();
+    const data = await res.json();
+    const status = data?.data?.status;
+    const datasetId = data?.data?.defaultDatasetId;
 
-    for (const item of items) {
-      // Skip non-post items (reactions/comments if they leak through)
-      if (item.type && item.type !== 'post' && item.type !== 'repost') continue;
+    console.log(`Apify run ${runId} status: ${status}`);
 
-      const postUrl = (item.linkedinUrl as string) || '';
-      if (!postUrl) continue;
-
-      // Apify response fields:
-      //   id, linkedinUrl, content, postedAt, type
-      //   engagement.likes, engagement.comments, engagement.shares, engagement.reactions
-      //   author.name, author.publicIdentifier, author.avatar
-      //   postImages, document
-
-      const engagement = (item.engagement || {}) as Record<string, unknown>;
-      const author = (item.author || {}) as Record<string, unknown>;
-
-      posts.push({
-        linkedin_post_url: postUrl,
-        linkedin_post_urn: item.id ? String(item.id) : null,
-        content: (item.content as string) || null,
-        published_at: (item.postedAt as string) || null,
-        likes_count: (engagement.likes as number) ?? 0,
-        comments_count: (engagement.comments as number) ?? 0,
-        shares_count: (engagement.shares as number) ?? 0,
-        post_metadata: {
-          author_name: author.name || null,
-          author_username: author.publicIdentifier || null,
-          author_avatar: author.avatar || null,
-          images: item.postImages || [],
-          document: item.document || null,
-          reactions: engagement.reactions || null,
-          type: item.type || null,
-        },
-      });
+    if (status === 'SUCCEEDED') {
+      return { status, datasetId };
     }
-  } catch (err) {
-    console.error('Apify fetch error:', err);
+    if (status === 'FAILED' || status === 'TIMED-OUT' || status === 'ABORTED') {
+      return { status, datasetId: null };
+    }
+
+    // Still running — wait 3 seconds before next poll
+    await sleep(3000);
+  }
+
+  console.error('Apify polling timed out');
+  return { status: 'POLL_TIMEOUT', datasetId: null };
+}
+
+async function fetchApifyDataset(
+  datasetId: string,
+  apifyToken: string,
+): Promise<Record<string, unknown>[]> {
+  const url = `${APIFY_BASE}/datasets/${datasetId}/items?token=${apifyToken}&format=json`;
+  const res = await fetch(url);
+
+  if (!res.ok) {
+    console.error(`Apify dataset fetch failed (${res.status})`);
+    return [];
+  }
+
+  const items = await res.json();
+  console.log(`Apify dataset returned ${Array.isArray(items) ? items.length : 0} items`);
+
+  // Log first item structure for debugging
+  if (Array.isArray(items) && items.length > 0) {
+    console.log('First item keys:', Object.keys(items[0]));
+  }
+
+  return Array.isArray(items) ? items : [];
+}
+
+function parseApifyItems(items: Record<string, unknown>[]): FetchedPost[] {
+  const posts: FetchedPost[] = [];
+
+  for (const item of items) {
+    // Skip non-post items
+    const itemType = item.type as string | undefined;
+    if (itemType && itemType !== 'post' && itemType !== 'repost' && itemType !== 'share') continue;
+
+    // Try multiple possible URL field names
+    const postUrl =
+      (item.linkedinUrl as string) ||
+      (item.postUrl as string) ||
+      (item.url as string) ||
+      (item.link as string) ||
+      '';
+
+    if (!postUrl) {
+      console.log('Skipping item with no URL, keys:', Object.keys(item));
+      continue;
+    }
+
+    // Engagement — try nested object or flat fields
+    const engagement = (item.engagement || {}) as Record<string, unknown>;
+    const likes = (engagement.likes as number) ?? (item.likes as number) ?? (item.numLikes as number) ?? 0;
+    const comments = (engagement.comments as number) ?? (item.comments as number) ?? (item.numComments as number) ?? 0;
+    const shares = (engagement.shares as number) ?? (item.shares as number) ?? (item.numShares as number) ?? 0;
+
+    // Author info
+    const author = (item.author || {}) as Record<string, unknown>;
+
+    // Post ID — try multiple field names
+    const postId = (item.id as string) || (item.postId as string) || (item.urn as string) || null;
+
+    posts.push({
+      linkedin_post_url: postUrl,
+      linkedin_post_urn: postId,
+      content: (item.content as string) || (item.text as string) || (item.commentary as string) || null,
+      published_at: (item.postedAt as string) || (item.publishedAt as string) || (item.postedDate as string) || null,
+      likes_count: likes,
+      comments_count: comments,
+      shares_count: shares,
+      post_metadata: {
+        author_name: author.name || null,
+        author_username: author.publicIdentifier || null,
+        author_avatar: author.avatar || null,
+        images: item.postImages || item.images || [],
+        document: item.document || null,
+        reactions: engagement.reactions || null,
+        type: itemType || null,
+      },
+    });
   }
 
   return posts;
@@ -168,9 +259,33 @@ Deno.serve(async (req) => {
       );
     }
 
-    // --- Fetch posts via Apify ---
+    const apifyToken = keyRow.api_key_encrypted;
     const profileUrl = normaliseProfileUrl(target.linkedin_url);
-    const fetchedPosts = await fetchPostsApify(profileUrl, keyRow.api_key_encrypted, 10);
+
+    // --- Step 1: Start the Apify run ---
+    const runId = await startApifyRun(profileUrl, apifyToken, 5);
+    if (!runId) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Failed to start Apify run. Check your API token.' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
+
+    // --- Step 2: Poll until done (max ~50s to stay within Edge Function timeout) ---
+    const { status, datasetId } = await pollApifyRun(runId, apifyToken, 50000);
+
+    if (status !== 'SUCCEEDED' || !datasetId) {
+      return new Response(
+        JSON.stringify({ success: false, error: `Apify run ${status}. Run ID: ${runId}` }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
+
+    // --- Step 3: Fetch dataset items ---
+    const rawItems = await fetchApifyDataset(datasetId, apifyToken);
+    const fetchedPosts = parseApifyItems(rawItems);
+
+    console.log(`Parsed ${fetchedPosts.length} posts from ${rawItems.length} raw items`);
 
     // --- Upsert into engagement_posts ---
     let inserted = 0;
@@ -207,7 +322,7 @@ Deno.serve(async (req) => {
       .update({ last_fetched_at: new Date().toISOString(), linkedin_username: username })
       .eq('id', target.id);
 
-    console.log(`Fetched ${inserted} posts for target ${target.id} via Apify`);
+    console.log(`Done: ${inserted} posts stored for target ${target.id}`);
 
     return new Response(
       JSON.stringify({ success: true, posts_found: inserted }),
