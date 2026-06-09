@@ -26,7 +26,7 @@ export function useMonitoringTopics(publisherId: string | null) {
     queryFn: async () => {
       if (!currentWorkspace || !publisherId) return [];
 
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('monitoring_topics')
         .select('*')
         .eq('workspace_id', currentWorkspace.id)
@@ -43,7 +43,7 @@ export function useMonitoringTopics(publisherId: string | null) {
     mutationFn: async (data: { publisher_id: string; topic_type: string; topic_value: string }) => {
       if (!currentWorkspace) throw new Error('No workspace selected');
 
-      const { data: result, error } = await supabase
+      const { data: result, error } = await (supabase as any)
         .from('monitoring_topics')
         .insert({
           workspace_id: currentWorkspace.id,
@@ -73,7 +73,7 @@ export function useMonitoringTopics(publisherId: string | null) {
       if (data.topic_value !== undefined) updates.topic_value = data.topic_value;
       if (data.is_active !== undefined) updates.is_active = data.is_active;
 
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('monitoring_topics')
         .update(updates)
         .eq('id', data.id);
@@ -91,7 +91,7 @@ export function useMonitoringTopics(publisherId: string | null) {
 
   const deleteTopic = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('monitoring_topics')
         .delete()
         .eq('id', id);

@@ -64,7 +64,7 @@ export function useEngagementTargets(publisherId: string | null) {
     queryKey: ['engagement-targets', currentWorkspace?.id, publisherId],
     queryFn: async () => {
       if (!currentWorkspace || !publisherId) return [];
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('engagement_targets')
         .select('*')
         .eq('workspace_id', currentWorkspace.id)
@@ -83,7 +83,7 @@ export function useEngagementTargets(publisherId: string | null) {
       const match = data.linkedin_url.match(/linkedin\.com\/in\/([^/?#]+)/);
       const username = match ? match[1] : null;
 
-      const { data: result, error } = await supabase
+      const { data: result, error } = await (supabase as any)
         .from('engagement_targets')
         .insert({
           workspace_id: currentWorkspace.id,
@@ -111,7 +111,7 @@ export function useEngagementTargets(publisherId: string | null) {
 
   const deleteTarget = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('engagement_targets').delete().eq('id', id);
+      const { error } = await (supabase as any).from('engagement_targets').delete().eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -137,7 +137,7 @@ export function useEngagementPosts(targetId: string | null) {
     queryKey: ['engagement-posts', currentWorkspace?.id, targetId],
     queryFn: async () => {
       if (!currentWorkspace || !targetId) return [];
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('engagement_posts')
         .select('*')
         .eq('workspace_id', currentWorkspace.id)
@@ -190,7 +190,7 @@ export function useEngagementComments(postId: string | null) {
     queryKey: ['engagement-comments', currentWorkspace?.id, postId],
     queryFn: async () => {
       if (!currentWorkspace || !postId) return [];
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('engagement_comments')
         .select('*')
         .eq('workspace_id', currentWorkspace.id)
@@ -218,7 +218,7 @@ export function usePostComment() {
   const saveDraft = useMutation({
     mutationFn: async ({ publisher_id, post_id, comment_text }: { publisher_id: string; post_id: string; comment_text: string }) => {
       if (!currentWorkspace) throw new Error('No workspace');
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('engagement_comments')
         .insert({
           workspace_id: currentWorkspace.id,
