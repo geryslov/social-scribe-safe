@@ -861,6 +861,53 @@ export type Database = {
         }
         Relationships: []
       }
+      workspace_api_keys: {
+        Row: {
+          api_key_encrypted: string
+          created_at: string
+          created_by: string | null
+          id: string
+          is_valid: boolean | null
+          key_hint: string | null
+          last_validated_at: string | null
+          service_name: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          api_key_encrypted: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_valid?: boolean | null
+          key_hint?: string | null
+          last_validated_at?: string | null
+          service_name: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          api_key_encrypted?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_valid?: boolean | null
+          key_hint?: string | null
+          last_validated_at?: string | null
+          service_name?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workspace_api_keys_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       workspace_members: {
         Row: {
           created_at: string | null
