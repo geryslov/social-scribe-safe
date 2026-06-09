@@ -96,7 +96,7 @@ export function PostPanel({ target, publisher, isAdmin }: PostPanelProps) {
             {/* Large avatar */}
             <div className="h-16 w-16 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden bg-[#0A66C2]/10 text-[#0A66C2] text-lg font-bold">
               {target.avatar_url ? (
-                <img src={target.avatar_url} alt={target.name} className="h-full w-full object-cover" />
+                <img src={target.avatar_url} alt={target.name} referrerPolicy="no-referrer" className="h-full w-full object-cover" />
               ) : (
                 initials
               )}
