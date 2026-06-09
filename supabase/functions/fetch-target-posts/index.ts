@@ -185,7 +185,7 @@ function parseApifyItems(items: Record<string, unknown>[]): FetchedPost[] {
       linkedin_post_url: postUrl,
       linkedin_post_urn: postId,
       content: (item.content as string) || (item.text as string) || (item.commentary as string) || null,
-      published_at: (item.postedAt as string) || (item.publishedAt as string) || (item.postedDate as string) || null,
+      published_at: parseTimestamp(item.postedAt) || parseTimestamp(item.publishedAt) || parseTimestamp(item.postedDate) || null,
       likes_count: likes,
       comments_count: comments,
       shares_count: shares,
