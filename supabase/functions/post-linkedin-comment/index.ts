@@ -174,6 +174,39 @@ Deno.serve(async (req) => {
       lastErrBody = await res.text();
       console.warn(`Comment attempt failed for ${urn} (${res.status}): ${lastErrBody.slice(0, 200)}`);
       linkedinRes = res;
+
+      // LinkedIn sometimes reveals the actual threadUrn in the error body. Try it.
+      const actualUrnMatch = lastErrBody.match(/actual threadUrn:\s*(urn:li:(?:ugcPost|share|activity):\d+)/);
+      if (actualUrnMatch && !tryUrns.includes(actualUrnMatch[1])) {
+        const actualUrn = actualUrnMatch[1];
+        console.log(`LinkedIn revealed actual URN: ${actualUrn}. Retrying...`);
+        const encoded2 = encodeURIComponent(actualUrn);
+        const res2 = await fetch(
+          `https://api.linkedin.com/v2/socialActions/${encoded2}/comments`,
+          {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${tokenRow.linkedin_access_token}`,
+              'Content-Type': 'application/json',
+              'X-Restli-Protocol-Version': '2.0.0',
+            },
+            body: JSON.stringify({
+              actor: personUrn,
+              object: actualUrn,
+              message: { text: comment_text },
+            }),
+          },
+        );
+        if (res2.ok) {
+          linkedinRes = res2;
+          usedUrn = actualUrn;
+          break;
+        }
+        lastErrBody = await res2.text();
+        linkedinRes = res2;
+        console.warn(`Retry with revealed URN ${actualUrn} also failed (${res2.status}): ${lastErrBody.slice(0, 200)}`);
+      }
+
       // Only retry on 400 (wrong URN type). Stop on auth/permission errors.
       if (res.status !== 400 && res.status !== 404) break;
     }
