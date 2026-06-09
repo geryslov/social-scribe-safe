@@ -287,7 +287,7 @@ Deno.serve(async (req) => {
     const profileUrl = normaliseProfileUrl(target.linkedin_url);
 
     // --- Step 1: Start the Apify run ---
-    const runId = await startApifyRun(profileUrl, apifyToken, 5);
+    const runId = await startApifyRun(profileUrl, apifyToken, 2);
     if (!runId) {
       return new Response(
         JSON.stringify({ success: false, error: 'Failed to start Apify run. Check your API token.' }),
