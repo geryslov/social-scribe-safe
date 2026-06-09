@@ -1,8 +1,8 @@
 // =============================================================================
 // fetch-target-posts — Fetch recent LinkedIn posts for an engagement target
 //
-// Uses the workspace's configured linkedin_scraper API key (RapidAPI).
-// Provider-agnostic: swap the fetchPosts() implementation to change providers.
+// Uses Apify actor "harvestapi/linkedin-profile-posts" (no cookies, PAYG).
+// Workspace stores an Apify API token in workspace_api_keys (service: "apify").
 //
 // Input:  { workspace_id, target_id }
 // Output: { success, posts_found }
@@ -25,71 +25,91 @@ interface FetchedPost {
 }
 
 // ---------------------------------------------------------------------------
-// Extract LinkedIn username from profile URL
+// Normalise a LinkedIn profile URL to a clean format
 // ---------------------------------------------------------------------------
-function extractUsername(linkedinUrl: string): string | null {
-  // Handles: linkedin.com/in/username, linkedin.com/in/username/, etc.
-  const match = linkedinUrl.match(/linkedin\.com\/in\/([^/?#]+)/);
-  return match ? match[1] : null;
+function normaliseProfileUrl(raw: string): string {
+  let url = raw.trim();
+  if (!url.startsWith('http')) url = `https://${url}`;
+  // Strip trailing slashes and query params
+  url = url.replace(/\/+$/, '').split('?')[0];
+  return url;
 }
 
 // ---------------------------------------------------------------------------
-// Provider: RapidAPI LinkedIn Data API (Z Real-Time Scraper)
-// Endpoint: GET /get-profile-posts
+// Apify: harvestapi/linkedin-profile-posts  (sync endpoint)
+//
+// Docs: https://apify.com/harvestapi/linkedin-profile-posts/api
+// Pricing: ~$1.50-2.00 per 1,000 posts, no cookies, no subscription
 // ---------------------------------------------------------------------------
-async function fetchPostsRapidApi(
-  username: string,
-  apiKey: string,
-  apiHost: string,
+async function fetchPostsApify(
+  profileUrl: string,
+  apifyToken: string,
+  maxPosts = 10,
 ): Promise<FetchedPost[]> {
   const posts: FetchedPost[] = [];
+
   try {
-    const url = `https://${apiHost}/get-profile-posts?username=${encodeURIComponent(username)}&start=0`;
+    // Sync endpoint — returns dataset items directly in the response
+    const url = `https://api.apify.com/v2/acts/harvestapi~linkedin-profile-posts/run-sync-get-dataset-items?token=${apifyToken}`;
+
     const res = await fetch(url, {
-      headers: {
-        'X-RapidAPI-Key': apiKey,
-        'X-RapidAPI-Host': apiHost,
-      },
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        targetUrls: [profileUrl],
+        maxPosts,
+        scrapeReactions: false,
+        scrapeComments: false,
+      }),
     });
 
     if (!res.ok) {
-      console.error(`RapidAPI fetch failed (${res.status})`);
-      const text = await res.text();
-      console.error(text);
+      const errText = await res.text();
+      console.error(`Apify call failed (${res.status}):`, errText);
       return posts;
     }
 
-    const data = await res.json();
-    // The response shape varies by provider — normalize here
-    const items = data?.data || data?.posts || data?.elements || [];
+    const items: Record<string, unknown>[] = await res.json();
 
     for (const item of items) {
-      // Normalize across common RapidAPI LinkedIn scraper response formats
-      const postUrl =
-        item.postUrl || item.post_url || item.url ||
-        (item.urn ? `https://www.linkedin.com/feed/update/${item.urn}` : null);
+      // Skip non-post items (reactions/comments if they leak through)
+      if (item.type && item.type !== 'post' && item.type !== 'repost') continue;
 
+      const postUrl = (item.linkedinUrl as string) || '';
       if (!postUrl) continue;
+
+      // Apify response fields:
+      //   id, linkedinUrl, content, postedAt, type
+      //   engagement.likes, engagement.comments, engagement.shares, engagement.reactions
+      //   author.name, author.publicIdentifier, author.avatar
+      //   postImages, document
+
+      const engagement = (item.engagement || {}) as Record<string, unknown>;
+      const author = (item.author || {}) as Record<string, unknown>;
 
       posts.push({
         linkedin_post_url: postUrl,
-        linkedin_post_urn: item.urn || item.postUrn || item.post_urn || null,
-        content: item.text || item.content || item.commentary || null,
-        published_at: item.postedAt || item.published_at || item.postedDate || item.publishedAt || null,
-        likes_count: item.totalReactionCount ?? item.likes ?? item.numLikes ?? 0,
-        comments_count: item.commentsCount ?? item.comments ?? item.numComments ?? 0,
-        shares_count: item.repostsCount ?? item.shares ?? item.numShares ?? 0,
+        linkedin_post_urn: item.id ? String(item.id) : null,
+        content: (item.content as string) || null,
+        published_at: (item.postedAt as string) || null,
+        likes_count: (engagement.likes as number) ?? 0,
+        comments_count: (engagement.comments as number) ?? 0,
+        shares_count: (engagement.shares as number) ?? 0,
         post_metadata: {
-          images: item.images || item.image || [],
-          video: item.video || null,
-          article: item.article || null,
-          author: item.author || item.authorName || null,
+          author_name: author.name || null,
+          author_username: author.publicIdentifier || null,
+          author_avatar: author.avatar || null,
+          images: item.postImages || [],
+          document: item.document || null,
+          reactions: engagement.reactions || null,
+          type: item.type || null,
         },
       });
     }
   } catch (err) {
-    console.error('RapidAPI fetch error:', err);
+    console.error('Apify fetch error:', err);
   }
+
   return posts;
 }
 
@@ -132,34 +152,25 @@ Deno.serve(async (req) => {
       );
     }
 
-    const username = target.linkedin_username || extractUsername(target.linkedin_url);
-    if (!username) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'Could not extract LinkedIn username from URL' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-      );
-    }
-
-    // --- Get the API key (linkedin_scraper service) ---
+    // --- Get the Apify API token ---
     const { data: keyRow } = await supabase
       .from('workspace_api_keys')
       .select('api_key_encrypted')
       .eq('workspace_id', workspace_id)
-      .eq('service_name', 'linkedin_scraper')
+      .eq('service_name', 'apify')
       .eq('is_valid', true)
       .maybeSingle();
 
     if (!keyRow?.api_key_encrypted) {
       return new Response(
-        JSON.stringify({ success: false, error: 'No linkedin_scraper API key configured. Add one in Intelligence > Settings.' }),
+        JSON.stringify({ success: false, error: 'No Apify API token configured. Add one in Intelligence > Settings (service: apify).' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }
 
-    // --- Fetch posts from provider ---
-    // Default to RapidAPI LinkedIn Data API host; configurable via workspace_api_keys metadata
-    const apiHost = 'linkedin-data-api.p.rapidapi.com';
-    const fetchedPosts = await fetchPostsRapidApi(username, keyRow.api_key_encrypted, apiHost);
+    // --- Fetch posts via Apify ---
+    const profileUrl = normaliseProfileUrl(target.linkedin_url);
+    const fetchedPosts = await fetchPostsApify(profileUrl, keyRow.api_key_encrypted, 10);
 
     // --- Upsert into engagement_posts ---
     let inserted = 0;
@@ -190,12 +201,13 @@ Deno.serve(async (req) => {
     }
 
     // --- Update target last_fetched_at ---
+    const username = target.linkedin_url.match(/linkedin\.com\/in\/([^/?#]+)/)?.[1] || null;
     await supabase
       .from('engagement_targets')
       .update({ last_fetched_at: new Date().toISOString(), linkedin_username: username })
       .eq('id', target.id);
 
-    console.log(`Fetched ${inserted} posts for target ${target.id} (${username})`);
+    console.log(`Fetched ${inserted} posts for target ${target.id} via Apify`);
 
     return new Response(
       JSON.stringify({ success: true, posts_found: inserted }),

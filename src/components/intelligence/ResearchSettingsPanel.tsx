@@ -99,7 +99,7 @@ export function ResearchSettingsPanel({ publisher }: ResearchSettingsPanelProps)
         </h3>
         <Card className="p-4 space-y-4">
           <p className="text-xs text-muted-foreground">
-            Reddit and Hacker News are free. Add a Brave Search API key to enable web results.
+            Reddit and HN are free. Add Brave for web search, Apify for LinkedIn post fetching (Engage tab).
           </p>
 
           {/* Existing keys */}
@@ -135,6 +135,7 @@ export function ResearchSettingsPanel({ publisher }: ResearchSettingsPanelProps)
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="brave">Brave</SelectItem>
+                  <SelectItem value="apify">Apify</SelectItem>
                   <SelectItem value="scrapecreators">ScrapeCreators</SelectItem>
                 </SelectContent>
               </Select>
