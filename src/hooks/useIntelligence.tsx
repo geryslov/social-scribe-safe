@@ -34,7 +34,7 @@ export function useIntelligenceItems(publisherId: string | null) {
     queryFn: async () => {
       if (!currentWorkspace || !publisherId) return [];
 
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('intelligence_items')
         .select('*')
         .eq('workspace_id', currentWorkspace.id)
@@ -55,7 +55,7 @@ export function useMarkItemUsed() {
 
   const markUsed = useMutation({
     mutationFn: async ({ itemIds, documentId }: { itemIds: string[]; documentId: string }) => {
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('intelligence_items')
         .update({ is_used_in_document: true, used_in_document_id: documentId })
         .in('id', itemIds);
