@@ -112,11 +112,13 @@ Deno.serve(async (req) => {
     const personUrn = `urn:li:person:${publisher.linkedin_member_id}`;
 
     // /v2/socialActions accepts ugcPost or share URNs, NOT activity URNs.
-    // Build a list of candidate URNs to try in order.
-    const idMatch = activityUrn.match(/urn:li:(?:activity|ugcPost|share):(\d+)/);
-    const numericId = idMatch ? idMatch[1] : null;
+    let numericId: string | null = null;
+    const urnDigits = String(activityUrn).match(/(\d{10,})/);
+    if (urnDigits) numericId = urnDigits[1];
+
     const candidates: string[] = [];
-    if (activityUrn.startsWith('urn:li:ugcPost:') || activityUrn.startsWith('urn:li:share:')) {
+    if (typeof activityUrn === 'string' &&
+        (activityUrn.startsWith('urn:li:ugcPost:') || activityUrn.startsWith('urn:li:share:'))) {
       candidates.push(activityUrn);
     }
     if (numericId) {
@@ -124,8 +126,21 @@ Deno.serve(async (req) => {
       candidates.push(`urn:li:share:${numericId}`);
       candidates.push(`urn:li:activity:${numericId}`);
     }
-    // Dedupe
     const tryUrns = [...new Set(candidates)];
+    console.log(`Trying ${tryUrns.length} URN variants for activityUrn="${activityUrn}":`, tryUrns);
+
+    if (tryUrns.length === 0) {
+      const msg = `Could not parse a numeric LinkedIn post ID from "${activityUrn}".`;
+      if (engagement_comment_id) {
+        await supabase.from('engagement_comments').update({
+          status: 'failed', error_message: msg,
+        }).eq('id', engagement_comment_id);
+      }
+      return new Response(
+        JSON.stringify({ success: false, error: msg }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
 
     let linkedinRes: Response | null = null;
     let lastErrBody = '';
