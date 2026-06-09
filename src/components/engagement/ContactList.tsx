@@ -228,7 +228,7 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
                         : 'bg-[#0A66C2]/10 text-[#0A66C2]',
                     )}>
                       {target.avatar_url ? (
-                        <img src={target.avatar_url} alt={target.name} className="h-full w-full object-cover" />
+                        <img src={target.avatar_url} alt={target.name} referrerPolicy="no-referrer" loading="lazy" className="h-full w-full object-cover" />
                       ) : isFetching ? (
                         <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                       ) : (
