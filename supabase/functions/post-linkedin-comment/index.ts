@@ -108,39 +108,74 @@ Deno.serve(async (req) => {
       );
     }
 
-    // --- Post comment via LinkedIn Community Management API ---
+    // --- Post comment via LinkedIn v2 socialActions API ---
     const personUrn = `urn:li:person:${publisher.linkedin_member_id}`;
-    const encodedUrn = encodeURIComponent(activityUrn);
 
-    const linkedinRes = await fetch(
-      `https://api.linkedin.com/v2/socialActions/${encodedUrn}/comments`,
-      {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${tokenRow.linkedin_access_token}`,
-          'Content-Type': 'application/json',
-          'X-Restli-Protocol-Version': '2.0.0',
+    // /v2/socialActions accepts ugcPost or share URNs, NOT activity URNs.
+    // Build a list of candidate URNs to try in order.
+    const idMatch = activityUrn.match(/urn:li:(?:activity|ugcPost|share):(\d+)/);
+    const numericId = idMatch ? idMatch[1] : null;
+    const candidates: string[] = [];
+    if (activityUrn.startsWith('urn:li:ugcPost:') || activityUrn.startsWith('urn:li:share:')) {
+      candidates.push(activityUrn);
+    }
+    if (numericId) {
+      candidates.push(`urn:li:ugcPost:${numericId}`);
+      candidates.push(`urn:li:share:${numericId}`);
+      candidates.push(`urn:li:activity:${numericId}`);
+    }
+    // Dedupe
+    const tryUrns = [...new Set(candidates)];
+
+    let linkedinRes: Response | null = null;
+    let lastErrBody = '';
+    let usedUrn = '';
+
+    for (const urn of tryUrns) {
+      const encoded = encodeURIComponent(urn);
+      const res = await fetch(
+        `https://api.linkedin.com/v2/socialActions/${encoded}/comments`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${tokenRow.linkedin_access_token}`,
+            'Content-Type': 'application/json',
+            'X-Restli-Protocol-Version': '2.0.0',
+          },
+          body: JSON.stringify({
+            actor: personUrn,
+            object: urn,
+            message: { text: comment_text },
+          }),
         },
-        body: JSON.stringify({
-          actor: personUrn,
-          object: activityUrn,
-          message: { text: comment_text },
-        }),
-      },
-    );
+      );
 
-    if (!linkedinRes.ok) {
-      const errBody = await linkedinRes.text();
-      console.error(`LinkedIn comment failed (${linkedinRes.status}):`, errBody);
-
-      let friendly = `LinkedIn API ${linkedinRes.status}: ${errBody.slice(0, 300)}`;
-      if (linkedinRes.status === 403) {
-        friendly = 'LinkedIn denied the comment (403). The publisher token is missing the w_member_social scope, or LinkedIn does not allow commenting on this post via the API. Reconnect the publisher to LinkedIn.';
-      } else if (linkedinRes.status === 401) {
-        friendly = 'LinkedIn access token is expired or invalid. Please reconnect the publisher.';
+      if (res.ok) {
+        linkedinRes = res;
+        usedUrn = urn;
+        break;
       }
 
-      // Update engagement_comment status to failed
+      lastErrBody = await res.text();
+      console.warn(`Comment attempt failed for ${urn} (${res.status}): ${lastErrBody.slice(0, 200)}`);
+      linkedinRes = res;
+      // Only retry on 400 (wrong URN type). Stop on auth/permission errors.
+      if (res.status !== 400 && res.status !== 404) break;
+    }
+
+    if (!linkedinRes || !linkedinRes.ok) {
+      const status = linkedinRes?.status ?? 500;
+      console.error(`LinkedIn comment failed (${status}) after trying ${tryUrns.length} URN variants:`, lastErrBody);
+
+      let friendly = `LinkedIn API ${status}: ${lastErrBody.slice(0, 300)}`;
+      if (status === 403) {
+        friendly = 'LinkedIn denied the comment (403). The publisher token is missing the w_member_social scope. Reconnect the publisher to LinkedIn.';
+      } else if (status === 401) {
+        friendly = 'LinkedIn access token is expired or invalid. Please reconnect the publisher.';
+      } else if (status === 400) {
+        friendly = `LinkedIn rejected the post URN (${activityUrn}). It may be a repost, a comment, or a deleted post that cannot be commented on via the API.`;
+      }
+
       if (engagement_comment_id) {
         await supabase.from('engagement_comments').update({
           status: 'failed',
@@ -149,10 +184,12 @@ Deno.serve(async (req) => {
       }
 
       return new Response(
-        JSON.stringify({ success: false, error: friendly, linkedin_status: linkedinRes.status }),
+        JSON.stringify({ success: false, error: friendly, linkedin_status: status }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }
+
+    console.log(`Comment posted successfully using URN: ${usedUrn}`);
 
     const commentData = await linkedinRes.json();
     const commentUrn = commentData.commentUrn || null;
