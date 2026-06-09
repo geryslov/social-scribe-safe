@@ -179,7 +179,7 @@ export function useEngagementTargets(publisherId: string | null) {
     },
   });
 
-  return { targets, isLoading, createTarget, deleteTarget, markSeen };
+  return { targets, isLoading, createTarget, deleteTarget, markSeen, enrichTarget };
 }
 
 // ---------------------------------------------------------------------------
