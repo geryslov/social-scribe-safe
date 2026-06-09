@@ -16,6 +16,8 @@ export interface EngagementTarget {
   linkedin_url: string;
   linkedin_username: string | null;
   headline: string | null;
+  title: string | null;
+  company_name: string | null;
   avatar_url: string | null;
   notes: string | null;
   is_active: boolean;

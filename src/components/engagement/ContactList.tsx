@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useEngagementTargets, useFetchTargetPosts, EngagementTarget } from '@/hooks/useEngagement';
@@ -14,7 +14,7 @@ import {
   DialogFooter,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { Plus, Search, Loader2, Linkedin, RefreshCw } from 'lucide-react';
+import { Plus, Search, Loader2, Linkedin, RefreshCw, Building2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface ContactListProps {
@@ -25,10 +25,10 @@ interface ContactListProps {
 }
 
 function timeAgoShort(dateStr: string | null): string {
-  if (!dateStr) return 'Never';
+  if (!dateStr) return '';
   const diff = Date.now() - new Date(dateStr).getTime();
   const hours = Math.floor(diff / 3600000);
-  if (hours < 1) return 'Just now';
+  if (hours < 1) return 'now';
   if (hours < 24) return `${hours}h`;
   const days = Math.floor(hours / 24);
   if (days < 7) return `${days}d`;
@@ -44,17 +44,15 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [newName, setNewName] = useState('');
   const [newUrl, setNewUrl] = useState('');
-  const [newHeadline, setNewHeadline] = useState('');
-  const [newCompany, setNewCompany] = useState('');
   const [fetchingAll, setFetchingAll] = useState(false);
+  const [fetchingTargetId, setFetchingTargetId] = useState<string | null>(null);
 
-  // Fetch unseen post counts per target
+  // Unseen post counts
   const { data: unseenCounts = {} } = useQuery({
-    queryKey: ['unseen-counts', currentWorkspace?.id, publisher.id, targets.map((t) => t.last_seen_at).join(',')],
+    queryKey: ['unseen-counts', currentWorkspace?.id, publisher.id, targets.map((t) => `${t.id}:${t.last_seen_at}`).join(',')],
     queryFn: async () => {
       if (!currentWorkspace || targets.length === 0) return {};
       const counts: Record<string, number> = {};
-      // For each target, count posts newer than last_seen_at
       for (const target of targets) {
         let query = (supabase as any)
           .from('engagement_posts')
@@ -78,30 +76,34 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
       (t) =>
         t.name.toLowerCase().includes(q) ||
         (t.headline || '').toLowerCase().includes(q) ||
+        (t.company_name || '').toLowerCase().includes(q) ||
+        (t.title || '').toLowerCase().includes(q) ||
         (t.linkedin_username || '').toLowerCase().includes(q),
     );
   }, [targets, search]);
 
-  const handleAdd = () => {
-    if (!newName.trim() || !newUrl.trim()) return;
+  // Auto-fetch after adding a target
+  const handleAdd = useCallback(() => {
+    if (!newName.trim() || !newUrl.trim() || !currentWorkspace) return;
     createTarget.mutate(
+      { publisher_id: publisher.id, name: newName.trim(), linkedin_url: newUrl.trim() },
       {
-        publisher_id: publisher.id,
-        name: newName.trim(),
-        linkedin_url: newUrl.trim(),
-        headline: [newHeadline.trim(), newCompany.trim()].filter(Boolean).join(' at ') || undefined,
-      },
-      {
-        onSuccess: () => {
+        onSuccess: (data: any) => {
           setNewName('');
           setNewUrl('');
-          setNewHeadline('');
-          setNewCompany('');
           setShowAddDialog(false);
+          // Auto-fetch posts to pull profile data
+          if (data?.id) {
+            setFetchingTargetId(data.id);
+            fetchPosts.mutate(
+              { workspace_id: currentWorkspace.id, target_id: data.id },
+              { onSettled: () => setFetchingTargetId(null) },
+            );
+          }
         },
       },
     );
-  };
+  }, [newName, newUrl, currentWorkspace, publisher.id, createTarget, fetchPosts]);
 
   const handleFetchAll = async () => {
     if (!currentWorkspace || fetchingAll) return;
@@ -116,10 +118,10 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
 
   return (
     <>
-      {/* Header + search */}
+      {/* Header */}
       <div className="p-3 space-y-2 border-b">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+          <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
             Profiles ({targets.length})
           </span>
           <div className="flex gap-1">
@@ -130,7 +132,7 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
                 className="h-7 w-7 p-0 text-muted-foreground hover:text-primary"
                 onClick={handleFetchAll}
                 disabled={fetchingAll}
-                title="Fetch all profiles"
+                title="Sync all profiles"
               >
                 {fetchingAll ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -158,13 +160,13 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search profiles..."
+            placeholder="Search..."
             className="h-8 pl-8 text-sm bg-background focus-visible:ring-primary/30"
           />
         </div>
       </div>
 
-      {/* Contact list — scrollable */}
+      {/* Contact rows */}
       <div className="flex-1 overflow-y-auto">
         {isLoading ? (
           <div className="p-4 text-center text-sm text-muted-foreground">Loading...</div>
@@ -173,7 +175,7 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
             {targets.length === 0 ? (
               <>
                 <Linkedin className="h-8 w-8 mx-auto text-muted-foreground/20 mb-2" />
-                <p className="text-xs text-muted-foreground">No profiles added yet</p>
+                <p className="text-xs text-muted-foreground">No profiles yet</p>
                 {isAdmin && (
                   <Button
                     variant="link"
@@ -193,7 +195,8 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
           <div>
             {filtered.map((target) => {
               const isSelected = selectedTargetId === target.id;
-              // Extract initials for avatar
+              const isFetching = fetchingTargetId === target.id;
+              const unseen = unseenCounts[target.id] || 0;
               const initials = target.name
                 .split(' ')
                 .map((w) => w[0])
@@ -206,53 +209,71 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
                   key={target.id}
                   onClick={() => onSelectTarget(target)}
                   className={cn(
-                    'w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors border-l-[3px] border-l-transparent',
+                    'w-full flex items-center gap-3 px-3 py-3 text-left transition-all border-l-[3px] border-l-transparent',
                     isSelected
                       ? 'bg-primary/[0.06] border-l-primary'
                       : 'hover:bg-muted/50',
-                    !target.is_active && 'opacity-50',
+                    !target.is_active && 'opacity-40',
                   )}
                 >
                   {/* Avatar */}
-                  <div className={cn(
-                    'h-10 w-10 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-semibold',
-                    isSelected
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-[#0A66C2]/10 text-[#0A66C2]',
-                  )}>
-                    {target.avatar_url ? (
-                      <img
-                        src={target.avatar_url}
-                        alt={target.name}
-                        className="h-10 w-10 rounded-full object-cover"
-                      />
-                    ) : (
-                      initials
+                  <div className="relative flex-shrink-0">
+                    <div className={cn(
+                      'h-11 w-11 rounded-full flex items-center justify-center text-xs font-bold overflow-hidden',
+                      isSelected
+                        ? 'ring-2 ring-primary ring-offset-1'
+                        : '',
+                      target.avatar_url
+                        ? 'bg-muted'
+                        : 'bg-[#0A66C2]/10 text-[#0A66C2]',
+                    )}>
+                      {target.avatar_url ? (
+                        <img src={target.avatar_url} alt={target.name} className="h-full w-full object-cover" />
+                      ) : isFetching ? (
+                        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                      ) : (
+                        initials
+                      )}
+                    </div>
+                    {/* Unseen badge */}
+                    {unseen > 0 && (
+                      <span className="absolute -top-1 -right-1 h-[18px] min-w-[18px] px-1 rounded-full bg-primary text-primary-foreground text-[9px] font-bold flex items-center justify-center ring-2 ring-background">
+                        {unseen}
+                      </span>
                     )}
                   </div>
 
                   {/* Info */}
                   <div className="flex-1 min-w-0">
-                    <div className="font-display font-semibold text-sm leading-tight truncate">
+                    <div className="font-display font-semibold text-[13px] leading-tight truncate">
                       {target.name}
                     </div>
-                    {target.headline && (
+                    {target.title && (
+                      <p className="text-[11px] text-muted-foreground truncate mt-0.5 leading-tight">
+                        {target.title}
+                      </p>
+                    )}
+                    {target.company_name && (
+                      <p className="text-[10px] text-muted-foreground/60 truncate leading-tight flex items-center gap-1 mt-0.5">
+                        <Building2 className="h-2.5 w-2.5 flex-shrink-0" />
+                        {target.company_name}
+                      </p>
+                    )}
+                    {/* Fallback to headline if no separate title/company */}
+                    {!target.title && !target.company_name && target.headline && (
                       <p className="text-[11px] text-muted-foreground truncate mt-0.5 leading-tight">
                         {target.headline}
                       </p>
                     )}
                   </div>
 
-                  {/* Unseen badge + last fetched */}
-                  <div className="flex-shrink-0 flex flex-col items-end gap-0.5">
-                    {unseenCounts[target.id] && unseenCounts[target.id] > 0 && (
-                      <span className="h-[18px] min-w-[18px] px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center">
-                        {unseenCounts[target.id]}
+                  {/* Meta */}
+                  <div className="flex-shrink-0 text-right">
+                    {target.last_fetched_at && (
+                      <span className="text-[10px] text-muted-foreground/40 tabular-nums">
+                        {timeAgoShort(target.last_fetched_at)}
                       </span>
                     )}
-                    <span className="text-[10px] text-muted-foreground/50 tabular-nums">
-                      {timeAgoShort(target.last_fetched_at)}
-                    </span>
                   </div>
                 </button>
               );
@@ -261,24 +282,25 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
         )}
       </div>
 
-      {/* Add Person Dialog */}
+      {/* Add Dialog */}
       <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-sm">
           <DialogHeader>
             <DialogTitle className="font-display">Add Profile</DialogTitle>
             <DialogDescription>
-              Add a LinkedIn profile to monitor and engage as {publisher.name}.
+              Paste a LinkedIn URL. We'll fetch their picture, title, and company automatically.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-3 py-2">
             <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Full Name</label>
+              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Name</label>
               <Input
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
                 placeholder="e.g. Jane Smith"
                 className="focus-visible:ring-primary/30"
+                autoFocus
               />
             </div>
             <div>
@@ -288,27 +310,11 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
                 onChange={(e) => setNewUrl(e.target.value)}
                 placeholder="https://linkedin.com/in/janesmith"
                 className="font-mono text-sm focus-visible:ring-primary/30"
+                onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
               />
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Title</label>
-                <Input
-                  value={newHeadline}
-                  onChange={(e) => setNewHeadline(e.target.value)}
-                  placeholder="e.g. VP Marketing"
-                  className="focus-visible:ring-primary/30"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Company</label>
-                <Input
-                  value={newCompany}
-                  onChange={(e) => setNewCompany(e.target.value)}
-                  placeholder="e.g. Acme Corp"
-                  className="focus-visible:ring-primary/30"
-                />
-              </div>
+              <p className="text-[10px] text-muted-foreground/60 mt-1">
+                Title, company, and photo will be fetched automatically
+              </p>
             </div>
           </div>
 
@@ -324,7 +330,7 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
               ) : (
                 <Plus className="h-3.5 w-3.5" />
               )}
-              Add Profile
+              Add & Fetch
             </Button>
           </DialogFooter>
         </DialogContent>

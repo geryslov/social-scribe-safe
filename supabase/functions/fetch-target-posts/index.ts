@@ -346,17 +346,48 @@ Deno.serve(async (req) => {
       linkedin_username: username,
     };
 
-    // Try to get author info from Apify response (first raw item)
+    // Try to get author info from Apify response
     if (rawItems.length > 0) {
       const firstItem = rawItems[0];
       const author = (firstItem.author || {}) as Record<string, unknown>;
+
+      // Avatar
       if (author.avatar && typeof author.avatar === 'string') {
         targetUpdate.avatar_url = author.avatar;
       }
-      // Build headline from author info
+
+      // Full headline for display
       const authorInfo = (author.info as string) || '';
       if (authorInfo) {
         targetUpdate.headline = authorInfo;
+        // Try to parse "Title at Company" or "Title | Company" patterns
+        const atMatch = authorInfo.match(/^(.+?)\s+at\s+(.+)$/i);
+        const pipeMatch = authorInfo.match(/^(.+?)\s*[|·]\s*(.+)$/);
+        if (atMatch) {
+          targetUpdate.title = atMatch[1].trim();
+          targetUpdate.company_name = atMatch[2].trim();
+        } else if (pipeMatch) {
+          targetUpdate.title = pipeMatch[1].trim();
+          targetUpdate.company_name = pipeMatch[2].trim();
+        } else {
+          targetUpdate.title = authorInfo;
+        }
+      }
+
+      // Also try explicit fields from some Apify actors
+      if (author.title && typeof author.title === 'string') {
+        targetUpdate.title = author.title;
+      }
+      if (author.company && typeof author.company === 'string') {
+        targetUpdate.company_name = author.company;
+      }
+      if (author.companyName && typeof author.companyName === 'string') {
+        targetUpdate.company_name = author.companyName;
+      }
+
+      // Name update if we got a better one
+      if (author.name && typeof author.name === 'string' && (author.name as string).length > 2) {
+        targetUpdate.name = author.name;
       }
     }
 
