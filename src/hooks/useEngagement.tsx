@@ -16,6 +16,8 @@ export interface EngagementTarget {
   linkedin_url: string;
   linkedin_username: string | null;
   headline: string | null;
+  first_name: string | null;
+  last_name: string | null;
   title: string | null;
   company_name: string | null;
   avatar_url: string | null;
@@ -23,6 +25,8 @@ export interface EngagementTarget {
   is_active: boolean;
   last_fetched_at: string | null;
   last_seen_at: string | null;
+  enrichment_status: 'pending' | 'succeeded' | 'failed' | null;
+  enriched_at: string | null;
   created_at: string;
 }
 
