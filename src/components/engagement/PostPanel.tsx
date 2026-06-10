@@ -339,7 +339,7 @@ export function PostPanel({ target, publisher, isAdmin }: PostPanelProps) {
 
                     {/* Content */}
                     {post.content ? (
-                      <p className="text-[13.5px] leading-[1.6] whitespace-pre-wrap text-foreground/90 line-clamp-[8]">
+                      <p className="text-[13.5px] leading-[1.6] whitespace-pre-wrap text-foreground/90">
                         {post.content}
                       </p>
                     ) : (
