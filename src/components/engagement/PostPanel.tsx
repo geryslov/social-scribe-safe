@@ -208,7 +208,27 @@ export function PostPanel({ target, publisher, isAdmin }: PostPanelProps) {
 
             {/* Actions */}
             {isAdmin && (
-              <div className="flex items-center gap-1.5 flex-shrink-0">
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <label
+                  className={cn(
+                    'flex items-center gap-2 h-9 px-3 rounded-md border text-[11px] font-semibold cursor-pointer transition-all select-none',
+                    target.auto_like
+                      ? 'bg-rose-50 border-rose-200 text-rose-700'
+                      : 'bg-background border-border text-muted-foreground hover:text-foreground',
+                  )}
+                  title="Automatically like newly synced posts from this contact"
+                >
+                  <Zap className={cn('h-3.5 w-3.5', target.auto_like && 'fill-current')} />
+                  Auto-like
+                  <Switch
+                    checked={target.auto_like}
+                    onCheckedChange={(checked) => {
+                      if (!checked) autoLikedRef.current.clear();
+                      updateTarget.mutate({ id: target.id, updates: { auto_like: checked } });
+                    }}
+                    className="ml-1 h-4 w-7 data-[state=checked]:bg-rose-600 [&>span]:h-3 [&>span]:w-3 [&>span]:data-[state=checked]:translate-x-3"
+                  />
+                </label>
                 <Button
                   size="sm"
                   className={cn(
