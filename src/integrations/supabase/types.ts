@@ -287,6 +287,9 @@ export type Database = {
           content: string | null
           created_at: string
           id: string
+          is_commented: boolean
+          is_liked: boolean
+          liked_at: string | null
           likes_count: number
           linkedin_post_url: string
           linkedin_post_urn: string | null
@@ -302,6 +305,9 @@ export type Database = {
           content?: string | null
           created_at?: string
           id?: string
+          is_commented?: boolean
+          is_liked?: boolean
+          liked_at?: string | null
           likes_count?: number
           linkedin_post_url: string
           linkedin_post_urn?: string | null
@@ -317,6 +323,9 @@ export type Database = {
           content?: string | null
           created_at?: string
           id?: string
+          is_commented?: boolean
+          is_liked?: boolean
+          liked_at?: string | null
           likes_count?: number
           linkedin_post_url?: string
           linkedin_post_urn?: string | null

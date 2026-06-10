@@ -42,8 +42,38 @@ export interface EngagementPost {
   comments_count: number;
   shares_count: number;
   is_commented: boolean;
+  is_liked: boolean;
+  liked_at: string | null;
   post_metadata: Record<string, unknown>;
   created_at: string;
+}
+
+// ---------------------------------------------------------------------------
+// Like a post
+// ---------------------------------------------------------------------------
+
+export function useLikePost() {
+  const queryClient = useQueryClient();
+  const { currentWorkspace } = useWorkspace();
+
+  return useMutation({
+    mutationFn: async ({ publisher_id, post_id }: { publisher_id: string; post_id: string }) => {
+      if (!currentWorkspace) throw new Error('No workspace');
+      const { data, error } = await supabase.functions.invoke('like-linkedin-post', {
+        body: { workspace_id: currentWorkspace.id, publisher_id, post_id },
+      });
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || 'Failed to like post');
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['engagement-posts'] });
+      toast.success(data?.already_liked ? 'Already liked on LinkedIn' : 'Liked on LinkedIn');
+    },
+    onError: (error: Error) => {
+      toast.error('Like failed: ' + error.message);
+    },
+  });
 }
 
 export interface EngagementComment {
