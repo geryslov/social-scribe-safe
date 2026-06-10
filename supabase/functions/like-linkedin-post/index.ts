@@ -86,10 +86,9 @@ Deno.serve(async (req) => {
 
     let lastErr = '';
     let lastStatus = 0;
-    let alreadyLiked = false;
 
-    for (const urn of tryUrns) {
-      const res = await fetch(`https://api.linkedin.com/v2/reactions?actor=${actorParam}`, {
+    const attemptLike = async (urn: string) => {
+      return await fetch(`https://api.linkedin.com/v2/reactions?actor=${actorParam}`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${tokenRow.linkedin_access_token}`,
@@ -98,6 +97,17 @@ Deno.serve(async (req) => {
         },
         body: JSON.stringify({ root: urn, reactionType: 'LIKE' }),
       });
+    };
+
+    const tried = new Set<string>();
+    const queue = [...tryUrns];
+
+    while (queue.length > 0) {
+      const urn = queue.shift()!;
+      if (tried.has(urn)) continue;
+      tried.add(urn);
+
+      const res = await attemptLike(urn);
 
       if (res.ok || res.status === 201 || res.status === 204) {
         await supabase.from('engagement_posts').update({
@@ -113,12 +123,18 @@ Deno.serve(async (req) => {
 
       // 409 / duplicate => already liked
       if (res.status === 409 || /already/i.test(lastErr) || /DUPLICATE/i.test(lastErr)) {
-        alreadyLiked = true;
         await supabase.from('engagement_posts').update({
           is_liked: true, liked_at: new Date().toISOString(),
         }).eq('id', post_id);
         return new Response(JSON.stringify({ success: true, already_liked: true }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+
+      // LinkedIn reveals the real thread URN in some 400 errors — extract and retry
+      const actualMatch = lastErr.match(/actual threadUrn:\s*(urn:li:(?:activity|ugcPost|share):\d+)/i);
+      if (actualMatch && !tried.has(actualMatch[1])) {
+        queue.unshift(actualMatch[1]);
+        continue;
       }
 
       // Stop on auth errors
