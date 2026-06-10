@@ -115,6 +115,9 @@ export function PublisherModal({ isOpen, onClose, publisher }: PublisherModalPro
           <DialogTitle className="text-xl font-display font-semibold">
             {publisher ? 'Edit Publisher' : 'Add Publisher'}
           </DialogTitle>
+          {publisher && (
+            <p className="text-xs text-muted-foreground mt-1">Manage profile, LinkedIn connection, and voice profile</p>
+          )}
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 mt-4">
           <div className="space-y-2">
