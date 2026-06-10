@@ -74,6 +74,23 @@ export function PostPanel({ target, publisher, isAdmin }: PostPanelProps) {
     }
   };
 
+  // Auto-like: when enabled, like any not-yet-liked posts (one at a time, throttled)
+  const autoLikedRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!target?.auto_like || !posts.length) return;
+    const next = posts.find(
+      (p) => !p.is_liked && !autoLikedRef.current.has(p.id) && likingPostId !== p.id,
+    );
+    if (!next) return;
+    autoLikedRef.current.add(next.id);
+    setLikingPostId(next.id);
+    likePost.mutate(
+      { publisher_id: publisher.id, post_id: next.id },
+      { onSettled: () => setLikingPostId(null) },
+    );
+  }, [posts, target?.auto_like, likingPostId, publisher.id, likePost]);
+
+
   if (!target) {
     return (
       <div className="flex-1 flex items-center justify-center bg-gradient-to-br from-muted/20 via-background to-muted/10">
