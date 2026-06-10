@@ -5,11 +5,10 @@ import { Publisher } from '@/hooks/usePublishers';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import {
   ExternalLink, ThumbsUp, MessageSquare, Share2, MessageCircle,
-  TrendingUp, RefreshCw, Loader2, Linkedin, Trash2, Users,
-  CheckCircle2, Building2, Briefcase,
+  Flame, RefreshCw, Loader2, Linkedin, Trash2, Users,
+  CheckCircle2, Building2, Briefcase, Sparkles,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { CommentComposer } from './CommentComposer';
@@ -32,8 +31,12 @@ function timeAgo(dateStr: string | null): string {
   return `${Math.floor(days / 30)}mo ago`;
 }
 
+function engagementScore(post: EngagementPost): number {
+  return post.likes_count + post.comments_count * 3 + post.shares_count * 5;
+}
+
 function engagementTier(post: EngagementPost): 'hot' | 'warm' | 'normal' {
-  const total = post.likes_count + post.comments_count * 3 + post.shares_count * 5;
+  const total = engagementScore(post);
   if (total >= 200) return 'hot';
   if (total >= 50) return 'warm';
   return 'normal';
@@ -68,13 +71,17 @@ export function PostPanel({ target, publisher, isAdmin }: PostPanelProps) {
     }
   };
 
-  // Empty — no target
   if (!target) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-muted/10">
-        <div className="text-center">
-          <Users className="h-12 w-12 mx-auto text-muted-foreground/10 mb-3" />
-          <p className="text-sm font-medium text-muted-foreground/60">Select a profile to view their posts</p>
+      <div className="flex-1 flex items-center justify-center bg-gradient-to-br from-muted/20 via-background to-muted/10">
+        <div className="text-center max-w-sm px-6">
+          <div className="h-16 w-16 mx-auto rounded-2xl bg-primary/5 border border-primary/10 flex items-center justify-center mb-4">
+            <Users className="h-7 w-7 text-primary/40" />
+          </div>
+          <p className="font-display font-semibold text-base text-foreground/80">Pick a profile</p>
+          <p className="text-sm text-muted-foreground/70 mt-1">
+            Select a contact on the left to see their LinkedIn activity and engage from here.
+          </p>
         </div>
       </div>
     );
@@ -87,232 +94,314 @@ export function PostPanel({ target, publisher, isAdmin }: PostPanelProps) {
     .slice(0, 2)
     .toUpperCase();
 
+  // Aggregate stats
+  const totalReactions = posts.reduce((s, p) => s + p.likes_count, 0);
+  const totalComments = posts.reduce((s, p) => s + p.comments_count, 0);
+  const commentedCount = posts.filter((p) => p.is_commented).length;
+
   return (
-    <div className="flex-1 flex flex-col overflow-hidden">
-      {/* Profile card header */}
-      <div className="px-6 py-5 border-b bg-background">
-        <div className="flex items-start justify-between">
-          <div className="flex items-start gap-4">
-            {/* Large avatar */}
-            <div className="h-16 w-16 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden bg-[#0A66C2]/10 text-[#0A66C2] text-lg font-bold">
-              {target.avatar_url ? (
-                <img src={target.avatar_url} alt={target.name} referrerPolicy="no-referrer" className="h-full w-full object-cover" />
-              ) : (
-                initials
-              )}
+    <div className="flex-1 flex flex-col overflow-hidden bg-muted/10">
+      {/* ── Profile header — gradient hero ─────────────────────────────── */}
+      <div className="relative border-b bg-background overflow-hidden">
+        {/* Subtle gradient wash using workspace tokens */}
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.04] via-transparent to-accent/[0.04] pointer-events-none" />
+        <div className="absolute -top-24 -right-24 h-48 w-48 rounded-full bg-primary/[0.06] blur-3xl pointer-events-none" />
+
+        <div className="relative px-7 py-5">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-start gap-4 min-w-0 flex-1">
+              {/* Avatar with ring */}
+              <div className="relative flex-shrink-0">
+                <div className="absolute -inset-0.5 rounded-full bg-gradient-to-br from-primary to-accent opacity-20 blur-sm" />
+                <div className="relative h-16 w-16 rounded-full ring-2 ring-background overflow-hidden bg-primary/10 text-primary text-lg font-bold flex items-center justify-center">
+                  {target.avatar_url ? (
+                    <img
+                      src={target.avatar_url}
+                      alt={target.name}
+                      referrerPolicy="no-referrer"
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    initials
+                  )}
+                </div>
+              </div>
+
+              <div className="min-w-0 flex-1 pt-0.5">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h2 className="font-display font-bold text-xl tracking-tight truncate">
+                    {target.name}
+                  </h2>
+                  <a
+                    href={target.linkedin_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center justify-center h-6 w-6 rounded-md text-[#0A66C2] hover:bg-[#0A66C2]/10 transition-colors"
+                    title="View on LinkedIn"
+                  >
+                    <Linkedin className="h-3.5 w-3.5" />
+                  </a>
+                </div>
+
+                {/* Title + Company chips */}
+                <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                  {target.title && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-muted/60 text-[11px] font-medium text-foreground/70">
+                      <Briefcase className="h-3 w-3 text-muted-foreground/60" />
+                      {target.title}
+                    </span>
+                  )}
+                  {target.company_name && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-muted/60 text-[11px] font-medium text-foreground/70">
+                      <Building2 className="h-3 w-3 text-muted-foreground/60" />
+                      {target.company_name}
+                    </span>
+                  )}
+                  {!target.title && !target.company_name && target.headline && (
+                    <span className="text-xs text-muted-foreground line-clamp-1">{target.headline}</span>
+                  )}
+                </div>
+
+                {/* Inline stats row */}
+                {posts.length > 0 && (
+                  <div className="flex items-center gap-4 mt-3 text-[11px] text-muted-foreground/80">
+                    <span><span className="font-semibold text-foreground/80">{posts.length}</span> posts</span>
+                    <span className="text-border">·</span>
+                    <span><span className="font-semibold text-foreground/80">{totalReactions.toLocaleString()}</span> reactions</span>
+                    <span className="text-border">·</span>
+                    <span><span className="font-semibold text-foreground/80">{totalComments.toLocaleString()}</span> comments</span>
+                    {commentedCount > 0 && (
+                      <>
+                        <span className="text-border">·</span>
+                        <span className="text-emerald-600 font-semibold">{commentedCount} engaged</span>
+                      </>
+                    )}
+                    {target.last_fetched_at && (
+                      <span className="ml-auto text-muted-foreground/50">
+                        Synced {timeAgo(target.last_fetched_at)}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
 
-            <div className="pt-0.5">
-              <div className="flex items-center gap-2">
-                <h2 className="font-display font-bold text-xl tracking-tight">{target.name}</h2>
-                <a
-                  href={target.linkedin_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-[#0A66C2] hover:text-[#0A66C2]/70 transition-colors"
-                  title="View on LinkedIn"
+            {/* Actions */}
+            {isAdmin && (
+              <div className="flex items-center gap-1.5 flex-shrink-0">
+                <Button
+                  size="sm"
+                  className={cn(
+                    'h-9 gap-2 text-xs font-semibold px-3.5',
+                    'bg-gradient-to-r from-primary to-primary/90 hover:from-primary hover:to-primary',
+                    'shadow-sm shadow-primary/20 hover:shadow-md hover:shadow-primary/30',
+                    'transition-all',
+                  )}
+                  disabled={isFetching}
+                  onClick={handleFetch}
                 >
-                  <Linkedin className="h-4.5 w-4.5" />
-                </a>
+                  {isFetching ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-3.5 w-3.5" />
+                  )}
+                  {isFetching ? 'Syncing' : 'Sync posts'}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className={cn(
+                    'h-9 w-9 p-0',
+                    deletingTarget
+                      ? 'text-destructive bg-destructive/10 hover:bg-destructive/15'
+                      : 'text-muted-foreground/60 hover:text-destructive hover:bg-destructive/10',
+                  )}
+                  onClick={handleDelete}
+                  title={deletingTarget ? 'Click again to confirm' : 'Remove contact'}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
               </div>
-
-              {/* Title + Company */}
-              <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
-                {target.title && (
-                  <span className="flex items-center gap-1.5">
-                    <Briefcase className="h-3.5 w-3.5 text-muted-foreground/50" />
-                    {target.title}
-                  </span>
-                )}
-                {target.company_name && (
-                  <span className="flex items-center gap-1.5">
-                    <Building2 className="h-3.5 w-3.5 text-muted-foreground/50" />
-                    {target.company_name}
-                  </span>
-                )}
-              </div>
-
-              {/* Fallback headline */}
-              {!target.title && !target.company_name && target.headline && (
-                <p className="text-sm text-muted-foreground mt-1">{target.headline}</p>
-              )}
-
-              {/* Meta row */}
-              {target.last_fetched_at && (
-                <p className="text-[11px] text-muted-foreground/40 mt-1.5">
-                  Last synced {timeAgo(target.last_fetched_at)}
-                </p>
-              )}
-            </div>
+            )}
           </div>
-
-          {/* Actions */}
-          {isAdmin && (
-            <div className="flex items-center gap-1.5 pt-1">
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 gap-1.5 text-xs font-medium"
-                disabled={isFetching}
-                onClick={handleFetch}
-              >
-                {isFetching ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
-                ) : (
-                  <RefreshCw className="h-3.5 w-3.5" />
-                )}
-                {isFetching ? 'Syncing...' : 'Sync'}
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className={cn(
-                  'h-8 w-8 p-0',
-                  deletingTarget ? 'text-destructive bg-destructive/10' : 'text-muted-foreground hover:text-destructive',
-                )}
-                onClick={handleDelete}
-                title={deletingTarget ? 'Click again to confirm' : 'Remove'}
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </Button>
-            </div>
-          )}
         </div>
       </div>
 
-      {/* Posts feed */}
+      {/* ── Feed ───────────────────────────────────────────────────────── */}
       <div className="flex-1 overflow-y-auto">
         {isLoading ? (
-          <div className="p-6 space-y-6">
+          <div className="max-w-2xl mx-auto px-6 py-6 space-y-3">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="space-y-2">
-                <Skeleton className="h-4 w-2/3" />
+              <div key={i} className="rounded-xl border bg-background p-5 space-y-3">
+                <Skeleton className="h-3 w-1/4" />
                 <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-4/5" />
-                <Skeleton className="h-3 w-1/4 mt-2" />
+                <Skeleton className="h-4 w-11/12" />
+                <Skeleton className="h-4 w-3/4" />
+                <div className="flex gap-3 pt-2">
+                  <Skeleton className="h-4 w-12" />
+                  <Skeleton className="h-4 w-12" />
+                  <Skeleton className="h-4 w-12" />
+                </div>
               </div>
             ))}
           </div>
         ) : posts.length === 0 ? (
-          <div className="flex items-center justify-center py-20">
-            <div className="text-center">
-              <MessageSquare className="h-8 w-8 mx-auto text-muted-foreground/15 mb-3" />
-              <p className="text-sm font-medium text-muted-foreground">No posts yet</p>
-              <p className="text-xs text-muted-foreground/60 mt-1 mb-3">
-                Click Sync to pull their latest LinkedIn activity
+          <div className="flex items-center justify-center py-24">
+            <div className="text-center max-w-sm px-6">
+              <div className="h-14 w-14 mx-auto rounded-2xl bg-gradient-to-br from-primary/10 to-accent/10 border border-primary/10 flex items-center justify-center mb-4">
+                <Sparkles className="h-6 w-6 text-primary/60" />
+              </div>
+              <p className="font-display font-semibold text-base">No posts yet</p>
+              <p className="text-sm text-muted-foreground/70 mt-1 mb-4">
+                Sync to pull the latest LinkedIn activity from <span className="text-foreground/80 font-medium">{target.name}</span>.
               </p>
               {isAdmin && (
-                <Button size="sm" variant="outline" onClick={handleFetch} disabled={isFetching} className="gap-1.5">
+                <Button
+                  size="sm"
+                  onClick={handleFetch}
+                  disabled={isFetching}
+                  className="gap-1.5 bg-gradient-to-r from-primary to-primary/90 shadow-sm shadow-primary/20"
+                >
                   {isFetching ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
-                  Sync Now
+                  Sync now
                 </Button>
               )}
             </div>
           </div>
         ) : (
-          <div className="divide-y">
+          <div className="max-w-2xl mx-auto px-6 py-6 space-y-3">
             {posts.map((post: EngagementPost) => {
               const tier = engagementTier(post);
               const isCommenting = commentingPostId === post.id;
 
               return (
-                <div
+                <article
                   key={post.id}
                   className={cn(
-                    'px-6 py-5 transition-colors',
-                    post.is_commented && 'bg-emerald-50/40',
-                    isCommenting && 'bg-primary/[0.03]',
+                    'group relative rounded-xl border bg-background transition-all duration-200',
+                    'hover:border-primary/30 hover:shadow-[0_4px_20px_-4px_hsl(var(--primary)/0.08)]',
+                    tier === 'hot' && 'border-primary/30 shadow-[0_2px_12px_-2px_hsl(var(--primary)/0.12)]',
+                    post.is_commented && 'border-emerald-500/30 bg-emerald-50/30',
+                    isCommenting && 'border-primary/50 shadow-[0_4px_20px_-2px_hsl(var(--primary)/0.18)] ring-1 ring-primary/20',
                   )}
                 >
-                  {/* Status tags */}
-                  {(tier === 'hot' || post.is_commented) && (
-                    <div className="flex items-center gap-2 mb-3">
+                  {/* Left accent stripe for hot posts */}
+                  {tier === 'hot' && !post.is_commented && (
+                    <div className="absolute left-0 top-4 bottom-4 w-0.5 rounded-r bg-gradient-to-b from-primary to-accent" />
+                  )}
+
+                  <div className="px-5 py-4">
+                    {/* Top row — meta + tags */}
+                    <div className="flex items-center gap-2 mb-2.5">
+                      <span className="text-[11px] font-medium text-muted-foreground/70">
+                        {timeAgo(post.published_at)}
+                      </span>
+
                       {tier === 'hot' && (
-                        <Badge variant="secondary" className="bg-primary/10 text-primary border-0 text-[10px] font-semibold gap-1 px-2">
-                          <TrendingUp className="h-3 w-3" />
-                          Trending
+                        <Badge
+                          variant="secondary"
+                          className="h-5 gap-1 px-1.5 bg-gradient-to-r from-primary/10 to-accent/10 text-primary border-primary/20 text-[10px] font-semibold uppercase tracking-wide"
+                        >
+                          <Flame className="h-2.5 w-2.5" />
+                          Hot
+                        </Badge>
+                      )}
+                      {tier === 'warm' && !post.is_commented && (
+                        <Badge
+                          variant="secondary"
+                          className="h-5 px-1.5 bg-amber-50 text-amber-700 border-amber-200/60 text-[10px] font-semibold uppercase tracking-wide"
+                        >
+                          Warm
                         </Badge>
                       )}
                       {post.is_commented && (
-                        <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 border-0 text-[10px] font-semibold gap-1 px-2">
-                          <CheckCircle2 className="h-3 w-3" />
-                          Commented
+                        <Badge
+                          variant="secondary"
+                          className="h-5 gap-1 px-1.5 bg-emerald-100 text-emerald-700 border-emerald-200/60 text-[10px] font-semibold uppercase tracking-wide"
+                        >
+                          <CheckCircle2 className="h-2.5 w-2.5" />
+                          Replied
                         </Badge>
                       )}
-                    </div>
-                  )}
 
-                  {/* Post content — full, no clamp */}
-                  {post.content ? (
-                    <p className="text-[14px] leading-[1.7] whitespace-pre-wrap text-foreground/85">
-                      {post.content}
-                    </p>
-                  ) : (
-                    <p className="text-sm text-muted-foreground italic">
-                      Media post (image/video/document)
-                    </p>
-                  )}
-
-                  {/* Engagement metrics + actions */}
-                  <div className="flex items-center justify-between mt-4">
-                    <div className="flex items-center gap-4">
-                      {post.likes_count > 0 && (
-                        <span className="flex items-center gap-1 text-xs text-rose-500/80 font-medium">
-                          <ThumbsUp className="h-3.5 w-3.5" />
-                          {post.likes_count.toLocaleString()}
-                        </span>
-                      )}
-                      {post.comments_count > 0 && (
-                        <span className="flex items-center gap-1 text-xs text-sky-500/80 font-medium">
-                          <MessageSquare className="h-3.5 w-3.5" />
-                          {post.comments_count.toLocaleString()}
-                        </span>
-                      )}
-                      {post.shares_count > 0 && (
-                        <span className="flex items-center gap-1 text-xs text-emerald-500/80 font-medium">
-                          <Share2 className="h-3.5 w-3.5" />
-                          {post.shares_count.toLocaleString()}
-                        </span>
-                      )}
-                      <span className="text-[11px] text-muted-foreground/50">
-                        {timeAgo(post.published_at)}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-1.5">
-                      {isAdmin && (
-                        <Button
-                          variant={isCommenting ? 'default' : 'ghost'}
-                          size="sm"
-                          className="h-7 gap-1 text-xs"
-                          onClick={() => setCommentingPostId(isCommenting ? null : post.id)}
-                        >
-                          <MessageCircle className="h-3.5 w-3.5" />
-                          {post.is_commented ? 'Reply again' : 'Comment'}
-                        </Button>
-                      )}
                       <a
                         href={post.linkedin_post_url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="h-7 w-7 flex items-center justify-center rounded-md text-muted-foreground/50 hover:text-primary hover:bg-primary/10 transition-colors"
+                        className="ml-auto inline-flex items-center justify-center h-6 w-6 rounded-md text-muted-foreground/50 hover:text-primary hover:bg-primary/10 transition-colors opacity-0 group-hover:opacity-100"
+                        title="Open on LinkedIn"
                       >
                         <ExternalLink className="h-3.5 w-3.5" />
                       </a>
                     </div>
-                  </div>
 
-                  {/* Comment composer */}
-                  {isCommenting && (
-                    <div className="mt-4 animate-in slide-in-from-top-2 fade-in duration-200">
-                      <CommentComposer
-                        post={post}
-                        publisher={publisher}
-                        onClose={() => setCommentingPostId(null)}
-                      />
+                    {/* Content */}
+                    {post.content ? (
+                      <p className="text-[14px] leading-[1.65] whitespace-pre-wrap text-foreground/90">
+                        {post.content}
+                      </p>
+                    ) : (
+                      <p className="text-sm text-muted-foreground italic">
+                        Media post (image / video / document)
+                      </p>
+                    )}
+
+                    {/* Footer — metrics + actions */}
+                    <div className="flex items-center justify-between mt-4 pt-3 border-t border-border/50">
+                      <div className="flex items-center gap-1">
+                        {post.likes_count > 0 && (
+                          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold text-rose-600/90 hover:bg-rose-50 transition-colors">
+                            <ThumbsUp className="h-3 w-3" />
+                            {post.likes_count.toLocaleString()}
+                          </span>
+                        )}
+                        {post.comments_count > 0 && (
+                          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold text-sky-600/90 hover:bg-sky-50 transition-colors">
+                            <MessageSquare className="h-3 w-3" />
+                            {post.comments_count.toLocaleString()}
+                          </span>
+                        )}
+                        {post.shares_count > 0 && (
+                          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold text-emerald-600/90 hover:bg-emerald-50 transition-colors">
+                            <Share2 className="h-3 w-3" />
+                            {post.shares_count.toLocaleString()}
+                          </span>
+                        )}
+                        {engagementScore(post) === 0 && (
+                          <span className="text-[11px] text-muted-foreground/50 px-2">No engagement yet</span>
+                        )}
+                      </div>
+
+                      {isAdmin && (
+                        <Button
+                          variant={isCommenting ? 'default' : 'ghost'}
+                          size="sm"
+                          className={cn(
+                            'h-7 gap-1.5 text-xs font-semibold px-2.5 transition-all',
+                            isCommenting
+                              ? 'bg-primary text-primary-foreground shadow-sm shadow-primary/20'
+                              : 'text-primary hover:text-primary hover:bg-primary/10',
+                          )}
+                          onClick={() => setCommentingPostId(isCommenting ? null : post.id)}
+                        >
+                          <MessageCircle className="h-3.5 w-3.5" />
+                          {post.is_commented ? 'Reply again' : 'Engage'}
+                        </Button>
+                      )}
                     </div>
-                  )}
-                </div>
+
+                    {/* Composer */}
+                    {isCommenting && (
+                      <div className="mt-3 pt-3 border-t border-primary/15 animate-in slide-in-from-top-2 fade-in duration-200">
+                        <CommentComposer
+                          post={post}
+                          publisher={publisher}
+                          onClose={() => setCommentingPostId(null)}
+                        />
+                      </div>
+                    )}
+                  </div>
+                </article>
               );
             })}
           </div>
