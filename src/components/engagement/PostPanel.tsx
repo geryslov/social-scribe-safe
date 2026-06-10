@@ -1,14 +1,15 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useEngagementPosts, useFetchTargetPosts, EngagementTarget, EngagementPost, useLikePost } from '@/hooks/useEngagement';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { Publisher } from '@/hooks/usePublishers';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 import {
   ExternalLink, ThumbsUp, MessageSquare, Share2, MessageCircle,
   Flame, RefreshCw, Loader2, Linkedin, Trash2, Users,
-  CheckCircle2, Building2, Briefcase, Sparkles, Heart,
+  CheckCircle2, Building2, Briefcase, Sparkles, Heart, Zap,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { CommentComposer } from './CommentComposer';
