@@ -28,6 +28,9 @@ export interface Publisher {
   followers_count: number | null;
   search_appearances: number | null;
   profile_analytics_fetched_at: string | null;
+  // Voice profile
+  voice_profile: string | null;
+  voice_profile_generated_at: string | null;
 }
 
 export function usePublishers() {
@@ -221,6 +224,42 @@ export function usePublishers() {
     },
   });
 
+  const generateVoiceProfile = useMutation({
+    mutationFn: async (publisherId: string) => {
+      const { data, error } = await supabase.functions.invoke('generate-voice-profile', {
+        body: { publisher_id: publisherId },
+      });
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || 'Failed to generate voice profile');
+      return data as { success: boolean; voice_profile: string };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['publishers'] });
+      toast.success('Voice profile generated');
+    },
+    onError: (error) => {
+      console.error('Error generating voice profile:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to generate voice profile');
+    },
+  });
+
+  const updateVoiceProfile = useMutation({
+    mutationFn: async ({ publisherId, voiceProfile }: { publisherId: string; voiceProfile: string }) => {
+      const { error } = await supabase
+        .from('publishers')
+        .update({ voice_profile: voiceProfile } as any)
+        .eq('id', publisherId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['publishers'] });
+      toast.success('Voice profile saved');
+    },
+    onError: (error) => {
+      toast.error('Failed to save voice profile: ' + (error instanceof Error ? error.message : 'Unknown error'));
+    },
+  });
+
   return {
     publishers,
     isLoading,
@@ -230,5 +269,7 @@ export function usePublishers() {
     deletePublisher,
     getPublisherByName,
     refreshAllAvatars,
+    generateVoiceProfile,
+    updateVoiceProfile,
   };
 }

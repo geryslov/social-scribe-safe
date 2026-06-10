@@ -7,13 +7,17 @@ const SYSTEM_PROMPT = `You are a thought leadership content creator for LinkedIn
 
 ## WRITER ANALYSIS (CRITICAL. DO THIS FIRST)
 
-When LinkedIn profile URLs of the writer(s) are provided:
-1. Analyze each writer's LinkedIn profile URL to understand WHO they are
-2. Study their professional history, career trajectory, and current role
-3. Understand their expertise, industry positioning, and unique perspective
-4. Write AS THEM. match their voice, authority level, and domain expertise
-5. Consider how their professional background can authentically strengthen each post
-6. Reference their experience naturally where it adds credibility (without being self-promotional)
+When VOICE PROFILES are provided for the writer(s):
+1. Follow the voice profile faithfully — it IS the writer's authentic voice
+2. Match their tone, vocabulary, sentence structure, and perspective exactly
+3. Reference their expertise and experience naturally where it adds credibility
+4. The posts MUST feel like they were written BY this person, not FOR them
+5. If multiple writers are specified, each post must sound DISTINCTLY like its assigned writer
+
+When only LinkedIn URLs are provided (no voice profile):
+1. Use the URL as a reference for who they are
+2. Infer their professional background from their name, role, and any available context
+3. Write in a professional thought leadership voice appropriate to their apparent role and expertise
 
 The posts must feel like they were written BY this person, not FOR them.
 
@@ -788,11 +792,30 @@ Deno.serve(async (req) => {
 
     let userMessage = `Create a LinkedIn thought leadership content document about: ${topic}`;
     
-    // Inject publisher/writer LinkedIn profiles
+    // Inject publisher/writer profiles with voice data
     if (publisherProfiles && Array.isArray(publisherProfiles) && publisherProfiles.length > 0) {
-      userMessage += `\n\n--- WRITER PROFILE(S) ---\nAnalyze the following LinkedIn profile(s) and write AS these people. Study their professional background, expertise, and voice. The posts should feel authentically written by them.\n\n`;
-      for (const profile of publisherProfiles) {
-        userMessage += `Writer: ${profile.name}\nLinkedIn: ${profile.linkedinUrl}\n\n`;
+      const hasVoiceProfiles = publisherProfiles.some((p: any) => p.voiceProfile);
+
+      if (publisherProfiles.length === 1) {
+        const p = publisherProfiles[0];
+        if (p.voiceProfile) {
+          userMessage += `\n\n--- WRITER VOICE PROFILE ---\nYou are writing AS ${p.name}. Follow this voice profile to match their exact tone, style, perspective, and vocabulary:\n\n${p.voiceProfile}\n\n`;
+        } else {
+          userMessage += `\n\n--- WRITER PROFILE ---\nWriter: ${p.name}\nLinkedIn: ${p.linkedinUrl || 'N/A'}\nWrite authentically as this person based on their professional background.\n\n`;
+        }
+      } else {
+        // Multiple publishers — each post gets a specific voice
+        userMessage += `\n\n--- WRITER PROFILES (MULTI-VOICE) ---\nYou are writing posts for MULTIPLE people. Each post MUST be written in that specific writer's unique voice.\n\n`;
+        for (let i = 0; i < publisherProfiles.length; i++) {
+          const p = publisherProfiles[i];
+          userMessage += `=== Writer ${i + 1}: ${p.name} ===\n`;
+          if (p.voiceProfile) {
+            userMessage += `${p.voiceProfile}\n\n`;
+          } else {
+            userMessage += `LinkedIn: ${p.linkedinUrl || 'N/A'}\n(No voice profile available. Write in a professional voice appropriate to their role.)\n\n`;
+          }
+        }
+        userMessage += `CRITICAL INSTRUCTION: Distribute posts evenly among the writers above. Start each post with "Writer: [Name]" before the hook. Each post MUST sound distinctly like that specific writer — different tone, different vocabulary, different perspective. Readers should be able to tell which writer wrote which post without looking at the label.\n`;
       }
     }
     

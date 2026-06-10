@@ -29,9 +29,15 @@ export function CommentComposer({ post, publisher, onClose }: CommentComposerPro
 
     setIsGenerating(true);
     try {
-      const prompt = `You are ${publisher.name}${publisher.headline ? `, ${publisher.headline}` : ''}${publisher.company_name ? ` at ${publisher.company_name}` : ''}.
+      // Build persona block — use voice profile if available
+      let personaBlock: string;
+      if ((publisher as any).voice_profile) {
+        personaBlock = `You are ${publisher.name}. Here is your voice profile — use it to match your authentic tone, vocabulary, and perspective:\n\n${(publisher as any).voice_profile}\n\n`;
+      } else {
+        personaBlock = `You are ${publisher.name}${publisher.headline ? `, ${publisher.headline}` : ''}${publisher.company_name ? ` at ${publisher.company_name}` : ''}.\n\n`;
+      }
 
-Write a short, genuine LinkedIn comment (2-3 sentences max) on this post. Be conversational, add value or share a relevant perspective. Do NOT be generic or sycophantic. Do NOT use emojis excessively. Sound like a real person, not a bot.
+      const prompt = `${personaBlock}Write a short, genuine LinkedIn comment (2-3 sentences max) on this post. Be conversational, add value or share a relevant perspective. Do NOT be generic or sycophantic. Do NOT use emojis excessively. Sound like a real person, not a bot. Match the voice profile above.
 
 Post content:
 """

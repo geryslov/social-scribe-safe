@@ -232,11 +232,15 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate, 
     try {
       const validUrls = aiWebsiteUrls.map(u => u.trim()).filter(Boolean);
       
-      // Gather selected publisher LinkedIn URLs
+      // Gather selected publisher profiles with voice data
       const publisherLinkedInUrls = selectedPublisherIds
         .map(id => publishers.find(p => p.id === id))
-        .filter(p => p?.linkedin_url)
-        .map(p => ({ name: p!.name, linkedinUrl: p!.linkedin_url! }));
+        .filter(Boolean)
+        .map(p => ({
+          name: p!.name,
+          linkedinUrl: p!.linkedin_url || '',
+          voiceProfile: (p as any).voice_profile || '',
+        }));
 
       const { data, error } = await supabase.functions.invoke('create-document', {
         body: {
