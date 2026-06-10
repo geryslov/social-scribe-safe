@@ -355,6 +355,7 @@ export type Database = {
       }
       engagement_targets: {
         Row: {
+          auto_like: boolean
           avatar_url: string | null
           company_name: string | null
           created_at: string
@@ -377,6 +378,7 @@ export type Database = {
           workspace_id: string
         }
         Insert: {
+          auto_like?: boolean
           avatar_url?: string | null
           company_name?: string | null
           created_at?: string
@@ -399,6 +401,7 @@ export type Database = {
           workspace_id: string
         }
         Update: {
+          auto_like?: boolean
           avatar_url?: string | null
           company_name?: string | null
           created_at?: string
