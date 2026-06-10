@@ -343,6 +343,16 @@ export function PostPanel({ target, publisher, isAdmin }: PostPanelProps) {
                           Replied
                         </Badge>
                       )}
+                      {post.is_liked && (
+                        <Badge
+                          variant="secondary"
+                          className="h-5 gap-1 px-1.5 bg-rose-50 text-rose-600 border-rose-200/60 text-[10px] font-semibold uppercase tracking-wide"
+                        >
+                          <Heart className="h-2.5 w-2.5 fill-current" />
+                          Liked
+                        </Badge>
+                      )}
+
 
                       <a
                         href={post.linkedin_post_url}
