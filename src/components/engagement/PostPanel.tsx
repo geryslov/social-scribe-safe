@@ -1,14 +1,15 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useEngagementPosts, useFetchTargetPosts, EngagementTarget, EngagementPost, useLikePost } from '@/hooks/useEngagement';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { Publisher } from '@/hooks/usePublishers';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 import {
   ExternalLink, ThumbsUp, MessageSquare, Share2, MessageCircle,
   Flame, RefreshCw, Loader2, Linkedin, Trash2, Users,
-  CheckCircle2, Building2, Briefcase, Sparkles, Heart,
+  CheckCircle2, Building2, Briefcase, Sparkles, Heart, Zap,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { CommentComposer } from './CommentComposer';
@@ -45,7 +46,7 @@ function engagementTier(post: EngagementPost): 'hot' | 'warm' | 'normal' {
 export function PostPanel({ target, publisher, isAdmin }: PostPanelProps) {
   const { currentWorkspace } = useWorkspace();
   const { posts, isLoading } = useEngagementPosts(target?.id || null);
-  const { deleteTarget } = useEngagementTargets(publisher.id);
+  const { deleteTarget, updateTarget } = useEngagementTargets(publisher.id);
   const fetchPosts = useFetchTargetPosts();
   const likePost = useLikePost();
   const [commentingPostId, setCommentingPostId] = useState<string | null>(null);
@@ -72,6 +73,23 @@ export function PostPanel({ target, publisher, isAdmin }: PostPanelProps) {
       setTimeout(() => setDeletingTarget(false), 3000);
     }
   };
+
+  // Auto-like: when enabled, like any not-yet-liked posts (one at a time, throttled)
+  const autoLikedRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!target?.auto_like || !posts.length) return;
+    const next = posts.find(
+      (p) => !p.is_liked && !autoLikedRef.current.has(p.id) && likingPostId !== p.id,
+    );
+    if (!next) return;
+    autoLikedRef.current.add(next.id);
+    setLikingPostId(next.id);
+    likePost.mutate(
+      { publisher_id: publisher.id, post_id: next.id },
+      { onSettled: () => setLikingPostId(null) },
+    );
+  }, [posts, target?.auto_like, likingPostId, publisher.id, likePost]);
+
 
   if (!target) {
     return (
@@ -190,7 +208,27 @@ export function PostPanel({ target, publisher, isAdmin }: PostPanelProps) {
 
             {/* Actions */}
             {isAdmin && (
-              <div className="flex items-center gap-1.5 flex-shrink-0">
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <label
+                  className={cn(
+                    'flex items-center gap-2 h-9 px-3 rounded-md border text-[11px] font-semibold cursor-pointer transition-all select-none',
+                    target.auto_like
+                      ? 'bg-rose-50 border-rose-200 text-rose-700'
+                      : 'bg-background border-border text-muted-foreground hover:text-foreground',
+                  )}
+                  title="Automatically like newly synced posts from this contact"
+                >
+                  <Zap className={cn('h-3.5 w-3.5', target.auto_like && 'fill-current')} />
+                  Auto-like
+                  <Switch
+                    checked={target.auto_like}
+                    onCheckedChange={(checked) => {
+                      if (!checked) autoLikedRef.current.clear();
+                      updateTarget.mutate({ id: target.id, updates: { auto_like: checked } });
+                    }}
+                    className="ml-1 h-4 w-7 data-[state=checked]:bg-rose-600 [&>span]:h-3 [&>span]:w-3 [&>span]:data-[state=checked]:translate-x-3"
+                  />
+                </label>
                 <Button
                   size="sm"
                   className={cn(
@@ -325,6 +363,16 @@ export function PostPanel({ target, publisher, isAdmin }: PostPanelProps) {
                           Replied
                         </Badge>
                       )}
+                      {post.is_liked && (
+                        <Badge
+                          variant="secondary"
+                          className="h-5 gap-1 px-1.5 bg-rose-50 text-rose-600 border-rose-200/60 text-[10px] font-semibold uppercase tracking-wide"
+                        >
+                          <Heart className="h-2.5 w-2.5 fill-current" />
+                          Liked
+                        </Badge>
+                      )}
+
 
                       <a
                         href={post.linkedin_post_url}

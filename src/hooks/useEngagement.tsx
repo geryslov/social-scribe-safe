@@ -23,6 +23,7 @@ export interface EngagementTarget {
   avatar_url: string | null;
   notes: string | null;
   is_active: boolean;
+  auto_like: boolean;
   last_fetched_at: string | null;
   last_seen_at: string | null;
   enrichment_status: 'pending' | 'succeeded' | 'failed' | null;
@@ -214,7 +215,23 @@ export function useEngagementTargets(publisherId: string | null) {
     },
   });
 
-  return { targets, isLoading, createTarget, deleteTarget, markSeen, enrichTarget };
+  const updateTarget = useMutation({
+    mutationFn: async ({ id, updates }: { id: string; updates: Partial<Pick<EngagementTarget, 'auto_like' | 'notes' | 'name'>> }) => {
+      const { error } = await (supabase as any)
+        .from('engagement_targets')
+        .update(updates)
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['engagement-targets'] });
+    },
+    onError: (error: Error) => {
+      toast.error('Update failed: ' + error.message);
+    },
+  });
+
+  return { targets, isLoading, createTarget, deleteTarget, markSeen, enrichTarget, updateTarget };
 }
 
 // ---------------------------------------------------------------------------
