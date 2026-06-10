@@ -230,9 +230,9 @@ export function PostPanel({ target, publisher, isAdmin }: PostPanelProps) {
       {/* ── Feed ───────────────────────────────────────────────────────── */}
       <div className="flex-1 overflow-y-auto">
         {isLoading ? (
-          <div className="max-w-2xl mx-auto px-6 py-6 space-y-3">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="rounded-xl border bg-background p-5 space-y-3">
+          <div className="px-5 py-5 columns-1 md:columns-2 xl:columns-3 gap-4 [column-fill:_balance]">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <div key={i} className="mb-4 break-inside-avoid rounded-xl border bg-background p-4 space-y-3">
                 <Skeleton className="h-3 w-1/4" />
                 <Skeleton className="h-4 w-full" />
                 <Skeleton className="h-4 w-11/12" />
