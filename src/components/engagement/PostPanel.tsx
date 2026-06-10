@@ -269,7 +269,7 @@ export function PostPanel({ target, publisher, isAdmin }: PostPanelProps) {
             </div>
           </div>
         ) : (
-          <div className="max-w-2xl mx-auto px-6 py-6 space-y-3">
+          <div className="px-5 py-5 columns-1 md:columns-2 xl:columns-3 gap-4 [column-fill:_balance]">
             {posts.map((post: EngagementPost) => {
               const tier = engagementTier(post);
               const isCommenting = commentingPostId === post.id;
@@ -278,7 +278,7 @@ export function PostPanel({ target, publisher, isAdmin }: PostPanelProps) {
                 <article
                   key={post.id}
                   className={cn(
-                    'group relative rounded-xl border bg-background transition-all duration-200',
+                    'group relative mb-4 break-inside-avoid rounded-xl border bg-background transition-all duration-200',
                     'hover:border-primary/30 hover:shadow-[0_4px_20px_-4px_hsl(var(--primary)/0.08)]',
                     tier === 'hot' && 'border-primary/30 shadow-[0_2px_12px_-2px_hsl(var(--primary)/0.12)]',
                     post.is_commented && 'border-emerald-500/30 bg-emerald-50/30',
@@ -290,7 +290,7 @@ export function PostPanel({ target, publisher, isAdmin }: PostPanelProps) {
                     <div className="absolute left-0 top-4 bottom-4 w-0.5 rounded-r bg-gradient-to-b from-primary to-accent" />
                   )}
 
-                  <div className="px-5 py-4">
+                  <div className="px-4 py-3.5">
                     {/* Top row — meta + tags */}
                     <div className="flex items-center gap-2 mb-2.5">
                       <span className="text-[11px] font-medium text-muted-foreground/70">
