@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useEngagementPosts, useFetchTargetPosts, EngagementTarget, EngagementPost } from '@/hooks/useEngagement';
+import { useEngagementPosts, useFetchTargetPosts, EngagementTarget, EngagementPost, useLikePost } from '@/hooks/useEngagement';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { Publisher } from '@/hooks/usePublishers';
 import { Button } from '@/components/ui/button';
@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import {
   ExternalLink, ThumbsUp, MessageSquare, Share2, MessageCircle,
   Flame, RefreshCw, Loader2, Linkedin, Trash2, Users,
-  CheckCircle2, Building2, Briefcase, Sparkles,
+  CheckCircle2, Building2, Briefcase, Sparkles, Heart,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { CommentComposer } from './CommentComposer';
@@ -47,7 +47,9 @@ export function PostPanel({ target, publisher, isAdmin }: PostPanelProps) {
   const { posts, isLoading } = useEngagementPosts(target?.id || null);
   const { deleteTarget } = useEngagementTargets(publisher.id);
   const fetchPosts = useFetchTargetPosts();
+  const likePost = useLikePost();
   const [commentingPostId, setCommentingPostId] = useState<string | null>(null);
+  const [likingPostId, setLikingPostId] = useState<string | null>(null);
   const [isFetching, setIsFetching] = useState(false);
   const [deletingTarget, setDeletingTarget] = useState(false);
 
@@ -373,20 +375,47 @@ export function PostPanel({ target, publisher, isAdmin }: PostPanelProps) {
                       </div>
 
                       {isAdmin && (
-                        <Button
-                          variant={isCommenting ? 'default' : 'ghost'}
-                          size="sm"
-                          className={cn(
-                            'h-7 gap-1.5 text-xs font-semibold px-2.5 transition-all',
-                            isCommenting
-                              ? 'bg-primary text-primary-foreground shadow-sm shadow-primary/20'
-                              : 'text-primary hover:text-primary hover:bg-primary/10',
-                          )}
-                          onClick={() => setCommentingPostId(isCommenting ? null : post.id)}
-                        >
-                          <MessageCircle className="h-3.5 w-3.5" />
-                          {post.is_commented ? 'Reply again' : 'Engage'}
-                        </Button>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            disabled={likingPostId === post.id || post.is_liked}
+                            className={cn(
+                              'h-7 gap-1.5 text-xs font-semibold px-2.5 transition-all',
+                              post.is_liked
+                                ? 'text-rose-600 bg-rose-50 hover:bg-rose-50'
+                                : 'text-muted-foreground hover:text-rose-600 hover:bg-rose-50',
+                            )}
+                            onClick={() => {
+                              setLikingPostId(post.id);
+                              likePost.mutate(
+                                { publisher_id: publisher.id, post_id: post.id },
+                                { onSettled: () => setLikingPostId(null) },
+                              );
+                            }}
+                          >
+                            {likingPostId === post.id ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Heart className={cn('h-3.5 w-3.5', post.is_liked && 'fill-current')} />
+                            )}
+                            {post.is_liked ? 'Liked' : 'Like'}
+                          </Button>
+                          <Button
+                            variant={isCommenting ? 'default' : 'ghost'}
+                            size="sm"
+                            className={cn(
+                              'h-7 gap-1.5 text-xs font-semibold px-2.5 transition-all',
+                              isCommenting
+                                ? 'bg-primary text-primary-foreground shadow-sm shadow-primary/20'
+                                : 'text-primary hover:text-primary hover:bg-primary/10',
+                            )}
+                            onClick={() => setCommentingPostId(isCommenting ? null : post.id)}
+                          >
+                            <MessageCircle className="h-3.5 w-3.5" />
+                            {post.is_commented ? 'Reply again' : 'Engage'}
+                          </Button>
+                        </div>
                       )}
                     </div>
 
