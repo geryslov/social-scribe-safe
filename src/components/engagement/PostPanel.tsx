@@ -46,7 +46,7 @@ function engagementTier(post: EngagementPost): 'hot' | 'warm' | 'normal' {
 export function PostPanel({ target, publisher, isAdmin }: PostPanelProps) {
   const { currentWorkspace } = useWorkspace();
   const { posts, isLoading } = useEngagementPosts(target?.id || null);
-  const { deleteTarget } = useEngagementTargets(publisher.id);
+  const { deleteTarget, updateTarget } = useEngagementTargets(publisher.id);
   const fetchPosts = useFetchTargetPosts();
   const likePost = useLikePost();
   const [commentingPostId, setCommentingPostId] = useState<string | null>(null);
