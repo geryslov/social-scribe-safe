@@ -30,12 +30,16 @@ interface CommentEngagementPopoverProps {
   engagementCommentId: string;
   reactionCount: number;
   replyCount: number;
+  commentText?: string;
+  postedAt?: string | null;
 }
 
 export function CommentEngagementPopover({
   engagementCommentId,
   reactionCount,
   replyCount,
+  commentText,
+  postedAt,
 }: CommentEngagementPopoverProps) {
   const enabled = reactionCount > 0 || replyCount > 0;
 
