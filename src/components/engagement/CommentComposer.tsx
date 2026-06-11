@@ -29,71 +29,32 @@ export function CommentComposer({ post, publisher, onClose }: CommentComposerPro
 
     setIsGenerating(true);
     try {
-      // Build persona context
-      let personaContext: string;
-      if ((publisher as any).voice_profile) {
-        personaContext = `You are ${publisher.name}. Here is your voice profile:\n\n${(publisher as any).voice_profile}`;
-      } else {
-        personaContext = `You are ${publisher.name}${publisher.headline ? `, ${publisher.headline}` : ''}${publisher.company_name ? ` at ${publisher.company_name}` : ''}.`;
-      }
-
-      // Get the target person's name from post metadata
       const authorName = (post.post_metadata as any)?.author_name || 'this person';
 
-      // Pick a random comment style to keep comments varied
+      // Pick a random comment approach to keep things varied
       const styles = [
-        'Share a quick personal experience that relates to one specific point in the post. One sentence.',
-        'Ask a sharp follow-up question about a specific claim or point in the post. One sentence.',
-        'Respectfully push back on one point with a brief alternative take. One to two sentences.',
-        'Add a related data point or observation that builds on what they said. One sentence.',
-        'Share what you tried that connects to their point and what happened. Two sentences max.',
+        'Share a quick personal experience that connects to their specific point.',
+        'Ask a sharp question about one specific claim they made.',
+        'Add a nuance or angle they didn\'t mention.',
+        'Briefly note what caught your attention and why.',
+        'Connect their point to something happening in your world right now.',
       ];
       const style = styles[Math.floor(Math.random() * styles.length)];
 
-      const commentPrompt = `${personaContext}
-
-STEP 1 — UNDERSTAND THE POST (do this silently, don't output it):
-Read ${authorName}'s post carefully. Identify:
-- What is their MAIN ARGUMENT or point?
-- What specific data, example, or claim do they use to support it?
-- What is the underlying tension or insight they're surfacing?
-- What would a knowledgeable person in this space actually think about this?
-- Is there a gap, a nuance they missed, or a complementary angle?
-
-STEP 2 — WRITE YOUR COMMENT:
-Now write a reply that shows you actually read and understood the post.
-
-STYLE: ${style}
-
-RULES:
-- MAX 2 sentences. 1 is better. Shorter = more human.
-- Your comment must connect to the POST'S ACTUAL ARGUMENT, not just its topic. Don't write a generic comment about the topic area. React to what THEY specifically said.
-- Reference a specific detail: a number they cited, a phrase they used, a claim they made, an example they gave. Show you read it.
-- Write like you typed this on your phone in 20 seconds. Casual, direct, no polish.
-- No "great post", no flattery, no "this resonates", no em dashes, no bullets.
-- Match the voice profile tone if provided.
-
-${authorName}'s post:
-"""
-${post.content.slice(0, 1500)}
-"""
-
-Your comment (raw text, no quotes, no prefix):`;
-
-      const { data, error } = await supabase.functions.invoke('create-document', {
-        body: { topic: commentPrompt, postCount: 'single', length: 'super_short' },
+      // Use dedicated generate-comment function (NOT create-document)
+      const { data, error } = await supabase.functions.invoke('generate-comment', {
+        body: {
+          post_content: post.content,
+          author_name: authorName,
+          publisher_name: publisher.name,
+          voice_profile: (publisher as any).voice_profile || '',
+          comment_style: style,
+        },
       });
       if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || 'Failed to generate comment');
 
-      let generated = data?.content || '';
-      // Strip AI artifacts
-      generated = generated.replace(/^(#{1,3}\s*)?Post\s*\d+[:\s]*/i, '').trim();
-      generated = generated.replace(/^["'`]+|["'`]+$/g, '').trim();
-      // Remove any "Comment:" or "Reply:" prefix
-      generated = generated.replace(/^(Comment|Reply|Response|Here's my comment)[:\s]*/i, '').trim();
-      // Take only first paragraph if AI wrote multiple
-      const firstPara = generated.split('\n\n')[0].trim();
-      generated = firstPara || generated;
+      let generated = data.comment || '';
 
       if (generated) {
         setCommentText(generated);
