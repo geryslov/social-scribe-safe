@@ -14,7 +14,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { Plus, Search, Loader2, Linkedin, RefreshCw, Building2, Upload } from 'lucide-react';
+import { Plus, Search, Loader2, Linkedin, RefreshCw, Building2, Upload, CheckCircle2, Sparkles } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
@@ -54,13 +54,14 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
   const [bulkProgress, setBulkProgress] = useState({ done: 0, total: 0 });
   const [onlyFresh, setOnlyFresh] = useState(false);
 
-  // Unseen post counts + fresh (not engaged) post counts per target
-  const { data: countMaps = { unseen: {}, fresh: {} } } = useQuery({
-    queryKey: ['target-counts', currentWorkspace?.id, publisher.id, targets.map((t) => `${t.id}:${t.last_seen_at}`).join(',')],
+  // Unseen post counts + fresh/done engagement status counts per target
+  const { data: countMaps = { unseen: {}, fresh: {}, done: {} } } = useQuery({
+    queryKey: ['target-counts', currentWorkspace?.id, publisher.id, targets.map((t) => `${t.id}:${t.last_seen_at}:${t.last_fetched_at}`).join(',')],
     queryFn: async () => {
-      if (!currentWorkspace || targets.length === 0) return { unseen: {}, fresh: {} };
+      if (!currentWorkspace || targets.length === 0) return { unseen: {}, fresh: {}, done: {} };
       const unseen: Record<string, number> = {};
       const fresh: Record<string, number> = {};
+      const done: Record<string, number> = {};
       for (const target of targets) {
         // Unseen (newly synced since last visit)
         let unseenQ = (supabase as any)
@@ -71,23 +72,28 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
         const { count: unseenCount } = await unseenQ;
         if (unseenCount && unseenCount > 0) unseen[target.id] = unseenCount;
 
-        // Fresh (not commented and not liked yet — net new to engage with)
-        const { count: freshCount } = await (supabase as any)
+        const { data: statusRows } = await (supabase as any)
           .from('engagement_posts')
-          .select('id', { count: 'exact', head: true })
-          .eq('target_id', target.id)
-          .eq('is_commented', false)
-          .eq('is_liked', false);
-        if (freshCount && freshCount > 0) fresh[target.id] = freshCount;
+          .select('id, is_commented, is_liked')
+          .eq('target_id', target.id);
+
+        const rows = (statusRows || []) as Array<{ is_commented: boolean; is_liked: boolean }>;
+        const freshCount = rows.filter((p) => !p.is_commented && !p.is_liked).length;
+        const doneCount = rows.filter((p) => p.is_commented || p.is_liked).length;
+        if (freshCount > 0) fresh[target.id] = freshCount;
+        if (doneCount > 0) done[target.id] = doneCount;
       }
-      return { unseen, fresh };
+      return { unseen, fresh, done };
     },
     enabled: !!currentWorkspace && targets.length > 0,
   });
   const unseenCounts = countMaps.unseen as Record<string, number>;
   const freshCounts = countMaps.fresh as Record<string, number>;
+  const doneCounts = countMaps.done as Record<string, number>;
   const totalFresh = Object.values(freshCounts).reduce((s, n) => s + n, 0);
   const targetsWithFresh = Object.keys(freshCounts).length;
+  const totalDone = Object.values(doneCounts).reduce((s, n) => s + n, 0);
+  const targetsWithDone = Object.keys(doneCounts).length;
 
   const filtered = useMemo(() => {
     let list = targets;
@@ -234,30 +240,42 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
           />
         </div>
 
-        {/* Fresh-to-engage summary */}
-        {totalFresh > 0 && (
+        {/* Engagement status summary */}
+        <div className="grid grid-cols-2 gap-1.5">
           <button
             type="button"
             onClick={() => setOnlyFresh((v) => !v)}
             className={cn(
-              'w-full flex items-center justify-between gap-2 rounded-md px-2.5 py-1.5 text-[11px] font-semibold transition-colors border',
+              'flex min-w-0 items-center justify-between gap-2 rounded-md px-2.5 py-1.5 text-[11px] font-semibold transition-colors border',
               onlyFresh
                 ? 'bg-primary text-primary-foreground border-primary shadow-sm'
                 : 'bg-amber-50 text-amber-800 border-amber-200/70 hover:bg-amber-100/70',
             )}
             title="Show only profiles with posts you haven't engaged with"
           >
-            <span className="flex items-center gap-1.5">
-              <span className={cn(
-                'inline-flex h-1.5 w-1.5 rounded-full',
-                onlyFresh ? 'bg-primary-foreground' : 'bg-amber-500',
-              )} />
-              {totalFresh} fresh post{totalFresh === 1 ? '' : 's'} · {targetsWithFresh} profile{targetsWithFresh === 1 ? '' : 's'}
+            <span className="flex min-w-0 items-center gap-1.5">
+              <Sparkles className="h-3 w-3 flex-shrink-0" />
+              <span className="truncate">Fresh</span>
             </span>
-            <span className="text-[10px] opacity-80">
-              {onlyFresh ? 'Showing fresh' : 'Filter'}
-            </span>
+            <span className="tabular-nums">{totalFresh}</span>
           </button>
+
+          <div
+            className="flex min-w-0 items-center justify-between gap-2 rounded-md px-2.5 py-1.5 text-[11px] font-semibold border bg-emerald-50 text-emerald-700 border-emerald-200/70"
+            title={`${targetsWithDone} profile${targetsWithDone === 1 ? '' : 's'} already have posts you engaged with`}
+          >
+            <span className="flex min-w-0 items-center gap-1.5">
+              <CheckCircle2 className="h-3 w-3 flex-shrink-0" />
+              <span className="truncate">Done</span>
+            </span>
+            <span className="tabular-nums">{totalDone}</span>
+          </div>
+        </div>
+
+        {onlyFresh && (
+          <div className="text-[10px] font-medium text-muted-foreground px-0.5">
+            Showing {targetsWithFresh} profile{targetsWithFresh === 1 ? '' : 's'} with fresh posts
+          </div>
         )}
       </div>
 
@@ -293,6 +311,7 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
               const isFetching = fetchingTargetId === target.id;
               const unseen = unseenCounts[target.id] || 0;
               const fresh = freshCounts[target.id] || 0;
+              const done = doneCounts[target.id] || 0;
               const initials = target.name
                 .split(' ')
                 .map((w) => w[0])
@@ -346,14 +365,32 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
                       {target.enrichment_status === 'pending' && (
                         <Loader2 className="h-3 w-3 animate-spin text-primary/60" />
                       )}
-                      {fresh > 0 && (
-                        <span
-                          className="ml-auto flex-shrink-0 inline-flex items-center gap-0.5 h-4 px-1.5 rounded-full bg-amber-100 text-amber-700 text-[9px] font-bold uppercase tracking-wide"
-                          title={`${fresh} post${fresh === 1 ? '' : 's'} to engage with`}
-                        >
-                          {fresh} fresh
-                        </span>
-                      )}
+                    </div>
+                    <div className="mt-1 flex items-center gap-1.5 flex-wrap">
+                      <span
+                        className={cn(
+                          'inline-flex items-center gap-1 h-4 px-1.5 rounded-full text-[9px] font-bold uppercase tracking-wide',
+                          fresh > 0
+                            ? 'bg-amber-100 text-amber-700'
+                            : 'bg-muted text-muted-foreground/60',
+                        )}
+                        title={`${fresh} post${fresh === 1 ? '' : 's'} to engage with`}
+                      >
+                        <Sparkles className="h-2.5 w-2.5" />
+                        {fresh} fresh
+                      </span>
+                      <span
+                        className={cn(
+                          'inline-flex items-center gap-1 h-4 px-1.5 rounded-full text-[9px] font-bold uppercase tracking-wide',
+                          done > 0
+                            ? 'bg-emerald-100 text-emerald-700'
+                            : 'bg-muted text-muted-foreground/60',
+                        )}
+                        title={`${done} post${done === 1 ? '' : 's'} already liked or replied to`}
+                      >
+                        <CheckCircle2 className="h-2.5 w-2.5" />
+                        {done} done
+                      </span>
                     </div>
                     {target.title && (
                       <p className="text-[11px] text-muted-foreground truncate mt-0.5 leading-tight">

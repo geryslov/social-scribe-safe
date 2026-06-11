@@ -69,6 +69,7 @@ export function useLikePost() {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['engagement-posts'] });
+      queryClient.invalidateQueries({ queryKey: ['target-counts'] });
       toast.success(data?.already_liked ? 'Already liked on LinkedIn' : 'Liked on LinkedIn');
     },
     onError: (error: Error) => {
@@ -316,6 +317,7 @@ export function useFetchTargetPosts() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['engagement-posts'] });
       queryClient.invalidateQueries({ queryKey: ['engagement-targets'] });
+      queryClient.invalidateQueries({ queryKey: ['target-counts'] });
       const profile = data.profile;
       if (profile?.name || profile?.title) {
         toast.success(`${data.posts_found} posts · ${[profile.name, profile.title, profile.company_name].filter(Boolean).join(' · ')}`);
@@ -415,6 +417,7 @@ export function usePostComment() {
         .eq('id', variables.post_id)
         .then(() => {
           queryClient.invalidateQueries({ queryKey: ['engagement-posts'] });
+          queryClient.invalidateQueries({ queryKey: ['target-counts'] });
         });
 
       // Fallback: if Edge Function didn't update the comment status, do it client-side
