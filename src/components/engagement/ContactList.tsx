@@ -311,6 +311,7 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
               const isFetching = fetchingTargetId === target.id;
               const unseen = unseenCounts[target.id] || 0;
               const fresh = freshCounts[target.id] || 0;
+              const done = doneCounts[target.id] || 0;
               const initials = target.name
                 .split(' ')
                 .map((w) => w[0])
@@ -364,14 +365,32 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
                       {target.enrichment_status === 'pending' && (
                         <Loader2 className="h-3 w-3 animate-spin text-primary/60" />
                       )}
-                      {fresh > 0 && (
-                        <span
-                          className="ml-auto flex-shrink-0 inline-flex items-center gap-0.5 h-4 px-1.5 rounded-full bg-amber-100 text-amber-700 text-[9px] font-bold uppercase tracking-wide"
-                          title={`${fresh} post${fresh === 1 ? '' : 's'} to engage with`}
-                        >
-                          {fresh} fresh
-                        </span>
-                      )}
+                    </div>
+                    <div className="mt-1 flex items-center gap-1.5 flex-wrap">
+                      <span
+                        className={cn(
+                          'inline-flex items-center gap-1 h-4 px-1.5 rounded-full text-[9px] font-bold uppercase tracking-wide',
+                          fresh > 0
+                            ? 'bg-amber-100 text-amber-700'
+                            : 'bg-muted text-muted-foreground/60',
+                        )}
+                        title={`${fresh} post${fresh === 1 ? '' : 's'} to engage with`}
+                      >
+                        <Sparkles className="h-2.5 w-2.5" />
+                        {fresh} fresh
+                      </span>
+                      <span
+                        className={cn(
+                          'inline-flex items-center gap-1 h-4 px-1.5 rounded-full text-[9px] font-bold uppercase tracking-wide',
+                          done > 0
+                            ? 'bg-emerald-100 text-emerald-700'
+                            : 'bg-muted text-muted-foreground/60',
+                        )}
+                        title={`${done} post${done === 1 ? '' : 's'} already liked or replied to`}
+                      >
+                        <CheckCircle2 className="h-2.5 w-2.5" />
+                        {done} done
+                      </span>
                     </div>
                     {target.title && (
                       <p className="text-[11px] text-muted-foreground truncate mt-0.5 leading-tight">
