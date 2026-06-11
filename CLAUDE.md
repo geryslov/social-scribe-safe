@@ -6,9 +6,9 @@ Multi-tenant LinkedIn thought leadership platform. Agency operators manage publi
 ## Stack
 - **Frontend:** React + TypeScript + Vite + Tailwind + shadcn/ui
 - **Backend:** Supabase (PostgreSQL + Edge Functions + RLS + Auth)
-- **AI:** Claude Sonnet 4.5 via Anthropic API (post generation, voice profiles, comment suggestions)
-- **External APIs:** Apify (LinkedIn post scraping), Firecrawl (LinkedIn profile scraping), LinkedIn Community Management API (posting, commenting, liking)
-- **Deployment:** Lovable (auto-deploys from GitHub)
+- **AI:** Claude Sonnet 4.5 via Anthropic API (post generation, voice profiles, comment classification + generation)
+- **External APIs:** Apify (LinkedIn post scraping, profile enrichment), Firecrawl (LinkedIn profile scraping), LinkedIn Community Management API (posting, commenting, liking, reactions)
+- **Deployment:** Lovable (auto-deploys from GitHub). Edge Functions must be redeployed via Lovable sync or Supabase dashboard after changes.
 - **Fonts:** DM Sans (body), Bricolage Grotesque (display), JetBrains Mono (mono)
 - **Primary color:** Violet (#7C3AED), workspace-customizable via theme
 
@@ -31,13 +31,15 @@ Multi-tenant LinkedIn thought leadership platform. Agency operators manage publi
 ### Edge Functions (supabase/functions/)
 | Function | Purpose |
 |---|---|
-| `create-document` | AI post generation with 690-line system prompt, multi-publisher voice profiles |
-| `generate-voice-profile` | Scrapes LinkedIn + analyzes writing style → saves per-publisher voice profile |
+| `create-document` | AI post generation with 690-line system prompt, multi-publisher voice profiles. WRITER ANALYSIS section uses voice profiles when available. Multi-publisher docs get per-voice labeling. |
+| `generate-comment` | **Post classification agent** — classifies post type (announcement, opinion, educational, etc.), then generates comment using type-specific strategy + publisher voice profile. Dedicated function, does NOT route through create-document. max_tokens: 100. |
+| `generate-voice-profile` | Scrapes LinkedIn (Firecrawl → Apify fallback) + analyzes existing posts → generates structured voice profile per publisher. Bans LinkedIn influencer phrases from vocabulary. |
+| `fetch-comment-engagement` | Queries LinkedIn Social Metadata API for reactions + replies on posted comments. Batch support (10 at a time). |
 | `run-research` | Intelligence layer: Reddit + HN + Brave search → engagement-ranked feed |
-| `fetch-target-posts` | Apify: fetches LinkedIn posts from engagement targets (async run + poll) |
-| `post-linkedin-comment` | Posts comments via LinkedIn Community Management API |
+| `fetch-target-posts` | Apify: fetches LinkedIn posts from engagement targets (async run + poll). Filters out reposts. Also extracts profile data (avatar, title, company) from author info. |
+| `post-linkedin-comment` | Posts comments via LinkedIn Community Management API. Tries multiple URN variants. Updates engagement_comment status with dual-write (server + client fallback). |
 | `like-linkedin-post` | Likes posts via LinkedIn Reactions API |
-| `enrich-engagement-target` | Apify: enriches engagement target with profile data |
+| `enrich-engagement-target` | Apify: enriches engagement target with profile data (name, title, company, avatar) |
 | `linkedin-post` | Publishes posts to LinkedIn |
 | `linkedin-auth` | LinkedIn OAuth flow |
 | `fetch-linkedin-posts` | Fetches publisher's own post analytics |
@@ -48,7 +50,7 @@ Multi-tenant LinkedIn thought leadership platform. Agency operators manage publi
 | `notify-slack` / `notify-slack-reaction` | Slack webhook notifications |
 
 ### Core Tables
-- `publishers` — LinkedIn profiles/clients with voice_profile, OAuth tokens
+- `publishers` — LinkedIn profiles/clients with `voice_profile` TEXT + `voice_profile_generated_at`, OAuth tokens
 - `documents` / `document_sections` — AI-generated content with sections
 - `posts` — LinkedIn posts with full analytics tracking
 - `workspaces` / `workspace_members` — Multi-tenant workspaces
@@ -61,9 +63,35 @@ Multi-tenant LinkedIn thought leadership platform. Agency operators manage publi
 - `workspace_api_keys` — Per-workspace API keys (Brave, Apify, etc.)
 
 ### Engagement Layer Tables
-- `engagement_targets` — People to monitor (with profile data, voice profiles)
-- `engagement_posts` — Fetched LinkedIn posts from targets
-- `engagement_comments` — Comments drafted/posted on target posts
+- `engagement_targets` — People to monitor. Fields: name, linkedin_url, linkedin_username, headline, title, company_name, avatar_url, first_name, last_name, enrichment_status, enriched_at, last_seen_at, last_fetched_at, auto_like, is_active
+- `engagement_posts` — Fetched LinkedIn posts from targets. Fields: linkedin_post_urn, linkedin_post_url, content, published_at, likes/comments/shares_count, is_commented, is_liked, liked_at, post_metadata JSONB
+- `engagement_comments` — Comments drafted/posted on target posts. Fields: comment_text, status (draft/posted/failed), linkedin_comment_urn, posted_at, error_message, reaction_count, reply_count, reactions_breakdown JSONB, engagement_fetched_at
+
+### Comment Classification Agent
+The `generate-comment` function runs a two-phase process:
+1. **Phase 1 — Classify** (silent): Identifies post_type, subject, key_entities, core_event, emotional_tone. 11 known types + dynamic creation for unknown types.
+2. **Phase 2 — Generate**: Uses type-specific strategy + publisher voice profile.
+
+Known types: announcement_funding, announcement_launch, announcement_hire, announcement_milestone, opinion_hot_take, opinion_lesson, data_insight, story_personal, educational, question, promotion.
+
+Global banned language (enforced in comments AND voice profiles): "changes everything", "game changer", "keeps me up at night", "let that sink in", "couldn't agree more", "spot on", em dashes, all LinkedIn influencer phrases.
+
+### Voice Profiles
+Stored on `publishers.voice_profile` TEXT column. Generated by `generate-voice-profile` Edge Function. Used in:
+- `create-document` — injected per-publisher for post generation
+- `generate-comment` — shapes comment tone/vocabulary
+- `CommentComposer` — passes voice_profile to generate-comment
+
+Voice profile structure: Professional Identity, Writing Voice, Content Themes, Vocabulary & Phrasing (with banned phrases), Perspective & Worldview.
+
+## UI Pages
+- `/` — Posts (main feed, publisher sidebar)
+- `/analytics` — Workspace analytics
+- `/documents` — Document library + AI generation
+- `/documents/:id` — Document editor with sections
+- `/intelligence` — Research feed (Feed, Topics, Settings tabs)
+- `/engagement` — Master-detail CRM layout: contact list (left 340px) + post panel (right). Bulk import, unseen badges, profile auto-enrichment, post classification agent for comments.
+- `/admin` — Admin dashboard
 
 ## Conventions
 - Edge Functions: self-contained, no shared utils, CORS headers, `Deno.serve()`, service role client
@@ -71,9 +99,12 @@ Multi-tenant LinkedIn thought leadership platform. Agency operators manage publi
 - Components: shadcn/ui patterns, `cn()` for className merging
 - New tables: always add RLS policies using existing security functions
 - Migrations: `YYYYMMDDHHMMSS_name.sql` in `supabase/migrations/`
+- After building a major feature, update this CLAUDE.md
 
 ## Preferences
 - Be concise and direct
 - Prefer editing existing files over creating new ones
 - Don't over-engineer — ship working code
 - Use `as any` cast for Supabase queries on tables not yet in generated types
+- No dramatic/hyperbolic language in AI outputs
+- Comments should sound human, not AI — short, casual, specific to the post
