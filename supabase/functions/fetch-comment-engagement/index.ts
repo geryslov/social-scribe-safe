@@ -49,26 +49,35 @@ Deno.serve(async (req) => {
       );
     }
 
-    // --- Get all posted comments with a linkedin_comment_urn ---
-    const { data: comments, error: commentsErr } = await supabase
+    // --- Get all posted comments ---
+    const { data: allPosted, error: allErr } = await supabase
       .from('engagement_comments')
-      .select('id, linkedin_comment_urn')
+      .select('id, linkedin_comment_urn, status, comment_text')
       .eq('workspace_id', workspace_id)
       .eq('publisher_id', publisher_id)
-      .eq('status', 'posted')
-      .not('linkedin_comment_urn', 'is', null);
+      .eq('status', 'posted');
 
-    if (commentsErr) {
-      console.error('Failed to fetch comments:', commentsErr);
+    if (allErr) {
+      console.error('Failed to fetch comments:', allErr);
       return new Response(
         JSON.stringify({ success: false, error: 'Failed to fetch comments' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }
 
-    if (!comments || comments.length === 0) {
+    console.log(`Found ${allPosted?.length || 0} posted comments. URNs: ${allPosted?.map((c: any) => c.linkedin_comment_urn || 'NULL').join(', ')}`);
+
+    // Filter to only those with a linkedin_comment_urn
+    const comments = (allPosted || []).filter((c: any) => c.linkedin_comment_urn);
+
+    if (comments.length === 0) {
+      const withoutUrn = (allPosted || []).length - comments.length;
+      const msg = allPosted?.length === 0
+        ? 'No posted comments found'
+        : `Found ${allPosted?.length} posted comments but ${withoutUrn} are missing linkedin_comment_urn (LinkedIn may not have returned the comment ID)`;
+      console.log(msg);
       return new Response(
-        JSON.stringify({ success: true, updated_count: 0, message: 'No posted comments to check' }),
+        JSON.stringify({ success: true, updated_count: 0, message: msg }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }

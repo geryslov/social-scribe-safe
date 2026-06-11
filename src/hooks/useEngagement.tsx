@@ -110,14 +110,15 @@ export function useFetchCommentEngagement() {
       });
       if (error) throw error;
       if (!data?.success) throw new Error(data?.error || 'Failed to fetch engagement');
-      return data as { success: boolean; updated_count: number };
+      return data as { success: boolean; updated_count: number; message?: string };
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['engagement-comments'] });
+      queryClient.invalidateQueries({ queryKey: ['engagement-comments-by-target'] });
       if (data.updated_count > 0) {
         toast.success(`Updated engagement for ${data.updated_count} comments`);
       } else {
-        toast.info('No posted comments to check');
+        toast.info(data.message || 'No posted comments to check');
       }
     },
     onError: (error) => {
