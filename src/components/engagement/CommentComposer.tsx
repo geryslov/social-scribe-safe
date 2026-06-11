@@ -52,25 +52,33 @@ export function CommentComposer({ post, publisher, onClose }: CommentComposerPro
 
       const commentPrompt = `${personaContext}
 
-Write a LinkedIn comment replying to ${authorName}'s post below.
+STEP 1 — UNDERSTAND THE POST (do this silently, don't output it):
+Read ${authorName}'s post carefully. Identify:
+- What is their MAIN ARGUMENT or point?
+- What specific data, example, or claim do they use to support it?
+- What is the underlying tension or insight they're surfacing?
+- What would a knowledgeable person in this space actually think about this?
+- Is there a gap, a nuance they missed, or a complementary angle?
 
-STYLE FOR THIS COMMENT: ${style}
+STEP 2 — WRITE YOUR COMMENT:
+Now write a reply that shows you actually read and understood the post.
 
-HARD RULES:
-- MAX 2 sentences. Most comments should be 1 sentence. Shorter is always better.
-- This must read like someone dashed off a reply on their phone between meetings
-- React to something SPECIFIC they said (quote or reference an actual point from the post)
-- No greeting, no sign-off, no "great post", no flattery, no "this resonates"
-- No em dashes, no bullet points, no structured formatting
-- Contractions, casual tone, lowercase ok, rough edges ok
-- Match the voice profile if provided
+STYLE: ${style}
+
+RULES:
+- MAX 2 sentences. 1 is better. Shorter = more human.
+- Your comment must connect to the POST'S ACTUAL ARGUMENT, not just its topic. Don't write a generic comment about the topic area. React to what THEY specifically said.
+- Reference a specific detail: a number they cited, a phrase they used, a claim they made, an example they gave. Show you read it.
+- Write like you typed this on your phone in 20 seconds. Casual, direct, no polish.
+- No "great post", no flattery, no "this resonates", no em dashes, no bullets.
+- Match the voice profile tone if provided.
 
 ${authorName}'s post:
 """
 ${post.content.slice(0, 1500)}
 """
 
-Your comment (raw text only, no quotes):`;
+Your comment (raw text, no quotes, no prefix):`;
 
       const { data, error } = await supabase.functions.invoke('create-document', {
         body: { topic: commentPrompt, postCount: 'single', length: 'super_short' },
