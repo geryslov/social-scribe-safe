@@ -634,11 +634,10 @@ Deno.serve(async (req) => {
       const expiresIn = tokenData.expires_in; // seconds
       const refreshToken = tokenData.refresh_token; // May not be provided
 
-      // Get user info from LinkedIn using /v2/me endpoint (doesn't require openid scope)
-      const userInfoResponse = await fetch('https://api.linkedin.com/v2/me', {
+      // Get user info from LinkedIn's OpenID Connect userinfo endpoint
+      const userInfoResponse = await fetch('https://api.linkedin.com/v2/userinfo', {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
-          'X-Restli-Protocol-Version': '2.0.0',
         },
       });
 
@@ -652,7 +651,7 @@ Deno.serve(async (req) => {
       }
 
       const userInfo = await userInfoResponse.json();
-      const linkedinMemberId = userInfo.id; // This is the member ID from /v2/me
+      const linkedinMemberId = userInfo.sub; // OpenID subject = LinkedIn member id
 
       // Calculate expiration timestamp
       const expiresAt = new Date(Date.now() + expiresIn * 1000).toISOString();
