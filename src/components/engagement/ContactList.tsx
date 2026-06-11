@@ -52,6 +52,7 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
   const [bulkUrls, setBulkUrls] = useState('');
   const [bulkImporting, setBulkImporting] = useState(false);
   const [bulkProgress, setBulkProgress] = useState({ done: 0, total: 0 });
+  const [onlyFresh, setOnlyFresh] = useState(false);
 
   // Unseen post counts + fresh (not engaged) post counts per target
   const { data: countMaps = { unseen: {}, fresh: {} } } = useQuery({
