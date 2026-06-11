@@ -66,7 +66,7 @@ export function CommentEngagementPopover({
     },
   });
 
-  if (!enabled) return null;
+  if (!enabled && !commentText) return null;
 
   return (
     <Popover>
@@ -74,7 +74,7 @@ export function CommentEngagementPopover({
         <button
           type="button"
           className="inline-flex items-center gap-2 rounded-md px-1.5 py-0.5 hover:bg-muted/60 transition-colors"
-          title="See who reacted or replied"
+          title="See your comment, reactors and replies"
         >
           {reactionCount > 0 && (
             <span className="text-[10px] font-medium text-amber-600 flex items-center gap-0.5">
@@ -88,10 +88,21 @@ export function CommentEngagementPopover({
               {replyCount}
             </span>
           )}
+          {reactionCount === 0 && replyCount === 0 && (
+            <span className="text-[10px] font-medium text-muted-foreground">View comment</span>
+          )}
         </button>
       </PopoverTrigger>
-      <PopoverContent className="w-80 p-0" align="start">
-        <div className="max-h-[420px] overflow-y-auto">
+      <PopoverContent className="w-96 p-0" align="start">
+        <div className="max-h-[480px] overflow-y-auto">
+          {commentText && (
+            <section className="border-b bg-emerald-50/40 px-3 py-2.5">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-emerald-700 mb-1">
+                Your comment{postedAt ? ` · ${new Date(postedAt).toLocaleDateString()}` : ''}
+              </p>
+              <p className="text-xs text-foreground/85 whitespace-pre-wrap">{commentText}</p>
+            </section>
+          )}
           {isLoading ? (
             <div className="p-6 flex justify-center">
               <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
