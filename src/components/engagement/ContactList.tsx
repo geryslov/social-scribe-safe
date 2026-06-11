@@ -233,6 +233,32 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
             className="h-8 pl-8 text-sm bg-background focus-visible:ring-primary/30"
           />
         </div>
+
+        {/* Fresh-to-engage summary */}
+        {totalFresh > 0 && (
+          <button
+            type="button"
+            onClick={() => setOnlyFresh((v) => !v)}
+            className={cn(
+              'w-full flex items-center justify-between gap-2 rounded-md px-2.5 py-1.5 text-[11px] font-semibold transition-colors border',
+              onlyFresh
+                ? 'bg-primary text-primary-foreground border-primary shadow-sm'
+                : 'bg-amber-50 text-amber-800 border-amber-200/70 hover:bg-amber-100/70',
+            )}
+            title="Show only profiles with posts you haven't engaged with"
+          >
+            <span className="flex items-center gap-1.5">
+              <span className={cn(
+                'inline-flex h-1.5 w-1.5 rounded-full',
+                onlyFresh ? 'bg-primary-foreground' : 'bg-amber-500',
+              )} />
+              {totalFresh} fresh post{totalFresh === 1 ? '' : 's'} · {targetsWithFresh} profile{targetsWithFresh === 1 ? '' : 's'}
+            </span>
+            <span className="text-[10px] opacity-80">
+              {onlyFresh ? 'Showing fresh' : 'Filter'}
+            </span>
+          </button>
+        )}
       </div>
 
       {/* Contact rows */}
