@@ -418,17 +418,12 @@ export function PostPanel({ target, publisher, isAdmin }: PostPanelProps) {
                               <CheckCircle2 className="h-2.5 w-2.5" />
                               Replied
                             </Badge>
-                            {reactions > 0 && (
-                              <span className="text-[10px] font-medium text-amber-600 flex items-center gap-0.5">
-                                <ThumbsUp className="h-2.5 w-2.5" />
-                                {reactions}
-                              </span>
-                            )}
-                            {replies > 0 && (
-                              <span className="text-[10px] font-medium text-sky-600 flex items-center gap-0.5">
-                                <MessageSquare className="h-2.5 w-2.5" />
-                                {replies} {replies === 1 ? 'reply' : 'replies'}
-                              </span>
+                            {topComment && (reactions > 0 || replies > 0) && (
+                              <CommentEngagementPopover
+                                engagementCommentId={topComment.id}
+                                reactionCount={reactions}
+                                replyCount={replies}
+                              />
                             )}
                           </>
                         );
