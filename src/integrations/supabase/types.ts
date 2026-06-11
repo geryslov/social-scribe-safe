@@ -967,6 +967,8 @@ export type Database = {
           search_appearances: number | null
           updated_at: string
           user_id: string | null
+          voice_profile: string | null
+          voice_profile_generated_at: string | null
           workspace_id: string | null
         }
         Insert: {
@@ -991,6 +993,8 @@ export type Database = {
           search_appearances?: number | null
           updated_at?: string
           user_id?: string | null
+          voice_profile?: string | null
+          voice_profile_generated_at?: string | null
           workspace_id?: string | null
         }
         Update: {
@@ -1015,6 +1019,8 @@ export type Database = {
           search_appearances?: number | null
           updated_at?: string
           user_id?: string | null
+          voice_profile?: string | null
+          voice_profile_generated_at?: string | null
           workspace_id?: string | null
         }
         Relationships: [
