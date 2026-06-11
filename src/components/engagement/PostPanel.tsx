@@ -623,7 +623,8 @@ export function PostPanel({ target, publisher, isAdmin }: PostPanelProps) {
               );
             })}
           </div>
-        )}
+          );
+        })()}
       </div>
     </div>
   );
