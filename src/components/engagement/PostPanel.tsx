@@ -427,16 +427,6 @@ export function PostPanel({ target, publisher, isAdmin }: PostPanelProps) {
               const isCommenting = commentingPostId === post.id;
 
               return (
-                <article
-                  key={post.id}
-                  className={cn(
-                    'group relative mb-4 break-inside-avoid rounded-xl border bg-background transition-all duration-200',
-                    'hover:border-primary/30 hover:shadow-[0_4px_20px_-4px_hsl(var(--primary)/0.08)]',
-                    tier === 'hot' && 'border-primary/30 shadow-[0_2px_12px_-2px_hsl(var(--primary)/0.12)]',
-                    post.is_commented && 'border-emerald-500/30 bg-emerald-50/30',
-                    isCommenting && 'border-primary/50 shadow-[0_4px_20px_-2px_hsl(var(--primary)/0.18)] ring-1 ring-primary/20',
-                  )}
-                >
               const tier = engagementTier(post);
               const isCommenting = commentingPostId === post.id;
 
