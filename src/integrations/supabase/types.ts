@@ -14,6 +14,123 @@ export type Database = {
   }
   public: {
     Tables: {
+      comment_reactors: {
+        Row: {
+          actor_avatar_url: string | null
+          actor_headline: string | null
+          actor_name: string
+          actor_profile_url: string | null
+          actor_urn: string
+          created_at: string
+          engagement_comment_id: string
+          id: string
+          reacted_at: string | null
+          reaction_type: string
+          workspace_id: string
+        }
+        Insert: {
+          actor_avatar_url?: string | null
+          actor_headline?: string | null
+          actor_name?: string
+          actor_profile_url?: string | null
+          actor_urn: string
+          created_at?: string
+          engagement_comment_id: string
+          id?: string
+          reacted_at?: string | null
+          reaction_type?: string
+          workspace_id: string
+        }
+        Update: {
+          actor_avatar_url?: string | null
+          actor_headline?: string | null
+          actor_name?: string
+          actor_profile_url?: string | null
+          actor_urn?: string
+          created_at?: string
+          engagement_comment_id?: string
+          id?: string
+          reacted_at?: string | null
+          reaction_type?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comment_reactors_engagement_comment_id_fkey"
+            columns: ["engagement_comment_id"]
+            isOneToOne: false
+            referencedRelation: "engagement_comments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comment_reactors_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      comment_replies: {
+        Row: {
+          actor_avatar_url: string | null
+          actor_headline: string | null
+          actor_name: string
+          actor_profile_url: string | null
+          actor_urn: string
+          created_at: string
+          engagement_comment_id: string
+          id: string
+          replied_at: string | null
+          reply_text: string | null
+          reply_urn: string
+          workspace_id: string
+        }
+        Insert: {
+          actor_avatar_url?: string | null
+          actor_headline?: string | null
+          actor_name?: string
+          actor_profile_url?: string | null
+          actor_urn: string
+          created_at?: string
+          engagement_comment_id: string
+          id?: string
+          replied_at?: string | null
+          reply_text?: string | null
+          reply_urn: string
+          workspace_id: string
+        }
+        Update: {
+          actor_avatar_url?: string | null
+          actor_headline?: string | null
+          actor_name?: string
+          actor_profile_url?: string | null
+          actor_urn?: string
+          created_at?: string
+          engagement_comment_id?: string
+          id?: string
+          replied_at?: string | null
+          reply_text?: string | null
+          reply_urn?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comment_replies_engagement_comment_id_fkey"
+            columns: ["engagement_comment_id"]
+            isOneToOne: false
+            referencedRelation: "engagement_comments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comment_replies_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       document_comments: {
         Row: {
           content: string
