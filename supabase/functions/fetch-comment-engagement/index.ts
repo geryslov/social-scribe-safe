@@ -147,6 +147,8 @@ Deno.serve(async (req) => {
           const meta = await summaryRes.json();
           totalReactions = meta?.likesSummary?.totalLikes ?? meta?.likesSummary?.aggregatedTotalLikes ?? 0;
         } else {
+          const t = await summaryRes.text();
+          console.warn(`socialActions ${urn} → ${summaryRes.status}: ${t.slice(0, 200)}`);
           lastError = `GET socialActions/${urn} → ${summaryRes.status}`;
         }
 
@@ -157,7 +159,13 @@ Deno.serve(async (req) => {
             `https://api.linkedin.com/v2/reactions/(entity:${encoded})?q=entity&count=50&start=${nextStart}`,
             { headers: LI_HEADERS(token) },
           );
-          if (!rRes.ok) break;
+          if (!rRes.ok) {
+            if (page === 0) {
+              const t = await rRes.text();
+              console.warn(`reactions ${urn} → ${rRes.status}: ${t.slice(0, 200)}`);
+            }
+            break;
+          }
           const rJson = await rRes.json();
           const els = rJson?.elements || [];
           for (const el of els) {
@@ -174,6 +182,7 @@ Deno.serve(async (req) => {
           if (els.length < 50) break;
           nextStart += 50;
         }
+
 
         // -------- Replies (sub-comments) --------
         let replyCount = 0;
