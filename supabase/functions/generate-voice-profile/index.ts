@@ -141,6 +141,7 @@ Create the profile using EXACTLY this structure:
 - Characteristic phrases or expressions they'd use
 - Technical depth level (jargon comfort)
 - Things to AVOID (words, phrases, or styles that would feel inauthentic for them)
+- NEVER include these phrases in any voice profile: "changes everything", "game changer", "keeps me up at night", "let that sink in", "the real story here", "this is huge", "couldn't agree more". These are generic LinkedIn influencer phrases, not authentic voice markers.
 
 ## Perspective & Worldview
 - What they believe that others don't

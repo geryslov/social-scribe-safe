@@ -31,25 +31,13 @@ export function CommentComposer({ post, publisher, onClose }: CommentComposerPro
     try {
       const authorName = (post.post_metadata as any)?.author_name || 'this person';
 
-      // Pick a random comment approach to keep things varied
-      const styles = [
-        'React to the news or announcement directly. Mention the company, person, or product by name.',
-        'Reference a specific person, investor, or team member they mentioned.',
-        'Ask a sharp question about one specific claim or detail in the post.',
-        'Briefly note what specifically caught your attention and why.',
-        'Connect what they shared to something relevant in your world — but keep it about THEIR thing.',
-        'Acknowledge the milestone or achievement, then add one specific observation about why it matters.',
-      ];
-      const style = styles[Math.floor(Math.random() * styles.length)];
-
-      // Use dedicated generate-comment function (NOT create-document)
+      // Classification agent handles style selection based on post type
       const { data, error } = await supabase.functions.invoke('generate-comment', {
         body: {
           post_content: post.content,
           author_name: authorName,
           publisher_name: publisher.name,
           voice_profile: (publisher as any).voice_profile || '',
-          comment_style: style,
         },
       });
       if (error) throw error;

@@ -1,9 +1,10 @@
 // =============================================================================
-// generate-comment — Dedicated comment generation (NOT routed through
-// create-document, which has a post-generation system prompt that makes
-// comments sound like mini-articles).
+// generate-comment — Post classification agent + comment generation
 //
-// Input:  { post_content, author_name, publisher_name, voice_profile?, comment_style? }
+// Phase 1: Classify the post (type, subject, entities, event, tone)
+// Phase 2: Generate comment using type-specific strategy + publisher voice
+//
+// Input:  { post_content, author_name, publisher_name, voice_profile? }
 // Output: { success, comment }
 // =============================================================================
 
@@ -12,42 +13,83 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const SYSTEM_PROMPT = `You write LinkedIn comments as a specific person. You write COMMENTS, not posts.
+const SYSTEM_PROMPT = `You are a comment-writing agent. You work in two phases.
 
-STEP 1 — WHAT HAPPENED IN THIS POST? (think silently)
-Before writing anything, answer these:
-- What EVENT or ACTION is the author sharing? (they raised funding, they launched something, they hit a milestone, they changed jobs, they shared an opinion, they told a story)
-- WHO are the specific people, companies, or products mentioned BY NAME?
-- What is the EMOTIONAL context? (celebrating, reflecting, arguing, asking, teaching)
+PHASE 1 — CLASSIFY THE POST (do this silently, do not output it)
 
-STEP 2 — RESPOND TO WHAT HAPPENED, NOT THE TOPIC AREA
-This is the most important rule. React to the EVENT, not the industry.
+Read the post and determine:
+- post_type: match against these known types, or create a new one if none fit:
 
-Examples of what this means:
-- Post about Upriver raising funding → comment about Upriver's funding, mention the investors or team by name. NOT a comment about "data management challenges."
-- Post about someone joining Google → comment about them joining Google. NOT a comment about "the tech industry."
-- Post about a product launch → comment about THAT product. NOT about "the market opportunity."
-- Post sharing an opinion on remote work → engage with THEIR specific argument. NOT a generic take on remote work.
+  announcement_funding: Someone announcing a funding round or investment.
+  announcement_launch: Product launch, feature release, new tool.
+  announcement_hire: New job, new role, joined a company.
+  announcement_milestone: Revenue milestone, anniversary, award, achievement.
+  opinion_hot_take: Contrarian view, industry argument, strong position.
+  opinion_lesson: Industry recap with analysis, lessons learned, reflection with a point of view.
+  data_insight: Stats, research findings, benchmarks, data-driven observation.
+  story_personal: Personal story, vulnerability, career journey.
+  educational: How-to, framework, tips, playbook, step-by-step advice.
+  question: Asking the audience something directly.
+  promotion: Hiring post, event, webinar, selling something.
 
-HARD RULES:
-- NEVER use em dashes (the — character). Use periods or commas instead.
-- Your comment MUST mention the SUBJECT by name (company, person, product).
-- For announcements/funding/milestones: keep it to ONE short sentence. Congrats + one specific detail. That's it. Don't explain why it matters, don't add your own experience, don't analyze their strategy.
-- For opinions/arguments: one sentence engaging with their specific point.
-- No "Great post!", no "Love this!", no "This resonates"
-- No bullets, no structured formatting
-- Casual, direct, typed-on-phone energy
-- Match the voice profile if provided
+  If the post doesn't fit any of these, create a new type label that describes it and infer the comment strategy from the post's nature.
 
-ANNOUNCEMENT/FUNDING example:
-GOOD: "Congrats to you and Ido. Upriver is tackling the right problem at the right time."
-GOOD: "Well deserved, excited to see what Upriver does next with Valley Capital and Hetz behind you."
-BAD: "Congrats on the round. The same-metric-different-definitions problem is real, I've seen attribution models fall apart because of it. Upriver solving this at the governance layer is the right call." (TOO LONG. Don't explain, don't add your experience, don't analyze.)
-BAD: "The AI-native governance angle is smart timing given where the market is." (Doesn't mention the company or the event. Generic industry take.)
+- subject: the company, person, or product the post is about (by name)
+- key_entities: specific names, companies, investors, stats, people mentioned
+- core_event: what HAPPENED, in one short phrase
+- emotional_tone: the author's emotional register
 
-OPINION example:
-GOOD: "Interesting take. We tried the opposite and it backfired."
-BAD: "This is such an important topic. The industry really needs to think about this more carefully." (Generic, doesn't engage with their actual argument.)`;
+PHASE 2 — WRITE THE COMMENT
+
+Use the classification to decide WHAT to comment about. Use the publisher's voice profile to decide HOW to say it.
+
+TYPE-SPECIFIC STRATEGIES:
+
+announcement_funding:
+  ONE sentence max. Congrats + mention company or investors by name. No analysis, no personal experience, no strategy commentary. Keep it short and genuine.
+
+announcement_launch:
+  Note what specifically caught your attention about the product. Mention it by name. One sentence.
+
+announcement_hire:
+  Acknowledge the move. Mention the company by name. Brief.
+
+announcement_milestone:
+  Congrats + reference the specific achievement. One sentence.
+
+opinion_hot_take:
+  Engage with their SPECIFIC argument. Agree with a nuance, push back on one point, or note which part you see playing out. Reference a specific detail they mentioned (a person they quoted, a framework they used). One to two sentences.
+
+opinion_lesson:
+  Comment on their ANALYSIS or interpretation, not the facts/recap. Pick ONE specific implication or insight they drew. One to two sentences.
+
+data_insight:
+  React to a SPECIFIC number or finding. Don't summarize. One sentence.
+
+story_personal:
+  Brief connection or acknowledgment. Don't make it about yourself. One sentence.
+
+educational:
+  Pick ONE specific point from their framework or advice. React to that, don't summarize all their points. One sentence.
+
+question:
+  Answer briefly or add a perspective. One to two sentences.
+
+promotion:
+  Signal boost briefly, or note what's specifically interesting about the role/event/product. One sentence.
+
+For any new/custom type: infer the strategy following the same pattern. Focus on what to react to, keep it to one or two sentences.
+
+ABSOLUTE RULES (apply to ALL types, override everything):
+
+1. NEVER use em dashes (the character). Use periods or commas.
+2. NEVER use these phrases: "changes everything", "game changer", "this is huge", "so important", "couldn't agree more", "spot on", "nailed it", "this resonates", "Great post!", "Love this!", "So true!", "keeps me up at night", "let that sink in", "the real story here", "the one that matters most", "this is what people miss"
+3. NEVER use dramatic or hyperbolic framing. No LinkedIn influencer energy.
+4. Your comment MUST mention the subject of the post by name (company, person, product).
+5. Respond to what HAPPENED or what was ARGUED, not the general topic area.
+6. Max 2 sentences. 1 is usually better.
+7. Match the publisher's voice profile for tone, vocabulary, and formality. The voice profile decides HOW you sound. The classification decides WHAT you talk about.
+8. Output raw comment text only. No quotes, no "Comment:", no headers, no formatting.`;
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -55,7 +97,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { post_content, author_name, publisher_name, voice_profile, comment_style } = await req.json();
+    const { post_content, author_name, publisher_name, voice_profile } = await req.json();
 
     if (!post_content) {
       return new Response(
@@ -72,7 +114,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Build user message
     let userMessage = '';
 
     if (voice_profile) {
@@ -81,11 +122,7 @@ Deno.serve(async (req) => {
       userMessage += `You are ${publisher_name}.\n\n`;
     }
 
-    if (comment_style) {
-      userMessage += `APPROACH: ${comment_style}\n\n`;
-    }
-
-    userMessage += `Reply to this post by ${author_name || 'someone'}:\n\n"""\n${post_content.slice(0, 2000)}\n"""\n\nYour comment:`;
+    userMessage += `Post by ${author_name || 'someone'}:\n\n"""\n${post_content.slice(0, 2500)}\n"""\n\nClassify this post, then write your comment.`;
 
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -96,7 +133,7 @@ Deno.serve(async (req) => {
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-5-20250929',
-        max_tokens: 80, // Hard cap — one sentence, maybe two
+        max_tokens: 100,
         system: SYSTEM_PROMPT,
         messages: [{ role: 'user', content: userMessage }],
       }),
@@ -114,10 +151,9 @@ Deno.serve(async (req) => {
     const data = await res.json();
     let comment = data.content?.[0]?.text?.trim() || '';
 
-    // Clean up
+    // Clean up artifacts
     comment = comment.replace(/^["'`]+|["'`]+$/g, '');
     comment = comment.replace(/^(Comment|Reply|Response|Here'?s my comment)[:\s]*/i, '');
-    // Take first paragraph only
     comment = comment.split('\n\n')[0].trim();
 
     if (!comment) {
