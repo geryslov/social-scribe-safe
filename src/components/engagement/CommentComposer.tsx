@@ -33,11 +33,12 @@ export function CommentComposer({ post, publisher, onClose }: CommentComposerPro
 
       // Pick a random comment approach to keep things varied
       const styles = [
-        'Share a quick personal experience that connects to their specific point.',
-        'Ask a sharp question about one specific claim they made.',
-        'Add a nuance or angle they didn\'t mention.',
-        'Briefly note what caught your attention and why.',
-        'Connect their point to something happening in your world right now.',
+        'React to the news or announcement directly. Mention the company, person, or product by name.',
+        'Reference a specific person, investor, or team member they mentioned.',
+        'Ask a sharp question about one specific claim or detail in the post.',
+        'Briefly note what specifically caught your attention and why.',
+        'Connect what they shared to something relevant in your world — but keep it about THEIR thing.',
+        'Acknowledge the milestone or achievement, then add one specific observation about why it matters.',
       ];
       const style = styles[Math.floor(Math.random() * styles.length)];
 
