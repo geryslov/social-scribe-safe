@@ -14,7 +14,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { Plus, Search, Loader2, Linkedin, RefreshCw, Building2, Upload } from 'lucide-react';
+import { Plus, Search, Loader2, Linkedin, RefreshCw, Building2, Upload, CheckCircle2, Sparkles } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
@@ -54,13 +54,14 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
   const [bulkProgress, setBulkProgress] = useState({ done: 0, total: 0 });
   const [onlyFresh, setOnlyFresh] = useState(false);
 
-  // Unseen post counts + fresh (not engaged) post counts per target
-  const { data: countMaps = { unseen: {}, fresh: {} } } = useQuery({
-    queryKey: ['target-counts', currentWorkspace?.id, publisher.id, targets.map((t) => `${t.id}:${t.last_seen_at}`).join(',')],
+  // Unseen post counts + fresh/done engagement status counts per target
+  const { data: countMaps = { unseen: {}, fresh: {}, done: {} } } = useQuery({
+    queryKey: ['target-counts', currentWorkspace?.id, publisher.id, targets.map((t) => `${t.id}:${t.last_seen_at}:${t.last_fetched_at}`).join(',')],
     queryFn: async () => {
-      if (!currentWorkspace || targets.length === 0) return { unseen: {}, fresh: {} };
+      if (!currentWorkspace || targets.length === 0) return { unseen: {}, fresh: {}, done: {} };
       const unseen: Record<string, number> = {};
       const fresh: Record<string, number> = {};
+      const done: Record<string, number> = {};
       for (const target of targets) {
         // Unseen (newly synced since last visit)
         let unseenQ = (supabase as any)
@@ -71,23 +72,28 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
         const { count: unseenCount } = await unseenQ;
         if (unseenCount && unseenCount > 0) unseen[target.id] = unseenCount;
 
-        // Fresh (not commented and not liked yet — net new to engage with)
-        const { count: freshCount } = await (supabase as any)
+        const { data: statusRows } = await (supabase as any)
           .from('engagement_posts')
-          .select('id', { count: 'exact', head: true })
-          .eq('target_id', target.id)
-          .eq('is_commented', false)
-          .eq('is_liked', false);
-        if (freshCount && freshCount > 0) fresh[target.id] = freshCount;
+          .select('id, is_commented, is_liked')
+          .eq('target_id', target.id);
+
+        const rows = (statusRows || []) as Array<{ is_commented: boolean; is_liked: boolean }>;
+        const freshCount = rows.filter((p) => !p.is_commented && !p.is_liked).length;
+        const doneCount = rows.filter((p) => p.is_commented || p.is_liked).length;
+        if (freshCount > 0) fresh[target.id] = freshCount;
+        if (doneCount > 0) done[target.id] = doneCount;
       }
-      return { unseen, fresh };
+      return { unseen, fresh, done };
     },
     enabled: !!currentWorkspace && targets.length > 0,
   });
   const unseenCounts = countMaps.unseen as Record<string, number>;
   const freshCounts = countMaps.fresh as Record<string, number>;
+  const doneCounts = countMaps.done as Record<string, number>;
   const totalFresh = Object.values(freshCounts).reduce((s, n) => s + n, 0);
   const targetsWithFresh = Object.keys(freshCounts).length;
+  const totalDone = Object.values(doneCounts).reduce((s, n) => s + n, 0);
+  const targetsWithDone = Object.keys(doneCounts).length;
 
   const filtered = useMemo(() => {
     let list = targets;
