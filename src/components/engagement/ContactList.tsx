@@ -52,33 +52,52 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
   const [bulkUrls, setBulkUrls] = useState('');
   const [bulkImporting, setBulkImporting] = useState(false);
   const [bulkProgress, setBulkProgress] = useState({ done: 0, total: 0 });
+  const [onlyFresh, setOnlyFresh] = useState(false);
 
-  // Unseen post counts
-  const { data: unseenCounts = {} } = useQuery({
-    queryKey: ['unseen-counts', currentWorkspace?.id, publisher.id, targets.map((t) => `${t.id}:${t.last_seen_at}`).join(',')],
+  // Unseen post counts + fresh (not engaged) post counts per target
+  const { data: countMaps = { unseen: {}, fresh: {} } } = useQuery({
+    queryKey: ['target-counts', currentWorkspace?.id, publisher.id, targets.map((t) => `${t.id}:${t.last_seen_at}`).join(',')],
     queryFn: async () => {
-      if (!currentWorkspace || targets.length === 0) return {};
-      const counts: Record<string, number> = {};
+      if (!currentWorkspace || targets.length === 0) return { unseen: {}, fresh: {} };
+      const unseen: Record<string, number> = {};
+      const fresh: Record<string, number> = {};
       for (const target of targets) {
-        let query = (supabase as any)
+        // Unseen (newly synced since last visit)
+        let unseenQ = (supabase as any)
           .from('engagement_posts')
           .select('id', { count: 'exact', head: true })
           .eq('target_id', target.id);
-        if (target.last_seen_at) {
-          query = query.gt('created_at', target.last_seen_at);
-        }
-        const { count } = await query;
-        if (count && count > 0) counts[target.id] = count;
+        if (target.last_seen_at) unseenQ = unseenQ.gt('created_at', target.last_seen_at);
+        const { count: unseenCount } = await unseenQ;
+        if (unseenCount && unseenCount > 0) unseen[target.id] = unseenCount;
+
+        // Fresh (not commented and not liked yet — net new to engage with)
+        const { count: freshCount } = await (supabase as any)
+          .from('engagement_posts')
+          .select('id', { count: 'exact', head: true })
+          .eq('target_id', target.id)
+          .eq('is_commented', false)
+          .eq('is_liked', false);
+        if (freshCount && freshCount > 0) fresh[target.id] = freshCount;
       }
-      return counts;
+      return { unseen, fresh };
     },
     enabled: !!currentWorkspace && targets.length > 0,
   });
+  const unseenCounts = countMaps.unseen as Record<string, number>;
+  const freshCounts = countMaps.fresh as Record<string, number>;
+  const totalFresh = Object.values(freshCounts).reduce((s, n) => s + n, 0);
+  const targetsWithFresh = Object.keys(freshCounts).length;
 
   const filtered = useMemo(() => {
-    if (!search.trim()) return targets;
+    let list = targets;
+    if (onlyFresh) list = list.filter((t) => (freshCounts[t.id] || 0) > 0);
+    if (!search.trim()) {
+      // sort by fresh count desc so net-new opportunities float up
+      return [...list].sort((a, b) => (freshCounts[b.id] || 0) - (freshCounts[a.id] || 0));
+    }
     const q = search.toLowerCase();
-    return targets.filter(
+    return list.filter(
       (t) =>
         t.name.toLowerCase().includes(q) ||
         (t.headline || '').toLowerCase().includes(q) ||
@@ -86,7 +105,7 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
         (t.title || '').toLowerCase().includes(q) ||
         (t.linkedin_username || '').toLowerCase().includes(q),
     );
-  }, [targets, search]);
+  }, [targets, search, onlyFresh, freshCounts]);
 
   // Auto-fetch after adding a target
   const handleAdd = useCallback(() => {
@@ -214,6 +233,32 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
             className="h-8 pl-8 text-sm bg-background focus-visible:ring-primary/30"
           />
         </div>
+
+        {/* Fresh-to-engage summary */}
+        {totalFresh > 0 && (
+          <button
+            type="button"
+            onClick={() => setOnlyFresh((v) => !v)}
+            className={cn(
+              'w-full flex items-center justify-between gap-2 rounded-md px-2.5 py-1.5 text-[11px] font-semibold transition-colors border',
+              onlyFresh
+                ? 'bg-primary text-primary-foreground border-primary shadow-sm'
+                : 'bg-amber-50 text-amber-800 border-amber-200/70 hover:bg-amber-100/70',
+            )}
+            title="Show only profiles with posts you haven't engaged with"
+          >
+            <span className="flex items-center gap-1.5">
+              <span className={cn(
+                'inline-flex h-1.5 w-1.5 rounded-full',
+                onlyFresh ? 'bg-primary-foreground' : 'bg-amber-500',
+              )} />
+              {totalFresh} fresh post{totalFresh === 1 ? '' : 's'} · {targetsWithFresh} profile{targetsWithFresh === 1 ? '' : 's'}
+            </span>
+            <span className="text-[10px] opacity-80">
+              {onlyFresh ? 'Showing fresh' : 'Filter'}
+            </span>
+          </button>
+        )}
       </div>
 
       {/* Contact rows */}
@@ -247,6 +292,7 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
               const isSelected = selectedTargetId === target.id;
               const isFetching = fetchingTargetId === target.id;
               const unseen = unseenCounts[target.id] || 0;
+              const fresh = freshCounts[target.id] || 0;
               const initials = target.name
                 .split(' ')
                 .map((w) => w[0])
@@ -296,9 +342,17 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
                   {/* Info */}
                   <div className="flex-1 min-w-0">
                     <div className="font-display font-semibold text-[13px] leading-tight truncate flex items-center gap-1.5">
-                      {target.name}
+                      <span className="truncate">{target.name}</span>
                       {target.enrichment_status === 'pending' && (
                         <Loader2 className="h-3 w-3 animate-spin text-primary/60" />
+                      )}
+                      {fresh > 0 && (
+                        <span
+                          className="ml-auto flex-shrink-0 inline-flex items-center gap-0.5 h-4 px-1.5 rounded-full bg-amber-100 text-amber-700 text-[9px] font-bold uppercase tracking-wide"
+                          title={`${fresh} post${fresh === 1 ? '' : 's'} to engage with`}
+                        >
+                          {fresh} fresh
+                        </span>
                       )}
                     </div>
                     {target.title && (
