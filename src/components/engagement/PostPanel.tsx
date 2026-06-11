@@ -56,6 +56,7 @@ export function PostPanel({ target, publisher, isAdmin }: PostPanelProps) {
   const [likingPostId, setLikingPostId] = useState<string | null>(null);
   const [isFetching, setIsFetching] = useState(false);
   const [deletingTarget, setDeletingTarget] = useState(false);
+  const [feedFilter, setFeedFilter] = useState<'all' | 'fresh' | 'engaged' | 'liked' | 'not-liked'>('all');
 
   const fetchCommentEngagement = useFetchCommentEngagement();
 
@@ -320,6 +321,49 @@ export function PostPanel({ target, publisher, isAdmin }: PostPanelProps) {
 
       {/* ── Feed ───────────────────────────────────────────────────────── */}
       <div className="flex-1 overflow-y-auto">
+        {posts.length > 0 && (() => {
+          const counts = {
+            all: posts.length,
+            fresh: posts.filter((p) => !p.is_commented && !p.is_liked).length,
+            engaged: posts.filter((p) => p.is_commented).length,
+            liked: posts.filter((p) => p.is_liked).length,
+            'not-liked': posts.filter((p) => !p.is_liked).length,
+          } as const;
+          const tabs: Array<{ id: typeof feedFilter; label: string }> = [
+            { id: 'all', label: 'All' },
+            { id: 'fresh', label: 'Fresh' },
+            { id: 'engaged', label: 'Engaged' },
+            { id: 'liked', label: 'Liked' },
+            { id: 'not-liked', label: 'Not liked' },
+          ];
+          return (
+            <div className="sticky top-0 z-10 px-5 py-2.5 bg-background/80 backdrop-blur border-b flex items-center gap-1.5 overflow-x-auto">
+              {tabs.map((t) => {
+                const active = feedFilter === t.id;
+                return (
+                  <button
+                    key={t.id}
+                    onClick={() => setFeedFilter(t.id)}
+                    className={cn(
+                      'inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full text-[11px] font-semibold transition-colors whitespace-nowrap',
+                      active
+                        ? 'bg-primary text-primary-foreground shadow-sm'
+                        : 'bg-muted/60 text-muted-foreground hover:text-foreground hover:bg-muted',
+                    )}
+                  >
+                    {t.label}
+                    <span className={cn(
+                      'rounded-full px-1.5 text-[10px] tabular-nums',
+                      active ? 'bg-primary-foreground/20 text-primary-foreground' : 'bg-background text-muted-foreground/70',
+                    )}>
+                      {counts[t.id]}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          );
+        })()}
         {isLoading ? (
           <div className="px-5 py-5 columns-1 md:columns-2 xl:columns-3 gap-4 [column-fill:_balance]">
             {[1, 2, 3, 4, 5, 6].map((i) => (
@@ -359,9 +403,26 @@ export function PostPanel({ target, publisher, isAdmin }: PostPanelProps) {
               )}
             </div>
           </div>
-        ) : (
+        ) : (() => {
+          const filtered = posts.filter((p) => {
+            switch (feedFilter) {
+              case 'fresh': return !p.is_commented && !p.is_liked;
+              case 'engaged': return p.is_commented;
+              case 'liked': return p.is_liked;
+              case 'not-liked': return !p.is_liked;
+              default: return true;
+            }
+          });
+          if (filtered.length === 0) {
+            return (
+              <div className="flex items-center justify-center py-20">
+                <p className="text-sm text-muted-foreground">No posts match this filter.</p>
+              </div>
+            );
+          }
+          return (
           <div className="px-5 py-5 columns-1 md:columns-2 xl:columns-3 gap-4 [column-fill:_balance]">
-            {posts.map((post: EngagementPost) => {
+            {filtered.map((post: EngagementPost) => {
               const tier = engagementTier(post);
               const isCommenting = commentingPostId === post.id;
 
@@ -548,7 +609,8 @@ export function PostPanel({ target, publisher, isAdmin }: PostPanelProps) {
               );
             })}
           </div>
-        )}
+          );
+        })()}
       </div>
     </div>
   );
