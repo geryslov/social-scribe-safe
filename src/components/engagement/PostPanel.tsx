@@ -480,11 +480,13 @@ export function PostPanel({ target, publisher, isAdmin }: PostPanelProps) {
                               <CheckCircle2 className="h-2.5 w-2.5" />
                               Replied
                             </Badge>
-                            {topComment && (reactions > 0 || replies > 0) && (
+                            {topComment && (
                               <CommentEngagementPopover
                                 engagementCommentId={topComment.id}
                                 reactionCount={reactions}
                                 replyCount={replies}
+                                commentText={topComment.comment_text}
+                                postedAt={topComment.posted_at}
                               />
                             )}
                           </>
