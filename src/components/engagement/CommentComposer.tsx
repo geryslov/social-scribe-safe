@@ -40,39 +40,37 @@ export function CommentComposer({ post, publisher, onClose }: CommentComposerPro
       // Get the target person's name from post metadata
       const authorName = (post.post_metadata as any)?.author_name || 'this person';
 
-      // Build a comment-specific prompt — NOT the create-document post prompt.
-      // Comments need to sound like a real person typed a quick reply.
+      // Pick a random comment style to keep comments varied
+      const styles = [
+        'Share a quick personal experience that relates to one specific point in the post. One sentence.',
+        'Ask a sharp follow-up question about a specific claim or point in the post. One sentence.',
+        'Respectfully push back on one point with a brief alternative take. One to two sentences.',
+        'Add a related data point or observation that builds on what they said. One sentence.',
+        'Share what you tried that connects to their point and what happened. Two sentences max.',
+      ];
+      const style = styles[Math.floor(Math.random() * styles.length)];
+
       const commentPrompt = `${personaContext}
 
-TASK: Write a LinkedIn comment on this post by ${authorName}.
+Write a LinkedIn comment replying to ${authorName}'s post below.
 
-COMMENT RULES (follow these exactly):
-- 1-3 sentences max. This is a comment, not an essay.
-- Sound like a REAL HUMAN who typed this in 30 seconds
-- Reference something SPECIFIC from the post (a number, a claim, an example)
-- Add value: share a related experience, complementary insight, respectful pushback, or specific question
-- NEVER start with "Great post!" / "Love this!" / "So true!" / "Couldn't agree more" — those are bot tells
-- NEVER use em dashes
-- Contractions are fine. Casual phrasing is fine.
-- It's OK to respectfully disagree or add nuance
-- Match the voice profile tone — same vocabulary, same formality level
+STYLE FOR THIS COMMENT: ${style}
 
-GOOD examples:
-"The 47% stat surprised me. We saw something similar but the driver was completely different. For us it was onboarding friction, not pricing."
-"Interesting framing. I'd push back on the 'less is more' point though. In our market the teams consolidating tools actually saw slower deal cycles."
-"This mirrors exactly what happened to us in Q3. Ended up rebuilding the entire scoring model. Worth it."
+HARD RULES:
+- MAX 2 sentences. Most comments should be 1 sentence. Shorter is always better.
+- This must read like someone dashed off a reply on their phone between meetings
+- React to something SPECIFIC they said (quote or reference an actual point from the post)
+- No greeting, no sign-off, no "great post", no flattery, no "this resonates"
+- No em dashes, no bullet points, no structured formatting
+- Contractions, casual tone, lowercase ok, rough edges ok
+- Match the voice profile if provided
 
-BAD examples (NEVER write these):
-"Great insights! This really resonates with my experience."
-"Love this perspective! Couldn't agree more."
-"What a powerful post! Thanks for sharing."
-
-POST CONTENT:
+${authorName}'s post:
 """
-${post.content.slice(0, 2000)}
+${post.content.slice(0, 1500)}
 """
 
-Write ONLY the comment text. Nothing else.`;
+Your comment (raw text only, no quotes):`;
 
       const { data, error } = await supabase.functions.invoke('create-document', {
         body: { topic: commentPrompt, postCount: 'single', length: 'super_short' },
@@ -80,12 +78,14 @@ Write ONLY the comment text. Nothing else.`;
       if (error) throw error;
 
       let generated = data?.content || '';
+      // Strip AI artifacts
       generated = generated.replace(/^(#{1,3}\s*)?Post\s*\d+[:\s]*/i, '').trim();
-      const lines = generated.split('\n').filter((l: string) => l.trim());
-      if (lines.length > 1 && lines[0].startsWith('#')) lines.shift();
-      generated = lines.join('\n').trim();
-      // Strip any wrapping quotes the AI might add
-      generated = generated.replace(/^["']|["']$/g, '').trim();
+      generated = generated.replace(/^["'`]+|["'`]+$/g, '').trim();
+      // Remove any "Comment:" or "Reply:" prefix
+      generated = generated.replace(/^(Comment|Reply|Response|Here's my comment)[:\s]*/i, '').trim();
+      // Take only first paragraph if AI wrote multiple
+      const firstPara = generated.split('\n\n')[0].trim();
+      generated = firstPara || generated;
 
       if (generated) {
         setCommentText(generated);
