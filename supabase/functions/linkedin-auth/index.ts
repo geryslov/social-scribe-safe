@@ -547,8 +547,16 @@ Deno.serve(async (req) => {
       // State only includes publisher ID - keep it minimal to avoid header size limits
       const state = btoa(JSON.stringify({ publisherId }));
       
-      // Use w_member_social for posting - openid/profile require "Sign In with LinkedIn" product
-      const scopes = ['w_member_social'];
+      // Request full scope set matching SSO flow so /v2/userinfo works and we can post/read analytics
+      const scopes = [
+        'openid',
+        'profile',
+        'email',
+        'w_member_social',
+        'r_member_postAnalytics',
+        'r_basicprofile',
+        'r_member_profileAnalytics',
+      ];
       const authUrl = new URL('https://www.linkedin.com/oauth/v2/authorization');
       authUrl.searchParams.set('response_type', 'code');
       authUrl.searchParams.set('client_id', LINKEDIN_CLIENT_ID);
@@ -626,11 +634,10 @@ Deno.serve(async (req) => {
       const expiresIn = tokenData.expires_in; // seconds
       const refreshToken = tokenData.refresh_token; // May not be provided
 
-      // Get user info from LinkedIn using /v2/me endpoint (doesn't require openid scope)
-      const userInfoResponse = await fetch('https://api.linkedin.com/v2/me', {
+      // Get user info from LinkedIn's OpenID Connect userinfo endpoint
+      const userInfoResponse = await fetch('https://api.linkedin.com/v2/userinfo', {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
-          'X-Restli-Protocol-Version': '2.0.0',
         },
       });
 
@@ -644,7 +651,7 @@ Deno.serve(async (req) => {
       }
 
       const userInfo = await userInfoResponse.json();
-      const linkedinMemberId = userInfo.id; // This is the member ID from /v2/me
+      const linkedinMemberId = userInfo.sub; // OpenID subject = LinkedIn member id
 
       // Calculate expiration timestamp
       const expiresAt = new Date(Date.now() + expiresIn * 1000).toISOString();
