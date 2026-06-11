@@ -297,7 +297,7 @@ export function PostPanel({ target, publisher, isAdmin }: PostPanelProps) {
                   ) : (
                     <Zap className="h-3.5 w-3.5" />
                   )}
-                  {fetchCommentEngagement.isPending ? 'Checking...' : 'Comment stats'}
+                  {fetchCommentEngagement.isPending ? 'Syncing...' : 'Sync engagement'}
                 </Button>
                 <Button
                   variant="ghost"
