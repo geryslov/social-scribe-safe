@@ -1,12 +1,16 @@
 // =============================================================================
 // fetch-comment-engagement — Get reactions + replies on comments we posted
 //
-// Uses LinkedIn Social Metadata API:
-//   GET /rest/socialMetadata/{commentUrn}
-//   Returns: reactionSummaries (by type + count), commentSummary (reply count)
+// LinkedIn does NOT provide impressions for individual comments via the public
+// API. We can only fetch:
+//   - reactions (likesSummary.totalLikes) via GET /v2/socialActions/{commentUrn}
+//   - reply count (via GET /v2/socialActions/{commentUrn}/comments?count=0)
 //
-// Input:  { workspace_id, publisher_id }  (fetches all posted comments for this publisher)
-// Output: { success, updated_count }
+// Comment URNs are compound: urn:li:comment:(urn:li:activity:XXX,YYY)
+// They must be fully URL-encoded as one path segment.
+//
+// Input:  { workspace_id, publisher_id }
+// Output: { success, updated_count, missing_urn_count, message }
 // =============================================================================
 
 const corsHeaders = {
@@ -35,7 +39,6 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     );
 
-    // --- Get publisher's LinkedIn token ---
     const { data: tokenRow, error: tokenErr } = await supabase
       .from('publisher_tokens')
       .select('linkedin_access_token')
@@ -49,10 +52,9 @@ Deno.serve(async (req) => {
       );
     }
 
-    // --- Get all posted comments ---
     const { data: allPosted, error: allErr } = await supabase
       .from('engagement_comments')
-      .select('id, linkedin_comment_urn, status, comment_text')
+      .select('id, linkedin_comment_urn, status')
       .eq('workspace_id', workspace_id)
       .eq('publisher_id', publisher_id)
       .eq('status', 'posted');
@@ -65,112 +67,106 @@ Deno.serve(async (req) => {
       );
     }
 
-    console.log(`Found ${allPosted?.length || 0} posted comments. URNs: ${allPosted?.map((c: any) => c.linkedin_comment_urn || 'NULL').join(', ')}`);
-
-    // Filter to only those with a linkedin_comment_urn
+    const totalPosted = allPosted?.length || 0;
     const comments = (allPosted || []).filter((c: any) => c.linkedin_comment_urn);
+    const missingUrnCount = totalPosted - comments.length;
+
+    console.log(`Posted: ${totalPosted}, with URN: ${comments.length}, missing URN: ${missingUrnCount}`);
 
     if (comments.length === 0) {
-      const withoutUrn = (allPosted || []).length - comments.length;
-      const msg = allPosted?.length === 0
-        ? 'No posted comments found'
-        : `Found ${allPosted?.length} posted comments but ${withoutUrn} are missing linkedin_comment_urn (LinkedIn may not have returned the comment ID)`;
-      console.log(msg);
+      const msg = totalPosted === 0
+        ? 'No posted comments to check'
+        : `${totalPosted} posted comments, but none have a LinkedIn comment URN saved. LinkedIn didn't return the comment ID when posting — engagement can't be fetched. Re-post or check publisher's LinkedIn token scopes.`;
       return new Response(
-        JSON.stringify({ success: true, updated_count: 0, message: msg }),
+        JSON.stringify({ success: true, updated_count: 0, missing_urn_count: missingUrnCount, message: msg }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }
 
-    console.log(`Fetching engagement for ${comments.length} comments`);
-
+    const token = tokenRow.linkedin_access_token;
     let updatedCount = 0;
+    let lastError = '';
 
-    // Batch in groups of 10 (LinkedIn batch limit)
-    const BATCH_SIZE = 10;
-    for (let i = 0; i < comments.length; i += BATCH_SIZE) {
-      const batch = comments.slice(i, i + BATCH_SIZE);
-      const urns = batch
-        .map((c: { linkedin_comment_urn: string }) => c.linkedin_comment_urn)
-        .filter(Boolean);
-
-      if (urns.length === 0) continue;
-
-      // Build batch request URL
-      const encodedUrns = urns.map((u: string) => encodeURIComponent(u)).join(',');
-      const url = `https://api.linkedin.com/rest/socialMetadata?ids=List(${encodedUrns})`;
+    for (const comment of comments) {
+      const urn = comment.linkedin_comment_urn as string;
+      const encoded = encodeURIComponent(urn);
 
       try {
-        const res = await fetch(url, {
-          headers: {
-            'Authorization': `Bearer ${tokenRow.linkedin_access_token}`,
-            'Linkedin-Version': '202605',
-            'X-Restli-Protocol-Version': '2.0.0',
-            'X-RestLi-Method': 'BATCH_GET',
+        // 1) Fetch the comment itself → likesSummary
+        const commentRes = await fetch(
+          `https://api.linkedin.com/v2/socialActions/${encoded}`,
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'X-Restli-Protocol-Version': '2.0.0',
+            },
           },
-        });
+        );
 
-        if (!res.ok) {
-          const errText = await res.text();
-          console.error(`LinkedIn socialMetadata batch failed (${res.status}):`, errText.slice(0, 300));
-          // Fall back to individual requests
-          for (const comment of batch) {
-            if (!comment.linkedin_comment_urn) continue;
-            const updated = await fetchSingle(
-              comment,
-              tokenRow.linkedin_access_token,
-              supabase,
-            );
-            if (updated) updatedCount++;
-          }
-          continue;
+        let totalReactions = 0;
+        const breakdown: Record<string, number> = {};
+
+        if (commentRes.ok) {
+          const meta = await commentRes.json();
+          totalReactions = meta?.likesSummary?.totalLikes
+            ?? meta?.likesSummary?.aggregatedTotalLikes
+            ?? 0;
+          // v2 endpoint does NOT break down by reaction type — only totalLikes.
+        } else {
+          const t = await commentRes.text();
+          lastError = `GET socialActions/${urn} → ${commentRes.status}: ${t.slice(0, 200)}`;
+          console.warn(lastError);
         }
 
-        const data = await res.json();
-        const results = data?.results || {};
-
-        for (const comment of batch) {
-          const urn = comment.linkedin_comment_urn;
-          if (!urn) continue;
-
-          const meta = results[urn];
-          if (!meta) continue;
-
-          // Parse reactions
-          const reactionSummaries = meta.reactionSummaries || {};
-          let totalReactions = 0;
-          const breakdown: Record<string, number> = {};
-          for (const [type, info] of Object.entries(reactionSummaries)) {
-            const count = (info as { count: number }).count || 0;
-            totalReactions += count;
-            breakdown[type] = count;
-          }
-
-          // Parse replies
-          const replyCount = meta.commentSummary?.count || 0;
-
-          // Update DB
-          const { error: updateErr } = await supabase
-            .from('engagement_comments')
-            .update({
-              reaction_count: totalReactions,
-              reply_count: replyCount,
-              reactions_breakdown: breakdown,
-              engagement_fetched_at: new Date().toISOString(),
-            })
-            .eq('id', comment.id);
-
-          if (!updateErr) updatedCount++;
+        // 2) Fetch reply count via paged comments endpoint with count=0
+        let replyCount = 0;
+        const repliesRes = await fetch(
+          `https://api.linkedin.com/v2/socialActions/${encoded}/comments?count=0`,
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'X-Restli-Protocol-Version': '2.0.0',
+            },
+          },
+        );
+        if (repliesRes.ok) {
+          const r = await repliesRes.json();
+          replyCount = r?.paging?.total ?? r?.elements?.length ?? 0;
+        } else {
+          const t = await repliesRes.text();
+          console.warn(`GET replies for ${urn} → ${repliesRes.status}: ${t.slice(0, 200)}`);
         }
+
+        const { error: updateErr } = await supabase
+          .from('engagement_comments')
+          .update({
+            reaction_count: totalReactions,
+            reply_count: replyCount,
+            reactions_breakdown: breakdown,
+            engagement_fetched_at: new Date().toISOString(),
+          })
+          .eq('id', comment.id);
+
+        if (!updateErr) updatedCount++;
       } catch (err) {
-        console.error('Batch request error:', err);
+        console.error(`Error processing ${urn}:`, err);
+        lastError = err instanceof Error ? err.message : String(err);
       }
     }
 
     console.log(`Updated engagement for ${updatedCount} of ${comments.length} comments`);
 
+    const message = updatedCount > 0
+      ? undefined
+      : `Could not fetch engagement for ${comments.length} comment(s). Last error: ${lastError || 'unknown'}`;
+
     return new Response(
-      JSON.stringify({ success: true, updated_count: updatedCount }),
+      JSON.stringify({
+        success: true,
+        updated_count: updatedCount,
+        missing_urn_count: missingUrnCount,
+        message,
+      }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     );
 
@@ -183,48 +179,3 @@ Deno.serve(async (req) => {
     );
   }
 });
-
-// Fallback: fetch engagement for a single comment
-async function fetchSingle(
-  comment: { id: string; linkedin_comment_urn: string },
-  accessToken: string,
-  supabase: any,
-): Promise<boolean> {
-  try {
-    const encoded = encodeURIComponent(comment.linkedin_comment_urn);
-    const res = await fetch(`https://api.linkedin.com/rest/socialMetadata/${encoded}`, {
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Linkedin-Version': '202605',
-        'X-Restli-Protocol-Version': '2.0.0',
-      },
-    });
-
-    if (!res.ok) return false;
-
-    const meta = await res.json();
-    const reactionSummaries = meta.reactionSummaries || {};
-    let totalReactions = 0;
-    const breakdown: Record<string, number> = {};
-    for (const [type, info] of Object.entries(reactionSummaries)) {
-      const count = (info as { count: number }).count || 0;
-      totalReactions += count;
-      breakdown[type] = count;
-    }
-    const replyCount = meta.commentSummary?.count || 0;
-
-    const { error } = await supabase
-      .from('engagement_comments')
-      .update({
-        reaction_count: totalReactions,
-        reply_count: replyCount,
-        reactions_breakdown: breakdown,
-        engagement_fetched_at: new Date().toISOString(),
-      })
-      .eq('id', comment.id);
-
-    return !error;
-  } catch {
-    return false;
-  }
-}
