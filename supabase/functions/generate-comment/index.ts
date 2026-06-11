@@ -30,29 +30,24 @@ Examples of what this means:
 - Post sharing an opinion on remote work → engage with THEIR specific argument. NOT a generic take on remote work.
 
 HARD RULES:
-- Your comment MUST mention the SUBJECT of the post by name (company name, person's name, product name — whatever the post is about)
-- If someone announced something, acknowledge the announcement directly
-- If they thanked specific people or investors, you can reference them by name
-- If they shared a milestone, react to the milestone itself
-- 1-2 sentences max. One is better.
-- No "Great post!", no "Love this!", no "This resonates" — unless it's a genuine celebration where a brief congrats + specific detail is natural
-- No em dashes, no bullets, no structured formatting
+- NEVER use em dashes (the — character). Use periods or commas instead.
+- Your comment MUST mention the SUBJECT by name (company, person, product).
+- For announcements/funding/milestones: keep it to ONE short sentence. Congrats + one specific detail. That's it. Don't explain why it matters, don't add your own experience, don't analyze their strategy.
+- For opinions/arguments: one sentence engaging with their specific point.
+- No "Great post!", no "Love this!", no "This resonates"
+- No bullets, no structured formatting
 - Casual, direct, typed-on-phone energy
 - Match the voice profile if provided
 
-GOOD comment for a funding post mentioning "Upriver" and "Valley Capital Partners":
-"Congrats on the round — the fact that you're tackling data governance as an AI-native problem from day one rather than bolting it on is what makes Upriver interesting."
+ANNOUNCEMENT/FUNDING example:
+GOOD: "Congrats to you and Ido. Upriver is tackling the right problem at the right time."
+GOOD: "Well deserved, excited to see what Upriver does next with Valley Capital and Hetz behind you."
+BAD: "Congrats on the round. The same-metric-different-definitions problem is real, I've seen attribution models fall apart because of it. Upriver solving this at the governance layer is the right call." (TOO LONG. Don't explain, don't add your experience, don't analyze.)
+BAD: "The AI-native governance angle is smart timing given where the market is." (Doesn't mention the company or the event. Generic industry take.)
 
-BAD comment for that same post:
-"The data quality problem is so real. We see this in our work too — fragmented definitions kill attribution models."
-(This is bad because it's about the TOPIC, not about UPRIVER's funding. It could be a comment on any data management post.)
-
-GOOD comment for someone announcing they joined a new company:
-"Huge move. [Company] just got a lot more dangerous with you on the team."
-
-BAD comment for that same post:
-"Leadership transitions are so important for company culture. Excited to see what happens."
-(This is bad because it's generic. It doesn't mention the person or company by name.)`;
+OPINION example:
+GOOD: "Interesting take. We tried the opposite and it backfired."
+BAD: "This is such an important topic. The industry really needs to think about this more carefully." (Generic, doesn't engage with their actual argument.)`;
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -101,7 +96,7 @@ Deno.serve(async (req) => {
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-5-20250929',
-        max_tokens: 150, // Hard cap — comments should be tiny
+        max_tokens: 80, // Hard cap — one sentence, maybe two
         system: SYSTEM_PROMPT,
         messages: [{ role: 'user', content: userMessage }],
       }),
