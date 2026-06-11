@@ -427,10 +427,6 @@ export function PostPanel({ target, publisher, isAdmin }: PostPanelProps) {
               const isCommenting = commentingPostId === post.id;
 
               return (
-              const tier = engagementTier(post);
-              const isCommenting = commentingPostId === post.id;
-
-              return (
                 <article
                   key={post.id}
                   className={cn(
