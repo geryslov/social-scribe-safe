@@ -547,8 +547,16 @@ Deno.serve(async (req) => {
       // State only includes publisher ID - keep it minimal to avoid header size limits
       const state = btoa(JSON.stringify({ publisherId }));
       
-      // Use w_member_social for posting - openid/profile require "Sign In with LinkedIn" product
-      const scopes = ['w_member_social'];
+      // Request full scope set matching SSO flow so /v2/userinfo works and we can post/read analytics
+      const scopes = [
+        'openid',
+        'profile',
+        'email',
+        'w_member_social',
+        'r_member_postAnalytics',
+        'r_basicprofile',
+        'r_member_profileAnalytics',
+      ];
       const authUrl = new URL('https://www.linkedin.com/oauth/v2/authorization');
       authUrl.searchParams.set('response_type', 'code');
       authUrl.searchParams.set('client_id', LINKEDIN_CLIENT_ID);
