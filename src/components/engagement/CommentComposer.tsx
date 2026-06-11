@@ -29,40 +29,63 @@ export function CommentComposer({ post, publisher, onClose }: CommentComposerPro
 
     setIsGenerating(true);
     try {
-      // Build persona block — use voice profile if available
-      let personaBlock: string;
+      // Build persona context
+      let personaContext: string;
       if ((publisher as any).voice_profile) {
-        personaBlock = `You are ${publisher.name}. Here is your voice profile — use it to match your authentic tone, vocabulary, and perspective:\n\n${(publisher as any).voice_profile}\n\n`;
+        personaContext = `You are ${publisher.name}. Here is your voice profile:\n\n${(publisher as any).voice_profile}`;
       } else {
-        personaBlock = `You are ${publisher.name}${publisher.headline ? `, ${publisher.headline}` : ''}${publisher.company_name ? ` at ${publisher.company_name}` : ''}.\n\n`;
+        personaContext = `You are ${publisher.name}${publisher.headline ? `, ${publisher.headline}` : ''}${publisher.company_name ? ` at ${publisher.company_name}` : ''}.`;
       }
 
-      const prompt = `${personaBlock}Write a short, genuine LinkedIn comment (2-3 sentences max) on this post. Be conversational, add value or share a relevant perspective. Do NOT be generic or sycophantic. Do NOT use emojis excessively. Sound like a real person, not a bot. Match the voice profile above.
+      // Get the target person's name from post metadata
+      const authorName = (post.post_metadata as any)?.author_name || 'this person';
 
-Post content:
+      // Build a comment-specific prompt — NOT the create-document post prompt.
+      // Comments need to sound like a real person typed a quick reply.
+      const commentPrompt = `${personaContext}
+
+TASK: Write a LinkedIn comment on this post by ${authorName}.
+
+COMMENT RULES (follow these exactly):
+- 1-3 sentences max. This is a comment, not an essay.
+- Sound like a REAL HUMAN who typed this in 30 seconds
+- Reference something SPECIFIC from the post (a number, a claim, an example)
+- Add value: share a related experience, complementary insight, respectful pushback, or specific question
+- NEVER start with "Great post!" / "Love this!" / "So true!" / "Couldn't agree more" — those are bot tells
+- NEVER use em dashes
+- Contractions are fine. Casual phrasing is fine.
+- It's OK to respectfully disagree or add nuance
+- Match the voice profile tone — same vocabulary, same formality level
+
+GOOD examples:
+"The 47% stat surprised me. We saw something similar but the driver was completely different. For us it was onboarding friction, not pricing."
+"Interesting framing. I'd push back on the 'less is more' point though. In our market the teams consolidating tools actually saw slower deal cycles."
+"This mirrors exactly what happened to us in Q3. Ended up rebuilding the entire scoring model. Worth it."
+
+BAD examples (NEVER write these):
+"Great insights! This really resonates with my experience."
+"Love this perspective! Couldn't agree more."
+"What a powerful post! Thanks for sharing."
+
+POST CONTENT:
 """
-${post.content.slice(0, 1500)}
+${post.content.slice(0, 2000)}
 """
 
-Reply with ONLY the comment text, nothing else.`;
+Write ONLY the comment text. Nothing else.`;
 
       const { data, error } = await supabase.functions.invoke('create-document', {
-        body: {
-          topic: prompt,
-          postCount: 'single',
-          length: 'super_short',
-        },
+        body: { topic: commentPrompt, postCount: 'single', length: 'super_short' },
       });
-
       if (error) throw error;
 
       let generated = data?.content || '';
       generated = generated.replace(/^(#{1,3}\s*)?Post\s*\d+[:\s]*/i, '').trim();
       const lines = generated.split('\n').filter((l: string) => l.trim());
-      if (lines.length > 1 && lines[0].startsWith('#')) {
-        lines.shift();
-      }
+      if (lines.length > 1 && lines[0].startsWith('#')) lines.shift();
       generated = lines.join('\n').trim();
+      // Strip any wrapping quotes the AI might add
+      generated = generated.replace(/^["']|["']$/g, '').trim();
 
       if (generated) {
         setCommentText(generated);
