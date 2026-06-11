@@ -56,6 +56,7 @@ export function PostPanel({ target, publisher, isAdmin }: PostPanelProps) {
   const [likingPostId, setLikingPostId] = useState<string | null>(null);
   const [isFetching, setIsFetching] = useState(false);
   const [deletingTarget, setDeletingTarget] = useState(false);
+  const [feedFilter, setFeedFilter] = useState<'all' | 'fresh' | 'engaged' | 'liked' | 'not-liked'>('all');
 
   const fetchCommentEngagement = useFetchCommentEngagement();
 
