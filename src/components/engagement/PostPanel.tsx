@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { CommentComposer } from './CommentComposer';
+import { CommentEngagementPopover } from './CommentEngagementPopover';
 import { useEngagementTargets, EngagementComment } from '@/hooks/useEngagement';
 
 interface PostPanelProps {
