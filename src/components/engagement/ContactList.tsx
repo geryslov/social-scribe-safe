@@ -342,9 +342,17 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
                   {/* Info */}
                   <div className="flex-1 min-w-0">
                     <div className="font-display font-semibold text-[13px] leading-tight truncate flex items-center gap-1.5">
-                      {target.name}
+                      <span className="truncate">{target.name}</span>
                       {target.enrichment_status === 'pending' && (
                         <Loader2 className="h-3 w-3 animate-spin text-primary/60" />
+                      )}
+                      {fresh > 0 && (
+                        <span
+                          className="ml-auto flex-shrink-0 inline-flex items-center gap-0.5 h-4 px-1.5 rounded-full bg-amber-100 text-amber-700 text-[9px] font-bold uppercase tracking-wide"
+                          title={`${fresh} post${fresh === 1 ? '' : 's'} to engage with`}
+                        >
+                          {fresh} fresh
+                        </span>
                       )}
                     </div>
                     {target.title && (
