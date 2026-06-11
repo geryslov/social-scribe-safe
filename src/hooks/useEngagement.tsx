@@ -87,7 +87,43 @@ export interface EngagementComment {
   linkedin_comment_urn: string | null;
   posted_at: string | null;
   error_message: string | null;
+  reaction_count: number;
+  reply_count: number;
+  reactions_breakdown: Record<string, number>;
+  engagement_fetched_at: string | null;
   created_at: string;
+}
+
+// ---------------------------------------------------------------------------
+// Fetch comment engagement (reactions + replies)
+// ---------------------------------------------------------------------------
+
+export function useFetchCommentEngagement() {
+  const queryClient = useQueryClient();
+  const { currentWorkspace } = useWorkspace();
+
+  return useMutation({
+    mutationFn: async ({ publisher_id }: { publisher_id: string }) => {
+      if (!currentWorkspace) throw new Error('No workspace');
+      const { data, error } = await supabase.functions.invoke('fetch-comment-engagement', {
+        body: { workspace_id: currentWorkspace.id, publisher_id },
+      });
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || 'Failed to fetch engagement');
+      return data as { success: boolean; updated_count: number };
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['engagement-comments'] });
+      if (data.updated_count > 0) {
+        toast.success(`Updated engagement for ${data.updated_count} comments`);
+      } else {
+        toast.info('No posted comments to check');
+      }
+    },
+    onError: (error) => {
+      toast.error('Failed to fetch engagement: ' + error.message);
+    },
+  });
 }
 
 // ---------------------------------------------------------------------------

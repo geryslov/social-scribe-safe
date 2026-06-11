@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
-import { useEngagementPosts, useFetchTargetPosts, EngagementTarget, EngagementPost, useLikePost } from '@/hooks/useEngagement';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useEngagementPosts, useFetchTargetPosts, EngagementTarget, EngagementPost, useLikePost, useFetchCommentEngagement } from '@/hooks/useEngagement';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { Publisher } from '@/hooks/usePublishers';
 import { Button } from '@/components/ui/button';
@@ -13,7 +15,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { CommentComposer } from './CommentComposer';
-import { useEngagementTargets } from '@/hooks/useEngagement';
+import { useEngagementTargets, EngagementComment } from '@/hooks/useEngagement';
 
 interface PostPanelProps {
   target: EngagementTarget | null;
@@ -53,6 +55,39 @@ export function PostPanel({ target, publisher, isAdmin }: PostPanelProps) {
   const [likingPostId, setLikingPostId] = useState<string | null>(null);
   const [isFetching, setIsFetching] = useState(false);
   const [deletingTarget, setDeletingTarget] = useState(false);
+
+  const fetchCommentEngagement = useFetchCommentEngagement();
+
+  // Fetch all comments for this target's posts to show engagement stats
+  const { data: allComments = [] } = useQuery({
+    queryKey: ['engagement-comments-by-target', currentWorkspace?.id, target?.id],
+    queryFn: async () => {
+      if (!currentWorkspace || !target) return [];
+      const postIds = posts.filter((p) => p.is_commented).map((p) => p.id);
+      if (postIds.length === 0) return [];
+      const { data, error } = await (supabase as any)
+        .from('engagement_comments')
+        .select('id, post_id, comment_text, status, reaction_count, reply_count, reactions_breakdown, engagement_fetched_at, posted_at')
+        .eq('workspace_id', currentWorkspace.id)
+        .eq('status', 'posted')
+        .in('post_id', postIds);
+      if (error) return [];
+      return data as EngagementComment[];
+    },
+    enabled: !!currentWorkspace && !!target && posts.some((p) => p.is_commented),
+  });
+
+  // Map comments by post_id for quick lookup
+  const commentsByPostId = allComments.reduce<Record<string, EngagementComment[]>>((acc, c) => {
+    if (!acc[c.post_id]) acc[c.post_id] = [];
+    acc[c.post_id].push(c);
+    return acc;
+  }, {});
+
+  const handleSyncEngagement = () => {
+    if (!publisher) return;
+    fetchCommentEngagement.mutate({ publisher_id: publisher.id });
+  };
 
   const handleFetch = () => {
     if (!currentWorkspace || !target) return;
@@ -250,6 +285,21 @@ export function PostPanel({ target, publisher, isAdmin }: PostPanelProps) {
                 <Button
                   variant="ghost"
                   size="sm"
+                  className="h-9 gap-1.5 text-xs text-muted-foreground hover:text-primary"
+                  onClick={handleSyncEngagement}
+                  disabled={fetchCommentEngagement.isPending}
+                  title="Check reactions and replies on your comments"
+                >
+                  {fetchCommentEngagement.isPending ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Zap className="h-3.5 w-3.5" />
+                  )}
+                  {fetchCommentEngagement.isPending ? 'Checking...' : 'Comment stats'}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
                   className={cn(
                     'h-9 w-9 p-0',
                     deletingTarget
@@ -354,15 +404,35 @@ export function PostPanel({ target, publisher, isAdmin }: PostPanelProps) {
                           Warm
                         </Badge>
                       )}
-                      {post.is_commented && (
-                        <Badge
-                          variant="secondary"
-                          className="h-5 gap-1 px-1.5 bg-emerald-100 text-emerald-700 border-emerald-200/60 text-[10px] font-semibold uppercase tracking-wide"
-                        >
-                          <CheckCircle2 className="h-2.5 w-2.5" />
-                          Replied
-                        </Badge>
-                      )}
+                      {post.is_commented && (() => {
+                        const postComments = commentsByPostId[post.id] || [];
+                        const topComment = postComments[0];
+                        const reactions = topComment?.reaction_count || 0;
+                        const replies = topComment?.reply_count || 0;
+                        return (
+                          <>
+                            <Badge
+                              variant="secondary"
+                              className="h-5 gap-1 px-1.5 bg-emerald-100 text-emerald-700 border-emerald-200/60 text-[10px] font-semibold uppercase tracking-wide"
+                            >
+                              <CheckCircle2 className="h-2.5 w-2.5" />
+                              Replied
+                            </Badge>
+                            {reactions > 0 && (
+                              <span className="text-[10px] font-medium text-amber-600 flex items-center gap-0.5">
+                                <ThumbsUp className="h-2.5 w-2.5" />
+                                {reactions}
+                              </span>
+                            )}
+                            {replies > 0 && (
+                              <span className="text-[10px] font-medium text-sky-600 flex items-center gap-0.5">
+                                <MessageSquare className="h-2.5 w-2.5" />
+                                {replies} {replies === 1 ? 'reply' : 'replies'}
+                              </span>
+                            )}
+                          </>
+                        );
+                      })()}
                       {post.is_liked && (
                         <Badge
                           variant="secondary"
