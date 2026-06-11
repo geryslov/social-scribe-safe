@@ -407,7 +407,7 @@ export function usePostComment() {
       if (!data?.success) throw new Error(data?.error || 'Failed to post comment');
       return data;
     },
-    onSuccess: (_, variables) => {
+    onSuccess: (data, variables) => {
       // Mark the post as commented
       (supabase as any)
         .from('engagement_posts')
@@ -416,6 +416,21 @@ export function usePostComment() {
         .then(() => {
           queryClient.invalidateQueries({ queryKey: ['engagement-posts'] });
         });
+
+      // Fallback: if Edge Function didn't update the comment status, do it client-side
+      (supabase as any)
+        .from('engagement_comments')
+        .update({
+          status: 'posted',
+          linkedin_comment_urn: data?.comment_urn || null,
+          posted_at: new Date().toISOString(),
+        })
+        .eq('id', variables.engagement_comment_id)
+        .then(() => {
+          queryClient.invalidateQueries({ queryKey: ['engagement-comments'] });
+          queryClient.invalidateQueries({ queryKey: ['engagement-comments-by-target'] });
+        });
+
       queryClient.invalidateQueries({ queryKey: ['engagement-comments'] });
       toast.success('Comment posted to LinkedIn');
     },

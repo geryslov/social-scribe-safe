@@ -249,14 +249,23 @@ Deno.serve(async (req) => {
 
     // --- Update engagement_comment record ---
     if (engagement_comment_id) {
-      await supabase.from('engagement_comments').update({
+      console.log(`Updating engagement_comment ${engagement_comment_id} to posted, URN: ${commentUrn}`);
+      const { error: updateErr } = await supabase.from('engagement_comments').update({
         status: 'posted',
-        linkedin_comment_urn: commentUrn,
+        linkedin_comment_urn: commentUrn || null,
         posted_at: new Date().toISOString(),
       }).eq('id', engagement_comment_id);
+
+      if (updateErr) {
+        console.error(`Failed to update engagement_comment ${engagement_comment_id}:`, updateErr);
+      } else {
+        console.log(`engagement_comment ${engagement_comment_id} marked as posted`);
+      }
+    } else {
+      console.warn('No engagement_comment_id provided, cannot update status');
     }
 
-    console.log(`Comment posted by ${publisher.name} on ${activityUrn}: ${commentId}`);
+    console.log(`Comment posted by ${publisher.name} on ${usedUrn}: commentId=${commentId}, commentUrn=${commentUrn}`);
 
     return new Response(
       JSON.stringify({
