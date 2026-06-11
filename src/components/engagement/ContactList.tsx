@@ -90,9 +90,14 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
   const targetsWithFresh = Object.keys(freshCounts).length;
 
   const filtered = useMemo(() => {
-    if (!search.trim()) return targets;
+    let list = targets;
+    if (onlyFresh) list = list.filter((t) => (freshCounts[t.id] || 0) > 0);
+    if (!search.trim()) {
+      // sort by fresh count desc so net-new opportunities float up
+      return [...list].sort((a, b) => (freshCounts[b.id] || 0) - (freshCounts[a.id] || 0));
+    }
     const q = search.toLowerCase();
-    return targets.filter(
+    return list.filter(
       (t) =>
         t.name.toLowerCase().includes(q) ||
         (t.headline || '').toLowerCase().includes(q) ||
@@ -100,7 +105,7 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
         (t.title || '').toLowerCase().includes(q) ||
         (t.linkedin_username || '').toLowerCase().includes(q),
     );
-  }, [targets, search]);
+  }, [targets, search, onlyFresh, freshCounts]);
 
   // Auto-fetch after adding a target
   const handleAdd = useCallback(() => {
