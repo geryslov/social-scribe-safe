@@ -219,12 +219,16 @@ export type Database = {
           comment_text: string
           created_at: string
           created_by: string | null
+          engagement_fetched_at: string | null
           error_message: string | null
           id: string
           linkedin_comment_urn: string | null
           post_id: string
           posted_at: string | null
           publisher_id: string
+          reaction_count: number
+          reactions_breakdown: Json
+          reply_count: number
           status: string
           updated_at: string
           workspace_id: string
@@ -233,12 +237,16 @@ export type Database = {
           comment_text: string
           created_at?: string
           created_by?: string | null
+          engagement_fetched_at?: string | null
           error_message?: string | null
           id?: string
           linkedin_comment_urn?: string | null
           post_id: string
           posted_at?: string | null
           publisher_id: string
+          reaction_count?: number
+          reactions_breakdown?: Json
+          reply_count?: number
           status?: string
           updated_at?: string
           workspace_id: string
@@ -247,12 +255,16 @@ export type Database = {
           comment_text?: string
           created_at?: string
           created_by?: string | null
+          engagement_fetched_at?: string | null
           error_message?: string | null
           id?: string
           linkedin_comment_urn?: string | null
           post_id?: string
           posted_at?: string | null
           publisher_id?: string
+          reaction_count?: number
+          reactions_breakdown?: Json
+          reply_count?: number
           status?: string
           updated_at?: string
           workspace_id?: string
