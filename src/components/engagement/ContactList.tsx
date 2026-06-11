@@ -292,6 +292,7 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
               const isSelected = selectedTargetId === target.id;
               const isFetching = fetchingTargetId === target.id;
               const unseen = unseenCounts[target.id] || 0;
+              const fresh = freshCounts[target.id] || 0;
               const initials = target.name
                 .split(' ')
                 .map((w) => w[0])
