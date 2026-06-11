@@ -122,7 +122,7 @@ Deno.serve(async (req) => {
       userMessage += `You are ${publisher_name}.\n\n`;
     }
 
-    userMessage += `Post by ${author_name || 'someone'}:\n\n"""\n${post_content.slice(0, 2500)}\n"""\n\nClassify this post, then write your comment.`;
+    userMessage += `Post by ${author_name || 'someone'}:\n\n"""\n${post_content.slice(0, 2500)}\n"""\n\nClassify this post silently in your head, then output ONLY your comment text. Nothing else. No labels, no headers, no classification output.`;
 
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -151,10 +151,17 @@ Deno.serve(async (req) => {
     const data = await res.json();
     let comment = data.content?.[0]?.text?.trim() || '';
 
-    // Clean up artifacts
+    // Strip classification output if Claude leaked it
+    comment = comment.replace(/\*\*CLASSIFICATION[^*]*\*\*[\s\S]*?(?=\n[A-Z]|$)/i, '').trim();
+    comment = comment.replace(/^[\s\S]*?(?:post_type|emotional_tone|core_event)[^\n]*\n/gim, '').trim();
+    comment = comment.replace(/^-\s*(post_type|subject|key_entities|core_event|emotional_tone|comment_strategy)[:\s][^\n]*\n?/gim, '').trim();
+    // Strip other artifacts
     comment = comment.replace(/^["'`]+|["'`]+$/g, '');
-    comment = comment.replace(/^(Comment|Reply|Response|Here'?s my comment)[:\s]*/i, '');
-    comment = comment.split('\n\n')[0].trim();
+    comment = comment.replace(/^(Comment|Reply|Response|Here'?s my comment|\*\*Comment[:\s]*\*\*)[:\s]*/i, '');
+    // Take last paragraph (the actual comment) if classification leaked before it
+    const paragraphs = comment.split('\n\n').map((p: string) => p.trim()).filter(Boolean);
+    comment = paragraphs[paragraphs.length - 1] || comment;
+    comment = comment.trim();
 
     if (!comment) {
       return new Response(
