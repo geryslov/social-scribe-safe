@@ -240,8 +240,12 @@ Deno.serve(async (req) => {
     console.log(`Comment posted successfully using URN: ${usedUrn}`);
 
     const commentData = await linkedinRes.json();
-    const commentUrn = commentData.commentUrn || null;
-    const commentId = commentData.id || null;
+    const commentId = commentData.id || linkedinRes.headers.get('x-restli-id') || null;
+    // LinkedIn comment URN format: urn:li:comment:(urn:li:activity:XXX,commentId)
+    let commentUrn = commentData.$URN || commentData.commentUrn || null;
+    if (!commentUrn && commentId) {
+      commentUrn = `urn:li:comment:(${usedUrn},${commentId})`;
+    }
 
     // --- Update engagement_comment record ---
     if (engagement_comment_id) {
