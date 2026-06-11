@@ -240,30 +240,42 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
           />
         </div>
 
-        {/* Fresh-to-engage summary */}
-        {totalFresh > 0 && (
+        {/* Engagement status summary */}
+        <div className="grid grid-cols-2 gap-1.5">
           <button
             type="button"
             onClick={() => setOnlyFresh((v) => !v)}
             className={cn(
-              'w-full flex items-center justify-between gap-2 rounded-md px-2.5 py-1.5 text-[11px] font-semibold transition-colors border',
+              'flex min-w-0 items-center justify-between gap-2 rounded-md px-2.5 py-1.5 text-[11px] font-semibold transition-colors border',
               onlyFresh
                 ? 'bg-primary text-primary-foreground border-primary shadow-sm'
                 : 'bg-amber-50 text-amber-800 border-amber-200/70 hover:bg-amber-100/70',
             )}
             title="Show only profiles with posts you haven't engaged with"
           >
-            <span className="flex items-center gap-1.5">
-              <span className={cn(
-                'inline-flex h-1.5 w-1.5 rounded-full',
-                onlyFresh ? 'bg-primary-foreground' : 'bg-amber-500',
-              )} />
-              {totalFresh} fresh post{totalFresh === 1 ? '' : 's'} · {targetsWithFresh} profile{targetsWithFresh === 1 ? '' : 's'}
+            <span className="flex min-w-0 items-center gap-1.5">
+              <Sparkles className="h-3 w-3 flex-shrink-0" />
+              <span className="truncate">Fresh</span>
             </span>
-            <span className="text-[10px] opacity-80">
-              {onlyFresh ? 'Showing fresh' : 'Filter'}
-            </span>
+            <span className="tabular-nums">{totalFresh}</span>
           </button>
+
+          <div
+            className="flex min-w-0 items-center justify-between gap-2 rounded-md px-2.5 py-1.5 text-[11px] font-semibold border bg-emerald-50 text-emerald-700 border-emerald-200/70"
+            title={`${targetsWithDone} profile${targetsWithDone === 1 ? '' : 's'} already have posts you engaged with`}
+          >
+            <span className="flex min-w-0 items-center gap-1.5">
+              <CheckCircle2 className="h-3 w-3 flex-shrink-0" />
+              <span className="truncate">Done</span>
+            </span>
+            <span className="tabular-nums">{totalDone}</span>
+          </div>
+        </div>
+
+        {onlyFresh && (
+          <div className="text-[10px] font-medium text-muted-foreground px-0.5">
+            Showing {targetsWithFresh} profile{targetsWithFresh === 1 ? '' : 's'} with fresh posts
+          </div>
         )}
       </div>
 
