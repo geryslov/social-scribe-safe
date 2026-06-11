@@ -11,10 +11,12 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { Plus, Search, Loader2, Linkedin, RefreshCw, Building2 } from 'lucide-react';
+import { toast } from 'sonner';
+import { Plus, Search, Loader2, Linkedin, RefreshCw, Building2, Upload } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 
 interface ContactListProps {
@@ -47,6 +49,9 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
   const [fetchingAll, setFetchingAll] = useState(false);
   const [fetchingTargetId, setFetchingTargetId] = useState<string | null>(null);
   const prevAutoName = useRef<string>('');
+  const [bulkUrls, setBulkUrls] = useState('');
+  const [bulkImporting, setBulkImporting] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState({ done: 0, total: 0 });
 
   // Unseen post counts
   const { data: unseenCounts = {} } = useQuery({
@@ -107,6 +112,48 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
       },
     );
   }, [newName, newUrl, currentWorkspace, publisher.id, createTarget, fetchPosts]);
+
+  // Bulk import: parse URLs, add each, enrich in background
+  const handleBulkImport = useCallback(async () => {
+    if (!currentWorkspace || !bulkUrls.trim()) return;
+    // Extract all LinkedIn URLs from the textarea
+    const lines = bulkUrls.split(/[\n,]+/).map((l) => l.trim()).filter(Boolean);
+    const urls = lines
+      .map((line) => {
+        // Accept full URLs or just usernames
+        if (line.includes('linkedin.com/in/')) return line;
+        // If just a username, build URL
+        if (/^[a-zA-Z0-9-]+$/.test(line)) return `https://www.linkedin.com/in/${line}`;
+        return null;
+      })
+      .filter(Boolean) as string[];
+
+    if (urls.length === 0) {
+      toast.error('No valid LinkedIn URLs found');
+      return;
+    }
+
+    setBulkImporting(true);
+    setBulkProgress({ done: 0, total: urls.length });
+
+    for (let i = 0; i < urls.length; i++) {
+      const url = urls[i];
+      const match = url.match(/linkedin\.com\/in\/([^/?#]+)/);
+      const name = match?.[1]?.replace(/-/g, ' ')?.replace(/\b\w/g, (c) => c.toUpperCase()) || 'Unknown';
+
+      try {
+        await createTarget.mutateAsync({ publisher_id: publisher.id, name, linkedin_url: url });
+      } catch {
+        // Skip duplicates or errors, continue
+      }
+      setBulkProgress({ done: i + 1, total: urls.length });
+    }
+
+    setBulkImporting(false);
+    setBulkUrls('');
+    setShowAddDialog(false);
+    toast.success(`Imported ${urls.length} profiles — enriching in background`);
+  }, [bulkUrls, currentWorkspace, publisher.id, createTarget]);
 
   const handleFetchAll = async () => {
     if (!currentWorkspace || fetchingAll) return;
@@ -302,67 +349,126 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
 
       {/* Add Dialog */}
       <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-        <DialogContent className="sm:max-w-sm">
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="font-display">Add Profile</DialogTitle>
+            <DialogTitle className="font-display">Add Profiles</DialogTitle>
             <DialogDescription>
-              Paste a LinkedIn profile URL. Name, title, company, and photo will be fetched automatically.
+              Add one or many LinkedIn profiles. Name, title, company, and photo are fetched automatically.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-3 py-2">
-            <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">LinkedIn URL</label>
-              <Input
-                value={newUrl}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setNewUrl(val);
-                  // Auto-extract name from URL
-                  const match = val.match(/linkedin\.com\/in\/([^/?#]+)/);
-                  if (match && (!newName || newName === prevAutoName.current)) {
-                    const username = match[1].replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
-                    setNewName(username);
-                    prevAutoName.current = username;
-                  }
-                }}
-                placeholder="https://linkedin.com/in/janesmith"
-                className="font-mono text-sm focus-visible:ring-primary/30"
-                autoFocus
-              />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
-                Display Name <span className="text-muted-foreground/50">(auto-filled, editable)</span>
-              </label>
-              <Input
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-                placeholder="Will be updated after fetch"
-                className="focus-visible:ring-primary/30"
-                onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
-              />
-              <p className="text-[10px] text-muted-foreground/50 mt-1.5">
-                Real name, title, company, and photo are fetched from LinkedIn after adding.
-              </p>
-            </div>
-          </div>
+          <Tabs defaultValue="single" className="mt-2">
+            <TabsList className="w-full">
+              <TabsTrigger value="single" className="flex-1 gap-1.5 text-xs">
+                <Plus className="h-3 w-3" />
+                Single
+              </TabsTrigger>
+              <TabsTrigger value="bulk" className="flex-1 gap-1.5 text-xs">
+                <Upload className="h-3 w-3" />
+                Bulk Import
+              </TabsTrigger>
+            </TabsList>
 
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setShowAddDialog(false)}>Cancel</Button>
-            <Button
-              onClick={handleAdd}
-              disabled={!newUrl.trim() || createTarget.isPending}
-              className="gap-1.5"
-            >
-              {createTarget.isPending ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <Plus className="h-3.5 w-3.5" />
+            {/* Single add */}
+            <TabsContent value="single" className="space-y-3 pt-2">
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">LinkedIn URL</label>
+                <Input
+                  value={newUrl}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setNewUrl(val);
+                    const match = val.match(/linkedin\.com\/in\/([^/?#]+)/);
+                    if (match && (!newName || newName === prevAutoName.current)) {
+                      const username = match[1].replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+                      setNewName(username);
+                      prevAutoName.current = username;
+                    }
+                  }}
+                  placeholder="https://linkedin.com/in/janesmith"
+                  className="font-mono text-sm focus-visible:ring-primary/30"
+                  autoFocus
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+                  Display Name <span className="text-muted-foreground/50">(auto-filled)</span>
+                </label>
+                <Input
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  placeholder="Will be updated after fetch"
+                  className="focus-visible:ring-primary/30"
+                  onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
+                />
+              </div>
+              <div className="flex justify-end gap-2 pt-1">
+                <Button variant="ghost" size="sm" onClick={() => setShowAddDialog(false)}>Cancel</Button>
+                <Button
+                  size="sm"
+                  onClick={handleAdd}
+                  disabled={!newUrl.trim() || createTarget.isPending}
+                  className="gap-1.5"
+                >
+                  {createTarget.isPending ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Plus className="h-3.5 w-3.5" />
+                  )}
+                  Add & Fetch
+                </Button>
+              </div>
+            </TabsContent>
+
+            {/* Bulk import */}
+            <TabsContent value="bulk" className="space-y-3 pt-2">
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+                  LinkedIn URLs <span className="text-muted-foreground/50">(one per line)</span>
+                </label>
+                <Textarea
+                  value={bulkUrls}
+                  onChange={(e) => setBulkUrls(e.target.value)}
+                  placeholder={"https://linkedin.com/in/janesmith\nhttps://linkedin.com/in/johndoe\nhttps://linkedin.com/in/sarahconnor"}
+                  rows={6}
+                  className="font-mono text-xs leading-relaxed focus-visible:ring-primary/30"
+                />
+                <p className="text-[10px] text-muted-foreground/50 mt-1.5">
+                  Paste LinkedIn profile URLs, one per line. You can also paste just usernames (e.g. "janesmith").
+                  Duplicates are skipped automatically.
+                </p>
+              </div>
+
+              {bulkImporting && (
+                <div className="flex items-center gap-2 text-xs text-primary">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  Importing {bulkProgress.done} of {bulkProgress.total}...
+                </div>
               )}
-              Add & Fetch
-            </Button>
-          </DialogFooter>
+
+              <div className="flex items-center justify-between pt-1">
+                <span className="text-[10px] text-muted-foreground">
+                  {bulkUrls.trim() ? `${bulkUrls.split(/[\n,]+/).filter((l) => l.trim()).length} URLs detected` : ''}
+                </span>
+                <div className="flex gap-2">
+                  <Button variant="ghost" size="sm" onClick={() => setShowAddDialog(false)}>Cancel</Button>
+                  <Button
+                    size="sm"
+                    onClick={handleBulkImport}
+                    disabled={!bulkUrls.trim() || bulkImporting}
+                    className="gap-1.5"
+                  >
+                    {bulkImporting ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Upload className="h-3.5 w-3.5" />
+                    )}
+                    {bulkImporting ? 'Importing...' : 'Import All'}
+                  </Button>
+                </div>
+              </div>
+            </TabsContent>
+          </Tabs>
         </DialogContent>
       </Dialog>
     </>
