@@ -53,27 +53,40 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
   const [bulkImporting, setBulkImporting] = useState(false);
   const [bulkProgress, setBulkProgress] = useState({ done: 0, total: 0 });
 
-  // Unseen post counts
-  const { data: unseenCounts = {} } = useQuery({
-    queryKey: ['unseen-counts', currentWorkspace?.id, publisher.id, targets.map((t) => `${t.id}:${t.last_seen_at}`).join(',')],
+  // Unseen post counts + fresh (not engaged) post counts per target
+  const { data: countMaps = { unseen: {}, fresh: {} } } = useQuery({
+    queryKey: ['target-counts', currentWorkspace?.id, publisher.id, targets.map((t) => `${t.id}:${t.last_seen_at}`).join(',')],
     queryFn: async () => {
-      if (!currentWorkspace || targets.length === 0) return {};
-      const counts: Record<string, number> = {};
+      if (!currentWorkspace || targets.length === 0) return { unseen: {}, fresh: {} };
+      const unseen: Record<string, number> = {};
+      const fresh: Record<string, number> = {};
       for (const target of targets) {
-        let query = (supabase as any)
+        // Unseen (newly synced since last visit)
+        let unseenQ = (supabase as any)
           .from('engagement_posts')
           .select('id', { count: 'exact', head: true })
           .eq('target_id', target.id);
-        if (target.last_seen_at) {
-          query = query.gt('created_at', target.last_seen_at);
-        }
-        const { count } = await query;
-        if (count && count > 0) counts[target.id] = count;
+        if (target.last_seen_at) unseenQ = unseenQ.gt('created_at', target.last_seen_at);
+        const { count: unseenCount } = await unseenQ;
+        if (unseenCount && unseenCount > 0) unseen[target.id] = unseenCount;
+
+        // Fresh (not commented and not liked yet — net new to engage with)
+        const { count: freshCount } = await (supabase as any)
+          .from('engagement_posts')
+          .select('id', { count: 'exact', head: true })
+          .eq('target_id', target.id)
+          .eq('is_commented', false)
+          .eq('is_liked', false);
+        if (freshCount && freshCount > 0) fresh[target.id] = freshCount;
       }
-      return counts;
+      return { unseen, fresh };
     },
     enabled: !!currentWorkspace && targets.length > 0,
   });
+  const unseenCounts = countMaps.unseen as Record<string, number>;
+  const freshCounts = countMaps.fresh as Record<string, number>;
+  const totalFresh = Object.values(freshCounts).reduce((s, n) => s + n, 0);
+  const targetsWithFresh = Object.keys(freshCounts).length;
 
   const filtered = useMemo(() => {
     if (!search.trim()) return targets;
