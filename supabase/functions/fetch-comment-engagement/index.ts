@@ -121,9 +121,19 @@ Deno.serve(async (req) => {
     let updatedCount = 0;
     let lastError = '';
 
+    // LinkedIn REST requires full encoding of (, ), and , in URN path/query params.
+    const encodeUrn = (u: string) =>
+      encodeURIComponent(u)
+        .replace(/\(/g, '%28')
+        .replace(/\)/g, '%29')
+        .replace(/,/g, '%2C')
+        .replace(/'/g, '%27');
+
     for (const comment of comments) {
       const urn = comment.linkedin_comment_urn as string;
-      const encoded = encodeURIComponent(urn);
+      const encoded = encodeUrn(urn);
+
+
 
       try {
         // -------- Reactions on the comment --------
