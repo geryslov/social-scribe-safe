@@ -522,13 +522,13 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
               'flex min-w-0 items-center justify-between gap-2 rounded-md px-2.5 py-1.5 text-[11px] font-semibold transition-colors border',
               onlyFresh
                 ? 'bg-primary text-primary-foreground border-primary shadow-sm'
-                : 'bg-amber-50 text-amber-800 border-amber-200/70 hover:bg-amber-100/70',
+                : 'bg-sky-50 text-sky-800 border-sky-200/70 hover:bg-sky-100/70',
             )}
-            title="Show only profiles with posts you haven't engaged with"
+            title="Show only profiles with new posts you haven't engaged with"
           >
             <span className="flex min-w-0 items-center gap-1.5">
               <Sparkles className="h-3 w-3 flex-shrink-0" />
-              <span className="truncate">Fresh</span>
+              <span className="truncate">New posts</span>
             </span>
             <span className="tabular-nums">{totalFresh}</span>
           </button>
@@ -545,9 +545,19 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
           </div>
         </div>
 
-        {onlyFresh && (
-          <div className="text-[10px] font-medium text-muted-foreground px-0.5">
-            Showing {targetsWithFresh} profile{targetsWithFresh === 1 ? '' : 's'} with fresh posts
+        {isAdmin && targets.length > 0 && (
+          <div className="flex items-center justify-between text-[10px] px-0.5">
+            <button
+              type="button"
+              onClick={() => (selectionMode ? exitSelectionMode() : setSelectionMode(true))}
+              className="font-medium text-muted-foreground hover:text-primary transition-colors inline-flex items-center gap-1"
+            >
+              <CheckSquare className="h-3 w-3" />
+              {selectionMode ? 'Cancel selection' : 'Select multiple'}
+            </button>
+            {onlyFresh && (
+              <span className="text-muted-foreground">Showing {targetsWithFresh} with new posts</span>
+            )}
           </div>
         )}
       </div>
