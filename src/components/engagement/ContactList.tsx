@@ -342,6 +342,32 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
                 )}
               </Button>
             )}
+            {isAdmin && targets.length > 0 && !selectionMode && (() => {
+              const missingCount = targets.filter((t) => t.enrichment_status !== 'succeeded').length;
+              if (missingCount === 0 && !reEnriching) return null;
+              return (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-[11px] font-medium text-amber-600 hover:text-amber-700 hover:bg-amber-500/10"
+                  onClick={handleReEnrichMissing}
+                  disabled={reEnriching}
+                  title="Re-fetch profiles that failed enrichment"
+                >
+                  {reEnriching ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
+                      {reEnrichProgress.done}/{reEnrichProgress.total}
+                    </>
+                  ) : (
+                    <>
+                      <Wand2 className="h-3.5 w-3.5 mr-1" />
+                      Auto-fill {missingCount}
+                    </>
+                  )}
+                </Button>
+              );
+            })()}
             {isAdmin && !selectionMode && (
               <Button
                 variant="ghost"
