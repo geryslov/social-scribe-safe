@@ -56,7 +56,16 @@ export function PostPanel({ target, publisher, isAdmin }: PostPanelProps) {
   const [likingPostId, setLikingPostId] = useState<string | null>(null);
   const [isFetching, setIsFetching] = useState(false);
   const [deletingTarget, setDeletingTarget] = useState(false);
-  const [feedFilter, setFeedFilter] = useState<'all' | 'fresh' | 'engaged' | 'liked' | 'not-liked'>('all');
+  const [feedFilter, setFeedFilter] = useState<'all' | 'new' | 'fresh' | 'engaged' | 'liked' | 'not-liked'>('all');
+
+  // A post is "new" if it landed after the last time the user opened this profile.
+  // Falls back to "synced in the last 24h" if the profile has never been viewed.
+  const lastSeenMs = target?.last_seen_at ? new Date(target.last_seen_at).getTime() : 0;
+  const isNewPost = (p: EngagementPost) => {
+    const created = new Date(p.created_at).getTime();
+    if (lastSeenMs) return created > lastSeenMs;
+    return Date.now() - created < 24 * 60 * 60 * 1000;
+  };
 
   const fetchCommentEngagement = useFetchCommentEngagement();
 
