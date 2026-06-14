@@ -162,15 +162,22 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
     setBulkImporting(true);
     setBulkProgress({ done: 0, total: urls.length });
 
+    // 1) Create all rows first (skip auto-enrichment to avoid Apify rate limits)
+    const createdIds: string[] = [];
     for (let i = 0; i < urls.length; i++) {
       const url = urls[i];
       const match = url.match(/linkedin\.com\/in\/([^/?#]+)/);
       const name = match?.[1]?.replace(/-/g, ' ')?.replace(/\b\w/g, (c) => c.toUpperCase()) || 'Unknown';
-
       try {
-        await createTarget.mutateAsync({ publisher_id: publisher.id, name, linkedin_url: url });
+        const row = await createTarget.mutateAsync({
+          publisher_id: publisher.id,
+          name,
+          linkedin_url: url,
+          skipEnrich: true,
+        });
+        if (row?.id) createdIds.push(row.id);
       } catch {
-        // Skip duplicates or errors, continue
+        // skip duplicates / errors
       }
       setBulkProgress({ done: i + 1, total: urls.length });
     }
@@ -178,7 +185,27 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
     setBulkImporting(false);
     setBulkUrls('');
     setShowAddDialog(false);
-    toast.success(`Imported ${urls.length} profiles — enriching in background`);
+    toast.success(`Imported ${createdIds.length} profiles — enriching in background`);
+
+    // 2) Enrich with limited concurrency (2 at a time) so Apify doesn't 429
+    (async () => {
+      const CONCURRENCY = 2;
+      let cursor = 0;
+      const workers = Array.from({ length: Math.min(CONCURRENCY, createdIds.length) }, async () => {
+        while (cursor < createdIds.length) {
+          const id = createdIds[cursor++];
+          try {
+            await supabase.functions.invoke('enrich-engagement-target', { body: { target_id: id } });
+          } catch (err) {
+            console.error('Bulk enrich failed for', id, err);
+          }
+        }
+      });
+      await Promise.all(workers);
+      // Final refresh so any updated rows render
+      // (the polling refetchInterval also picks up pending rows during the run)
+      window.dispatchEvent(new Event('focus'));
+    })();
   }, [bulkUrls, currentWorkspace, publisher.id, createTarget]);
 
   const handleFetchAll = async () => {
