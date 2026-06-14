@@ -482,6 +482,56 @@ export type Database = {
           },
         ]
       }
+      engagement_sync_runs: {
+        Row: {
+          details: Json | null
+          failed: number
+          finished_at: string | null
+          id: string
+          new_posts: number
+          skipped: number
+          started_at: string
+          synced: number
+          total_targets: number
+          trigger: string
+          workspace_id: string | null
+        }
+        Insert: {
+          details?: Json | null
+          failed?: number
+          finished_at?: string | null
+          id?: string
+          new_posts?: number
+          skipped?: number
+          started_at?: string
+          synced?: number
+          total_targets?: number
+          trigger?: string
+          workspace_id?: string | null
+        }
+        Update: {
+          details?: Json | null
+          failed?: number
+          finished_at?: string | null
+          id?: string
+          new_posts?: number
+          skipped?: number
+          started_at?: string
+          synced?: number
+          total_targets?: number
+          trigger?: string
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "engagement_sync_runs_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       engagement_targets: {
         Row: {
           auto_like: boolean
@@ -1264,6 +1314,35 @@ export type Database = {
             foreignKeyName: "workspace_api_keys_workspace_id_fkey"
             columns: ["workspace_id"]
             isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workspace_engagement_settings: {
+        Row: {
+          auto_sync_enabled: boolean
+          updated_at: string
+          updated_by: string | null
+          workspace_id: string
+        }
+        Insert: {
+          auto_sync_enabled?: boolean
+          updated_at?: string
+          updated_by?: string | null
+          workspace_id: string
+        }
+        Update: {
+          auto_sync_enabled?: boolean
+          updated_at?: string
+          updated_by?: string | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workspace_engagement_settings_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: true
             referencedRelation: "workspaces"
             referencedColumns: ["id"]
           },
