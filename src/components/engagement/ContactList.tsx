@@ -244,6 +244,47 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
     setFetchingAll(false);
   };
 
+  const [reEnriching, setReEnriching] = useState(false);
+  const [reEnrichProgress, setReEnrichProgress] = useState({ done: 0, total: 0 });
+  const handleReEnrichMissing = async () => {
+    if (reEnriching) return;
+    const missing = targets.filter((t) => t.enrichment_status !== 'succeeded');
+    if (missing.length === 0) {
+      toast.info('All profiles already enriched');
+      return;
+    }
+    setReEnriching(true);
+    setReEnrichProgress({ done: 0, total: missing.length });
+    toast.info(`Re-enriching ${missing.length} profile${missing.length === 1 ? '' : 's'}…`);
+
+    const CONCURRENCY = 2;
+    let idx = 0;
+    let done = 0;
+    let failed = 0;
+    const worker = async () => {
+      while (idx < missing.length) {
+        const i = idx++;
+        const t = missing[i];
+        try {
+          await enrichTarget.mutateAsync(t.id);
+        } catch {
+          failed++;
+        }
+        done++;
+        setReEnrichProgress({ done, total: missing.length });
+      }
+    };
+    await Promise.all(Array.from({ length: CONCURRENCY }, worker));
+
+    setReEnriching(false);
+    if (failed > 0) {
+      toast.warning(`Re-enriched ${done - failed}/${missing.length}. ${failed} failed.`);
+    } else {
+      toast.success(`Re-enriched ${done} profile${done === 1 ? '' : 's'}`);
+    }
+    window.dispatchEvent(new Event('focus'));
+  };
+
   const activeTargets = targets.filter((t) => t.is_active);
   const allAutoLike = activeTargets.length > 0 && activeTargets.every((t) => t.auto_like);
   const [bulkAutoLiking, setBulkAutoLiking] = useState(false);
