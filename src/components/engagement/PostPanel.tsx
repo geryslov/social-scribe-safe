@@ -56,7 +56,16 @@ export function PostPanel({ target, publisher, isAdmin }: PostPanelProps) {
   const [likingPostId, setLikingPostId] = useState<string | null>(null);
   const [isFetching, setIsFetching] = useState(false);
   const [deletingTarget, setDeletingTarget] = useState(false);
-  const [feedFilter, setFeedFilter] = useState<'all' | 'fresh' | 'engaged' | 'liked' | 'not-liked'>('all');
+  const [feedFilter, setFeedFilter] = useState<'all' | 'new' | 'fresh' | 'engaged' | 'liked' | 'not-liked'>('all');
+
+  // A post is "new" if it landed after the last time the user opened this profile.
+  // Falls back to "synced in the last 24h" if the profile has never been viewed.
+  const lastSeenMs = target?.last_seen_at ? new Date(target.last_seen_at).getTime() : 0;
+  const isNewPost = (p: EngagementPost) => {
+    const created = new Date(p.created_at).getTime();
+    if (lastSeenMs) return created > lastSeenMs;
+    return Date.now() - created < 24 * 60 * 60 * 1000;
+  };
 
   const fetchCommentEngagement = useFetchCommentEngagement();
 
@@ -322,8 +331,10 @@ export function PostPanel({ target, publisher, isAdmin }: PostPanelProps) {
       {/* ── Feed ───────────────────────────────────────────────────────── */}
       <div className="flex-1 overflow-y-auto">
         {posts.length > 0 && (() => {
+          const newCount = posts.filter(isNewPost).length;
           const counts = {
             all: posts.length,
+            new: newCount,
             fresh: posts.filter((p) => !p.is_commented && !p.is_liked).length,
             engaged: posts.filter((p) => p.is_commented).length,
             liked: posts.filter((p) => p.is_liked).length,
@@ -331,6 +342,7 @@ export function PostPanel({ target, publisher, isAdmin }: PostPanelProps) {
           } as const;
           const tabs: Array<{ id: typeof feedFilter; label: string }> = [
             { id: 'all', label: 'All' },
+            { id: 'new', label: 'New' },
             { id: 'fresh', label: 'Fresh' },
             { id: 'engaged', label: 'Engaged' },
             { id: 'liked', label: 'Liked' },
@@ -406,6 +418,7 @@ export function PostPanel({ target, publisher, isAdmin }: PostPanelProps) {
         ) : (() => {
           const filtered = posts.filter((p) => {
             switch (feedFilter) {
+              case 'new': return isNewPost(p);
               case 'fresh': return !p.is_commented && !p.is_liked;
               case 'engaged': return p.is_commented;
               case 'liked': return p.is_liked;
@@ -413,7 +426,11 @@ export function PostPanel({ target, publisher, isAdmin }: PostPanelProps) {
               default: return true;
             }
           });
-          if (filtered.length === 0) {
+          // Bubble brand-new posts to the top when viewing All
+          const sorted = feedFilter === 'all'
+            ? [...filtered].sort((a, b) => Number(isNewPost(b)) - Number(isNewPost(a)))
+            : filtered;
+          if (sorted.length === 0) {
             return (
               <div className="flex items-center justify-center py-20">
                 <p className="text-sm text-muted-foreground">No posts match this filter.</p>
@@ -422,9 +439,10 @@ export function PostPanel({ target, publisher, isAdmin }: PostPanelProps) {
           }
           return (
           <div className="px-5 py-5 columns-1 md:columns-2 xl:columns-3 gap-4 [column-fill:_balance]">
-            {filtered.map((post: EngagementPost) => {
+            {sorted.map((post: EngagementPost) => {
               const tier = engagementTier(post);
               const isCommenting = commentingPostId === post.id;
+              const isNew = isNewPost(post);
 
               return (
                 <article
@@ -434,9 +452,13 @@ export function PostPanel({ target, publisher, isAdmin }: PostPanelProps) {
                     'hover:border-primary/30 hover:shadow-[0_4px_20px_-4px_hsl(var(--primary)/0.08)]',
                     tier === 'hot' && 'border-primary/30 shadow-[0_2px_12px_-2px_hsl(var(--primary)/0.12)]',
                     post.is_commented && 'border-emerald-500/30 bg-emerald-50/30',
+                    isNew && !post.is_commented && 'border-sky-400/50 bg-sky-50/40 shadow-[0_2px_12px_-2px_hsl(210_90%_55%/0.15)]',
                     isCommenting && 'border-primary/50 shadow-[0_4px_20px_-2px_hsl(var(--primary)/0.18)] ring-1 ring-primary/20',
                   )}
                 >
+                  {isNew && !post.is_commented && (
+                    <div className="absolute left-0 top-4 bottom-4 w-0.5 rounded-r bg-gradient-to-b from-sky-400 to-cyan-400" />
+                  )}
                   {/* Left accent stripe for hot posts */}
                   {tier === 'hot' && !post.is_commented && (
                     <div className="absolute left-0 top-4 bottom-4 w-0.5 rounded-r bg-gradient-to-b from-primary to-accent" />
@@ -448,6 +470,17 @@ export function PostPanel({ target, publisher, isAdmin }: PostPanelProps) {
                       <span className="text-[11px] font-medium text-muted-foreground/70">
                         {timeAgo(post.published_at)}
                       </span>
+
+                      {isNew && (
+                        <Badge
+                          variant="secondary"
+                          className="h-5 gap-1 px-1.5 bg-sky-100 text-sky-700 border-sky-200/60 text-[10px] font-semibold uppercase tracking-wide animate-in fade-in"
+                        >
+                          <Sparkles className="h-2.5 w-2.5" />
+                          New
+                        </Badge>
+                      )}
+
 
                       {tier === 'hot' && (
                         <Badge
