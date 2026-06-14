@@ -503,18 +503,32 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
                 .slice(0, 2)
                 .toUpperCase();
 
+              const isChecked = selectedIds.has(target.id);
+
               return (
                 <button
                   key={target.id}
-                  onClick={() => onSelectTarget(target)}
+                  onClick={() => {
+                    if (selectionMode) toggleSelected(target.id);
+                    else onSelectTarget(target);
+                  }}
                   className={cn(
                     'w-full flex items-center gap-3 px-3 py-3 text-left transition-all border-l-[3px] border-l-transparent',
-                    isSelected
+                    isSelected && !selectionMode
                       ? 'bg-primary/[0.06] border-l-primary'
                       : 'hover:bg-muted/50',
+                    selectionMode && isChecked && 'bg-primary/[0.08] border-l-primary',
                     !target.is_active && 'opacity-40',
                   )}
                 >
+                  {selectionMode && (
+                    <Checkbox
+                      checked={isChecked}
+                      onCheckedChange={() => toggleSelected(target.id)}
+                      onClick={(e) => e.stopPropagation()}
+                      className="flex-shrink-0"
+                    />
+                  )}
                   {/* Avatar */}
                   <div className="relative flex-shrink-0">
                     <div className={cn(
