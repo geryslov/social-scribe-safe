@@ -474,8 +474,16 @@ export function PostPanel({ target, publisher, isAdmin }: PostPanelProps) {
                   <div className="px-4 py-3.5">
                     {/* Top row — meta + tags */}
                     <div className="flex items-center gap-2 mb-2.5">
-                      <span className="text-[11px] font-medium text-muted-foreground/70">
+                      <span
+                        className="text-[11px] font-medium text-muted-foreground/70"
+                        title={post.published_at ? new Date(post.published_at).toLocaleString() : ''}
+                      >
                         {timeAgo(post.published_at)}
+                        {post.published_at && (
+                          <span className="text-muted-foreground/40 font-normal ml-1.5">
+                            · {new Date(post.published_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                          </span>
+                        )}
                       </span>
 
                       {isNew && (
