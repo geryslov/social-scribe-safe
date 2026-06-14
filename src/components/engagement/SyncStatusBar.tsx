@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
-import { Clock, RefreshCw, Sparkles } from 'lucide-react';
+import { Clock, RefreshCw, Sparkles, Square } from 'lucide-react';
 import { getNextScheduledSync, useEngagementSync } from '@/hooks/useEngagementSync';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -19,7 +19,7 @@ function useCountdown(target: Date) {
 }
 
 export function SyncStatusBar() {
-  const { settings, lastRun, toggle, runNow } = useEngagementSync();
+  const { settings, lastRun, toggle, runNow, stop } = useEngagementSync();
   const enabled = settings?.auto_sync_enabled ?? true;
   const next = getNextScheduledSync();
   const { h, m, s } = useCountdown(next);
@@ -67,6 +67,20 @@ export function SyncStatusBar() {
         <RefreshCw className={`h-3 w-3 mr-1 ${runNow.isPending ? 'animate-spin' : ''}`} />
         {runNow.isPending ? 'Syncing…' : 'Sync now'}
       </Button>
+
+      {runNow.isPending && (
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-7 text-xs border-rose-300 text-rose-600 hover:bg-rose-50 hover:text-rose-700"
+          onClick={() => stop.mutate()}
+          disabled={stop.isPending}
+          title="Stop the running sync"
+        >
+          <Square className="h-3 w-3 mr-1 fill-current" />
+          {stop.isPending ? 'Stopping…' : 'Stop'}
+        </Button>
+      )}
 
       <div className="flex items-center gap-2 pl-2 border-l">
         <span className="text-muted-foreground">Auto sync</span>

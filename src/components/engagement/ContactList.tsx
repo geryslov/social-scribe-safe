@@ -3,9 +3,11 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useEngagementTargets, useFetchTargetPosts, EngagementTarget } from '@/hooks/useEngagement';
 import { useWorkspace } from '@/hooks/useWorkspace';
-import { Publisher } from '@/hooks/usePublishers';
+import { usePublishers, Publisher } from '@/hooks/usePublishers';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Dialog,
   DialogContent,
@@ -14,7 +16,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { Plus, Search, Loader2, Linkedin, RefreshCw, Building2, Upload, CheckCircle2, Sparkles, Zap } from 'lucide-react';
+import { Plus, Search, Loader2, Linkedin, RefreshCw, Building2, Upload, CheckCircle2, Sparkles, Zap, CheckSquare, Trash2, ArrowRightLeft, X } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
@@ -40,8 +42,31 @@ function timeAgoShort(dateStr: string | null): string {
 
 export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarget }: ContactListProps) {
   const { currentWorkspace } = useWorkspace();
-  const { targets, isLoading, createTarget, enrichTarget, updateTarget } = useEngagementTargets(publisher.id);
+  const { targets, isLoading, createTarget, enrichTarget, updateTarget, bulkDeleteTargets, bulkReassignTargets } = useEngagementTargets(publisher.id);
+  const { publishers } = usePublishers();
   const fetchPosts = useFetchTargetPosts();
+
+  // Multi-select state
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [showReassignDialog, setShowReassignDialog] = useState(false);
+  const [reassignPublisherId, setReassignPublisherId] = useState<string>('');
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
+  const exitSelectionMode = () => {
+    setSelectionMode(false);
+    setSelectedIds(new Set());
+    setConfirmDelete(false);
+  };
+
+  const toggleSelected = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   const [search, setSearch] = useState('');
   const [showAddDialog, setShowAddDialog] = useState(false);
@@ -250,6 +275,20 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
               <Button
                 variant="ghost"
                 size="sm"
+                className={cn(
+                  'h-7 w-7 p-0 hover:text-primary',
+                  selectionMode ? 'text-primary bg-primary/10' : 'text-muted-foreground',
+                )}
+                onClick={() => (selectionMode ? exitSelectionMode() : setSelectionMode(true))}
+                title={selectionMode ? 'Exit selection' : 'Select multiple'}
+              >
+                <CheckSquare className="h-3.5 w-3.5" />
+              </Button>
+            )}
+            {isAdmin && targets.length > 0 && !selectionMode && (
+              <Button
+                variant="ghost"
+                size="sm"
                 className="h-7 w-7 p-0 text-muted-foreground hover:text-primary"
                 onClick={handleFetchAll}
                 disabled={fetchingAll}
@@ -262,7 +301,7 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
                 )}
               </Button>
             )}
-            {isAdmin && (
+            {isAdmin && !selectionMode && (
               <Button
                 variant="ghost"
                 size="sm"
@@ -275,6 +314,75 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
             )}
           </div>
         </div>
+
+        {/* Bulk action bar */}
+        {selectionMode && (
+          <div className="flex items-center gap-2 rounded-md bg-primary/5 border border-primary/30 px-2 py-1.5">
+            <span className="text-[11px] font-semibold text-primary">
+              {selectedIds.size} selected
+            </span>
+            <div className="flex-1" />
+            <button
+              type="button"
+              onClick={() => {
+                if (selectedIds.size === filtered.length) setSelectedIds(new Set());
+                else setSelectedIds(new Set(filtered.map((t) => t.id)));
+              }}
+              className="text-[10px] text-primary hover:underline font-medium"
+            >
+              {selectedIds.size === filtered.length && filtered.length > 0 ? 'Clear' : 'All'}
+            </button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-6 text-[11px] gap-1 px-2"
+              disabled={selectedIds.size === 0 || bulkReassignTargets.isPending}
+              onClick={() => {
+                setReassignPublisherId('');
+                setShowReassignDialog(true);
+              }}
+            >
+              <ArrowRightLeft className="h-3 w-3" />
+              Move
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className={cn(
+                'h-6 text-[11px] gap-1 px-2',
+                confirmDelete
+                  ? 'border-destructive text-destructive bg-destructive/10'
+                  : 'text-destructive border-destructive/40',
+              )}
+              disabled={selectedIds.size === 0 || bulkDeleteTargets.isPending}
+              onClick={() => {
+                if (confirmDelete) {
+                  bulkDeleteTargets.mutate(Array.from(selectedIds), {
+                    onSuccess: () => exitSelectionMode(),
+                  });
+                } else {
+                  setConfirmDelete(true);
+                  setTimeout(() => setConfirmDelete(false), 3000);
+                }
+              }}
+            >
+              {bulkDeleteTargets.isPending ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                <Trash2 className="h-3 w-3" />
+              )}
+              {confirmDelete ? 'Confirm?' : 'Delete'}
+            </Button>
+            <button
+              type="button"
+              onClick={exitSelectionMode}
+              className="text-muted-foreground hover:text-foreground p-1 rounded"
+              title="Exit selection"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          </div>
+        )}
 
         <div className="relative">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/50" />
@@ -395,18 +503,32 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
                 .slice(0, 2)
                 .toUpperCase();
 
+              const isChecked = selectedIds.has(target.id);
+
               return (
                 <button
                   key={target.id}
-                  onClick={() => onSelectTarget(target)}
+                  onClick={() => {
+                    if (selectionMode) toggleSelected(target.id);
+                    else onSelectTarget(target);
+                  }}
                   className={cn(
                     'w-full flex items-center gap-3 px-3 py-3 text-left transition-all border-l-[3px] border-l-transparent',
-                    isSelected
+                    isSelected && !selectionMode
                       ? 'bg-primary/[0.06] border-l-primary'
                       : 'hover:bg-muted/50',
+                    selectionMode && isChecked && 'bg-primary/[0.08] border-l-primary',
                     !target.is_active && 'opacity-40',
                   )}
                 >
+                  {selectionMode && (
+                    <Checkbox
+                      checked={isChecked}
+                      onCheckedChange={() => toggleSelected(target.id)}
+                      onClick={(e) => e.stopPropagation()}
+                      className="flex-shrink-0"
+                    />
+                  )}
                   {/* Avatar */}
                   <div className="relative flex-shrink-0">
                     <div className={cn(
@@ -636,6 +758,69 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
               </div>
             </TabsContent>
           </Tabs>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reassign Dialog */}
+      <Dialog open={showReassignDialog} onOpenChange={setShowReassignDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-display">Move {selectedIds.size} profile{selectedIds.size === 1 ? '' : 's'}</DialogTitle>
+            <DialogDescription>
+              Reassign the selected profile{selectedIds.size === 1 ? '' : 's'} from <b>{publisher.name}</b> to another engager.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-2">
+            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Engager</label>
+            <Select value={reassignPublisherId} onValueChange={setReassignPublisherId}>
+              <SelectTrigger className="focus:ring-primary/30">
+                <SelectValue placeholder="Choose an engager..." />
+              </SelectTrigger>
+              <SelectContent>
+                {publishers
+                  .filter((p) => p.id !== publisher.id)
+                  .map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.name}
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+            {publishers.filter((p) => p.id !== publisher.id).length === 0 && (
+              <p className="text-[11px] text-muted-foreground mt-2">
+                No other engagers in this workspace.
+              </p>
+            )}
+          </div>
+
+          <div className="flex justify-end gap-2 pt-1">
+            <Button variant="ghost" size="sm" onClick={() => setShowReassignDialog(false)}>Cancel</Button>
+            <Button
+              size="sm"
+              onClick={() => {
+                if (!reassignPublisherId) return;
+                bulkReassignTargets.mutate(
+                  { ids: Array.from(selectedIds), publisher_id: reassignPublisherId },
+                  {
+                    onSuccess: () => {
+                      setShowReassignDialog(false);
+                      exitSelectionMode();
+                    },
+                  },
+                );
+              }}
+              disabled={!reassignPublisherId || bulkReassignTargets.isPending}
+              className="gap-1.5"
+            >
+              {bulkReassignTargets.isPending ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <ArrowRightLeft className="h-3.5 w-3.5" />
+              )}
+              Move
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </>

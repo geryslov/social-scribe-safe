@@ -1,0 +1,1 @@
+ALTER TABLE public.workspace_engagement_settings ADD COLUMN IF NOT EXISTS sync_cancel_requested_at TIMESTAMPTZ;
