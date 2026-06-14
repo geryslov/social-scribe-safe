@@ -252,6 +252,39 @@ export function useEngagementTargets(publisherId: string | null) {
     },
   });
 
+  const bulkDeleteTargets = useMutation({
+    mutationFn: async (ids: string[]) => {
+      if (ids.length === 0) return 0;
+      const { error } = await (supabase as any).from('engagement_targets').delete().in('id', ids);
+      if (error) throw error;
+      return ids.length;
+    },
+    onSuccess: (count) => {
+      queryClient.invalidateQueries({ queryKey: ['engagement-targets'] });
+      queryClient.invalidateQueries({ queryKey: ['target-counts'] });
+      toast.success(`Removed ${count} profile${count === 1 ? '' : 's'}`);
+    },
+    onError: (e: Error) => toast.error('Bulk delete failed: ' + e.message),
+  });
+
+  const bulkReassignTargets = useMutation({
+    mutationFn: async ({ ids, publisher_id }: { ids: string[]; publisher_id: string }) => {
+      if (ids.length === 0) return 0;
+      const { error } = await (supabase as any)
+        .from('engagement_targets')
+        .update({ publisher_id })
+        .in('id', ids);
+      if (error) throw error;
+      return ids.length;
+    },
+    onSuccess: (count) => {
+      queryClient.invalidateQueries({ queryKey: ['engagement-targets'] });
+      queryClient.invalidateQueries({ queryKey: ['target-counts'] });
+      toast.success(`Moved ${count} profile${count === 1 ? '' : 's'} to new engager`);
+    },
+    onError: (e: Error) => toast.error('Bulk reassign failed: ' + e.message),
+  });
+
   const markSeen = useMutation({
     mutationFn: async (targetId: string) => {
       const { error } = await (supabase as any)
@@ -281,7 +314,7 @@ export function useEngagementTargets(publisherId: string | null) {
     },
   });
 
-  return { targets, isLoading, createTarget, deleteTarget, markSeen, enrichTarget, updateTarget };
+  return { targets, isLoading, createTarget, deleteTarget, bulkDeleteTargets, bulkReassignTargets, markSeen, enrichTarget, updateTarget };
 }
 
 // ---------------------------------------------------------------------------

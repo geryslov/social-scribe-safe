@@ -119,11 +119,34 @@ export function useEngagementSync() {
     onError: (e: Error) => toast.error('Sync failed: ' + e.message),
   });
 
+  const stop = useMutation({
+    mutationFn: async () => {
+      if (!currentWorkspace) throw new Error('No workspace');
+      const { error } = await (supabase as any)
+        .from('workspace_engagement_settings')
+        .upsert(
+          {
+            workspace_id: currentWorkspace.id,
+            sync_cancel_requested_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: 'workspace_id' },
+        );
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['engagement-sync-runs'] });
+      toast.success('Stop requested — sync will halt after the current profile');
+    },
+    onError: (e: Error) => toast.error('Stop failed: ' + e.message),
+  });
+
   return {
     settings: settingsQuery.data,
     lastRun: lastRunQuery.data,
     isLoading: settingsQuery.isLoading || lastRunQuery.isLoading,
     toggle,
     runNow,
+    stop,
   };
 }
