@@ -159,13 +159,10 @@ export function useEngagementTargets(publisherId: string | null) {
   });
 
   const createTarget = useMutation({
-    mutationFn: async (data: { publisher_id: string; name?: string; linkedin_url: string; headline?: string; notes?: string }) => {
+    mutationFn: async (data: { publisher_id: string; name?: string; linkedin_url: string; headline?: string; notes?: string; skipEnrich?: boolean }) => {
       if (!currentWorkspace) throw new Error('No workspace selected');
-      // Extract username from URL
       const match = data.linkedin_url.match(/linkedin\.com\/in\/([^/?#]+)/);
       const username = match ? match[1] : null;
-
-      // Fallback name: user-provided > username > URL
       const fallbackName = (data.name && data.name.trim()) || username || data.linkedin_url;
 
       const { data: result, error } = await (supabase as any)
@@ -185,25 +182,27 @@ export function useEngagementTargets(publisherId: string | null) {
         .single();
       if (error) throw error;
 
-      // Kick off Apify profile enrichment in the background; refresh the
-      // target list when it completes so the populated fields appear.
-      (async () => {
-        try {
-          await supabase.functions.invoke('enrich-engagement-target', {
-            body: { target_id: result.id },
-          });
-        } catch (err) {
-          console.error('Enrichment invoke failed:', err);
-        } finally {
-          queryClient.invalidateQueries({ queryKey: ['engagement-targets'] });
-        }
-      })();
+      // Fire-and-forget enrichment for single adds. Bulk imports pass
+      // skipEnrich and run enrichment with throttled concurrency to avoid
+      // Apify rate-limit failures.
+      if (!data.skipEnrich) {
+        (async () => {
+          try {
+            await supabase.functions.invoke('enrich-engagement-target', {
+              body: { target_id: result.id },
+            });
+          } catch (err) {
+            console.error('Enrichment invoke failed:', err);
+          } finally {
+            queryClient.invalidateQueries({ queryKey: ['engagement-targets'] });
+          }
+        })();
+      }
 
       return result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['engagement-targets'] });
-      toast.success('Target added — auto-filling from LinkedIn…');
     },
     onError: (error) => {
       toast.error('Failed to add target: ' + error.message);
@@ -212,10 +211,23 @@ export function useEngagementTargets(publisherId: string | null) {
 
   const enrichTarget = useMutation({
     mutationFn: async (targetId: string) => {
-      const { error } = await supabase.functions.invoke('enrich-engagement-target', {
+      const { data, error } = await supabase.functions.invoke('enrich-engagement-target', {
         body: { target_id: targetId },
       });
-      if (error) throw error;
+      if (error) {
+        let detail = error.message;
+        try {
+          const ctx: any = (error as any).context;
+          if (ctx && typeof ctx.json === 'function') {
+            const body = await ctx.json();
+            if (body?.error) detail = body.error;
+          }
+        } catch { /* ignore */ }
+        throw new Error(detail);
+      }
+      if (data && data.success === false && data.error) {
+        throw new Error(data.error);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['engagement-targets'] });
