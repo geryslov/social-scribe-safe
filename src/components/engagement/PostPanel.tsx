@@ -452,9 +452,13 @@ export function PostPanel({ target, publisher, isAdmin }: PostPanelProps) {
                     'hover:border-primary/30 hover:shadow-[0_4px_20px_-4px_hsl(var(--primary)/0.08)]',
                     tier === 'hot' && 'border-primary/30 shadow-[0_2px_12px_-2px_hsl(var(--primary)/0.12)]',
                     post.is_commented && 'border-emerald-500/30 bg-emerald-50/30',
+                    isNew && !post.is_commented && 'border-sky-400/50 bg-sky-50/40 shadow-[0_2px_12px_-2px_hsl(210_90%_55%/0.15)]',
                     isCommenting && 'border-primary/50 shadow-[0_4px_20px_-2px_hsl(var(--primary)/0.18)] ring-1 ring-primary/20',
                   )}
                 >
+                  {isNew && !post.is_commented && (
+                    <div className="absolute left-0 top-4 bottom-4 w-0.5 rounded-r bg-gradient-to-b from-sky-400 to-cyan-400" />
+                  )}
                   {/* Left accent stripe for hot posts */}
                   {tier === 'hot' && !post.is_commented && (
                     <div className="absolute left-0 top-4 bottom-4 w-0.5 rounded-r bg-gradient-to-b from-primary to-accent" />
