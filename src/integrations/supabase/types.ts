@@ -1322,18 +1322,21 @@ export type Database = {
       workspace_engagement_settings: {
         Row: {
           auto_sync_enabled: boolean
+          sync_cancel_requested_at: string | null
           updated_at: string
           updated_by: string | null
           workspace_id: string
         }
         Insert: {
           auto_sync_enabled?: boolean
+          sync_cancel_requested_at?: string | null
           updated_at?: string
           updated_by?: string | null
           workspace_id: string
         }
         Update: {
           auto_sync_enabled?: boolean
+          sync_cancel_requested_at?: string | null
           updated_at?: string
           updated_by?: string | null
           workspace_id?: string

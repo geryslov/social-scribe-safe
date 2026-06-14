@@ -72,11 +72,34 @@ Deno.serve(async (req) => {
     const startedAt = new Date().toISOString();
     const overall: any[] = [];
 
+    const startedAtMs = new Date(startedAt).getTime();
+
     for (const [workspace_id, wsTargets] of byWs.entries()) {
       const results: any[] = [];
       let newPosts = 0;
+      let cancelled = false;
 
-      for (const t of wsTargets) {
+      for (let i = 0; i < wsTargets.length; i++) {
+        const t = wsTargets[i];
+
+        // Check cancellation flag before each target
+        const { data: settingsRow } = await supabase
+          .from('workspace_engagement_settings')
+          .select('sync_cancel_requested_at')
+          .eq('workspace_id', workspace_id)
+          .maybeSingle();
+        const cancelAt = settingsRow?.sync_cancel_requested_at
+          ? new Date(settingsRow.sync_cancel_requested_at).getTime()
+          : 0;
+        if (cancelAt >= startedAtMs) {
+          cancelled = true;
+          // Mark this and all remaining targets as cancelled
+          for (let j = i; j < wsTargets.length; j++) {
+            results.push({ target_id: wsTargets[j].id, name: wsTargets[j].name, status: 'cancelled', posts_found: 0 });
+          }
+          break;
+        }
+
         if (trigger === 'cron' && t.last_fetched_at && new Date(t.last_fetched_at).getTime() > cutoff) {
           results.push({ target_id: t.id, name: t.name, status: 'skipped_cooldown', posts_found: 0 });
           continue;
@@ -118,6 +141,7 @@ Deno.serve(async (req) => {
         synced: results.filter((r) => r.status === 'synced').length,
         skipped: results.filter((r) => r.status === 'skipped_cooldown').length,
         failed: results.filter((r) => r.status === 'failed').length,
+        cancelled: results.filter((r) => r.status === 'cancelled').length,
         new_posts: newPosts,
       };
 
@@ -130,9 +154,17 @@ Deno.serve(async (req) => {
         skipped: summary.skipped,
         failed: summary.failed,
         new_posts: summary.new_posts,
-        trigger,
+        trigger: cancelled ? `${trigger}_cancelled` : trigger,
         details: results,
       });
+
+      // Clear the cancel flag if this run honored it
+      if (cancelled) {
+        await supabase
+          .from('workspace_engagement_settings')
+          .update({ sync_cancel_requested_at: null })
+          .eq('workspace_id', workspace_id);
+      }
 
       overall.push({ workspace_id, summary });
       console.log('sync workspace done:', workspace_id, summary);
