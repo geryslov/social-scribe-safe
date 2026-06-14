@@ -352,6 +352,8 @@ export function PostPanel({ target, publisher, isAdmin }: PostPanelProps) {
             <div className="sticky top-0 z-10 px-5 py-2.5 bg-background/80 backdrop-blur border-b flex items-center gap-1.5 overflow-x-auto">
               {tabs.map((t) => {
                 const active = feedFilter === t.id;
+                const isNewTab = t.id === 'new';
+                const hasNew = isNewTab && counts.new > 0;
                 return (
                   <button
                     key={t.id}
@@ -359,14 +361,19 @@ export function PostPanel({ target, publisher, isAdmin }: PostPanelProps) {
                     className={cn(
                       'inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full text-[11px] font-semibold transition-colors whitespace-nowrap',
                       active
-                        ? 'bg-primary text-primary-foreground shadow-sm'
-                        : 'bg-muted/60 text-muted-foreground hover:text-foreground hover:bg-muted',
+                        ? isNewTab
+                          ? 'bg-sky-500 text-white shadow-sm'
+                          : 'bg-primary text-primary-foreground shadow-sm'
+                        : hasNew
+                          ? 'bg-sky-100 text-sky-700 hover:bg-sky-200 ring-1 ring-sky-200'
+                          : 'bg-muted/60 text-muted-foreground hover:text-foreground hover:bg-muted',
                     )}
                   >
+                    {isNewTab && <Sparkles className="h-3 w-3" />}
                     {t.label}
                     <span className={cn(
                       'rounded-full px-1.5 text-[10px] tabular-nums',
-                      active ? 'bg-primary-foreground/20 text-primary-foreground' : 'bg-background text-muted-foreground/70',
+                      active ? 'bg-white/25 text-white' : hasNew ? 'bg-white text-sky-700' : 'bg-background text-muted-foreground/70',
                     )}>
                       {counts[t.id]}
                     </span>
