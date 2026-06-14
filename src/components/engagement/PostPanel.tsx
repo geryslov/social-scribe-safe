@@ -471,6 +471,17 @@ export function PostPanel({ target, publisher, isAdmin }: PostPanelProps) {
                         {timeAgo(post.published_at)}
                       </span>
 
+                      {isNew && (
+                        <Badge
+                          variant="secondary"
+                          className="h-5 gap-1 px-1.5 bg-sky-100 text-sky-700 border-sky-200/60 text-[10px] font-semibold uppercase tracking-wide animate-in fade-in"
+                        >
+                          <Sparkles className="h-2.5 w-2.5" />
+                          New
+                        </Badge>
+                      )}
+
+
                       {tier === 'hot' && (
                         <Badge
                           variant="secondary"
