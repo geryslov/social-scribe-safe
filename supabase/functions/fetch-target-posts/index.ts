@@ -218,7 +218,7 @@ function parseApifyItems(items: Record<string, unknown>[]): FetchedPost[] {
         images: item.postImages || item.images || [],
         document: item.document || null,
         reactions: engagement.reactions || null,
-        type: itemType || null,
+        type: (item.type as string) || null,
       },
     });
   }
