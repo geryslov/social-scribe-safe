@@ -33,6 +33,12 @@ interface PostPanelProps {
   isAdmin: boolean;
 }
 
+// Auto-like pacing — humans don't fire likes at API speed.
+// Server enforces a hard daily cap; client adds jittered spacing so the
+// burst pattern doesn't look like a bot to LinkedIn's anti-abuse heuristics.
+const AUTO_LIKE_MIN_DELAY_MS = 6_000;
+const AUTO_LIKE_MAX_DELAY_MS = 12_000;
+
 function timeAgo(dateStr: string | null): string {
   if (!dateStr) return '';
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -61,6 +67,7 @@ export function PostPanel({ target, publisher, isAdmin }: PostPanelProps) {
   const [isFetching, setIsFetching] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [feedFilter, setFeedFilter] = useState<FeedFilter>('live');
+  const [autoLikeCapReached, setAutoLikeCapReached] = useState(false);
 
   const fetchCommentEngagement = useFetchCommentEngagement();
 
@@ -109,21 +116,51 @@ export function PostPanel({ target, publisher, isAdmin }: PostPanelProps) {
     }
   };
 
-  // Auto-like background loop
+  // Auto-like background loop — jittered spacing + server-enforced daily cap
   const autoLikedRef = useRef<Set<string>>(new Set());
+  const autoLikeTimerRef = useRef<number | null>(null);
+
+  // Cap state resets when the publisher changes (different account, different ledger)
   useEffect(() => {
-    if (!target?.auto_like || !posts.length) return;
+    setAutoLikeCapReached(false);
+  }, [publisher.id]);
+
+  useEffect(() => {
+    if (!target?.auto_like || autoLikeCapReached || !posts.length || likingPostId) return;
+
     const next = posts.find(
-      (p) => !p.is_liked && !autoLikedRef.current.has(p.id) && likingPostId !== p.id,
+      (p) => !p.is_liked && !autoLikedRef.current.has(p.id),
     );
     if (!next) return;
+
     autoLikedRef.current.add(next.id);
-    setLikingPostId(next.id);
-    likePost.mutate(
-      { publisher_id: publisher.id, post_id: next.id },
-      { onSettled: () => setLikingPostId(null) },
-    );
-  }, [posts, target?.auto_like, likingPostId, publisher.id, likePost]);
+    setLikingPostId(next.id); // lock immediately so the effect doesn't double-schedule
+
+    const delay = AUTO_LIKE_MIN_DELAY_MS
+      + Math.random() * (AUTO_LIKE_MAX_DELAY_MS - AUTO_LIKE_MIN_DELAY_MS);
+
+    autoLikeTimerRef.current = window.setTimeout(() => {
+      autoLikeTimerRef.current = null;
+      likePost.mutate(
+        { publisher_id: publisher.id, post_id: next.id, auto: true },
+        {
+          onSettled: (data) => {
+            setLikingPostId(null);
+            if (data?.cap_reached) setAutoLikeCapReached(true);
+          },
+        },
+      );
+    }, delay);
+
+    return () => {
+      if (autoLikeTimerRef.current) {
+        window.clearTimeout(autoLikeTimerRef.current);
+        autoLikeTimerRef.current = null;
+        // Free the lock so a manual re-toggle can resume immediately
+        setLikingPostId(null);
+      }
+    };
+  }, [posts, target?.auto_like, likingPostId, publisher.id, likePost, autoLikeCapReached]);
 
   if (!target) {
     return (
@@ -181,11 +218,20 @@ export function PostPanel({ target, publisher, isAdmin }: PostPanelProps) {
         isFetching={isFetching}
         confirmDelete={confirmDelete}
         fetchCommentPending={fetchCommentEngagement.isPending}
+        autoLikeCapReached={autoLikeCapReached}
         onFetchPosts={handleFetch}
         onSyncEngagement={() => fetchCommentEngagement.mutate({ publisher_id: publisher.id })}
         onDelete={handleDelete}
         onToggleAutoLike={(checked) => {
-          if (!checked) autoLikedRef.current.clear();
+          if (!checked) {
+            autoLikedRef.current.clear();
+            if (autoLikeTimerRef.current) {
+              window.clearTimeout(autoLikeTimerRef.current);
+              autoLikeTimerRef.current = null;
+              setLikingPostId(null);
+            }
+            setAutoLikeCapReached(false);
+          }
           updateTarget.mutate({ id: target.id, updates: { auto_like: checked } });
         }}
       />
@@ -274,6 +320,7 @@ interface ProfileBannerProps {
   isFetching: boolean;
   confirmDelete: boolean;
   fetchCommentPending: boolean;
+  autoLikeCapReached: boolean;
   onFetchPosts: () => void;
   onSyncEngagement: () => void;
   onDelete: () => void;
@@ -281,7 +328,7 @@ interface ProfileBannerProps {
 }
 
 function ProfileBanner({
-  target, initials, isAdmin, isFetching, confirmDelete, fetchCommentPending,
+  target, initials, isAdmin, isFetching, confirmDelete, fetchCommentPending, autoLikeCapReached,
   onFetchPosts, onSyncEngagement, onDelete, onToggleAutoLike,
 }: ProfileBannerProps) {
   return (
@@ -323,18 +370,24 @@ function ProfileBanner({
 
       {isAdmin && (
         <div className="flex items-center gap-1.5 flex-shrink-0">
-          {/* Auto-like — high-frequency, stays inline */}
+          {/* Auto-like — high-frequency, stays inline. Dims + relabels when daily cap is reached. */}
           <label
             className={cn(
               'inline-flex items-center gap-1.5 h-7 px-2 rounded-md border text-[10.5px] font-mono uppercase tracking-wider cursor-pointer transition-colors select-none',
-              target.auto_like
-                ? 'bg-amber-50 border-amber-300/60 text-amber-700'
-                : 'bg-background border-border text-muted-foreground hover:text-foreground',
+              autoLikeCapReached && target.auto_like
+                ? 'bg-muted/60 border-border text-muted-foreground'
+                : target.auto_like
+                  ? 'bg-amber-50 border-amber-300/60 text-amber-700'
+                  : 'bg-background border-border text-muted-foreground hover:text-foreground',
             )}
-            title="Automatically like newly synced posts"
+            title={
+              autoLikeCapReached
+                ? 'Daily auto-like cap reached. Resumes tomorrow (00:00 UTC).'
+                : 'Automatically like newly synced posts'
+            }
           >
-            <Zap className={cn('h-3 w-3', target.auto_like && 'fill-current')} />
-            Auto
+            <Zap className={cn('h-3 w-3', target.auto_like && !autoLikeCapReached && 'fill-current')} />
+            {autoLikeCapReached ? 'Capped' : 'Auto'}
             <Switch
               checked={target.auto_like}
               onCheckedChange={onToggleAutoLike}

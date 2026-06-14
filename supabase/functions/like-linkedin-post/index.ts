@@ -5,9 +5,16 @@
 //   POST /v2/reactions?actor={personUrn}
 //   body: { root: <object urn>, reactionType: "LIKE" }
 //
-// Input:  { workspace_id, publisher_id, post_id }
-// Output: { success, already_liked? }
+// Input:  { workspace_id, publisher_id, post_id, auto? }
+// Output: { success, already_liked? } or { success: false, cap_reached: true, count, cap }
+//
+// Daily cap: auto-likes are refused once the publisher has accumulated
+// AUTO_LIKE_DAILY_CAP successful likes since 00:00 UTC. Manual likes
+// (auto=false) bypass the cap because a human button-press is not the
+// bot-pattern we're defending against.
 // =============================================================================
+
+const AUTO_LIKE_DAILY_CAP = 30;
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -18,7 +25,7 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
   try {
-    const { workspace_id, publisher_id, post_id } = await req.json();
+    const { workspace_id, publisher_id, post_id, auto = false } = await req.json();
     if (!workspace_id || !publisher_id || !post_id) {
       return new Response(
         JSON.stringify({ success: false, error: 'workspace_id, publisher_id, post_id required' }),
@@ -39,6 +46,37 @@ Deno.serve(async (req) => {
     if (pubErr || !publisher) {
       return new Response(JSON.stringify({ success: false, error: 'Publisher not found' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    // Daily-cap check (auto-likes only). Refuse before touching LinkedIn API.
+    if (auto) {
+      const todayStart = new Date();
+      todayStart.setUTCHours(0, 0, 0, 0);
+
+      const { data: targets } = await supabase
+        .from('engagement_targets')
+        .select('id')
+        .eq('publisher_id', publisher_id);
+      const targetIds = (targets || []).map((t: { id: string }) => t.id);
+
+      if (targetIds.length > 0) {
+        const { count: likedToday } = await supabase
+          .from('engagement_posts')
+          .select('id', { count: 'exact', head: true })
+          .in('target_id', targetIds)
+          .eq('is_liked', true)
+          .gte('liked_at', todayStart.toISOString());
+
+        if ((likedToday || 0) >= AUTO_LIKE_DAILY_CAP) {
+          return new Response(JSON.stringify({
+            success: false,
+            cap_reached: true,
+            count: likedToday || 0,
+            cap: AUTO_LIKE_DAILY_CAP,
+            error: `Auto-like daily cap reached (${likedToday}/${AUTO_LIKE_DAILY_CAP})`,
+          }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
+      }
     }
 
     const { data: tokenRow } = await supabase

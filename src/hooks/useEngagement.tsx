@@ -58,21 +58,36 @@ export function useLikePost() {
   const { currentWorkspace } = useWorkspace();
 
   return useMutation({
-    mutationFn: async ({ publisher_id, post_id }: { publisher_id: string; post_id: string }) => {
+    mutationFn: async ({ publisher_id, post_id, auto }: { publisher_id: string; post_id: string; auto?: boolean }) => {
       if (!currentWorkspace) throw new Error('No workspace');
       const { data, error } = await supabase.functions.invoke('like-linkedin-post', {
-        body: { workspace_id: currentWorkspace.id, publisher_id, post_id },
+        body: { workspace_id: currentWorkspace.id, publisher_id, post_id, auto: !!auto },
       });
       if (error) throw error;
-      if (!data?.success) throw new Error(data?.error || 'Failed to like post');
-      return data;
+      // cap_reached is a controlled refusal — pass it through, don't throw
+      if (!data?.success && !data?.cap_reached) {
+        throw new Error(data?.error || 'Failed to like post');
+      }
+      return data as { success: boolean; already_liked?: boolean; cap_reached?: boolean; count?: number; cap?: number; urn?: string };
     },
-    onSuccess: (data) => {
+    onSuccess: (data, variables) => {
+      // Daily cap hit — surface once, no row updates
+      if (data?.cap_reached) {
+        toast.warning(`Auto-like paused — daily cap reached (${data.count}/${data.cap})`);
+        return;
+      }
       queryClient.invalidateQueries({ queryKey: ['engagement-posts'] });
       queryClient.invalidateQueries({ queryKey: ['target-counts'] });
+      // Suppress per-row success toast for auto-likes (would be noisy)
+      if (variables.auto) return;
       toast.success(data?.already_liked ? 'Already liked on LinkedIn' : 'Liked on LinkedIn');
     },
-    onError: (error: Error) => {
+    onError: (error: Error, variables) => {
+      // Stay quiet on auto-like failures too — the cap toast already covers the user-visible case
+      if (variables.auto) {
+        console.warn('Auto-like failed:', error.message);
+        return;
+      }
       toast.error('Like failed: ' + error.message);
     },
   });
