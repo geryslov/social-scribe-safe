@@ -331,8 +331,10 @@ export function PostPanel({ target, publisher, isAdmin }: PostPanelProps) {
       {/* ── Feed ───────────────────────────────────────────────────────── */}
       <div className="flex-1 overflow-y-auto">
         {posts.length > 0 && (() => {
+          const newCount = posts.filter(isNewPost).length;
           const counts = {
             all: posts.length,
+            new: newCount,
             fresh: posts.filter((p) => !p.is_commented && !p.is_liked).length,
             engaged: posts.filter((p) => p.is_commented).length,
             liked: posts.filter((p) => p.is_liked).length,
@@ -340,6 +342,7 @@ export function PostPanel({ target, publisher, isAdmin }: PostPanelProps) {
           } as const;
           const tabs: Array<{ id: typeof feedFilter; label: string }> = [
             { id: 'all', label: 'All' },
+            { id: 'new', label: 'New' },
             { id: 'fresh', label: 'Fresh' },
             { id: 'engaged', label: 'Engaged' },
             { id: 'liked', label: 'Liked' },
