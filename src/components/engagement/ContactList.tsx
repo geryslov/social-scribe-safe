@@ -355,86 +355,36 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
           <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
             Profiles ({targets.length})
           </span>
-          <div className="flex gap-1">
-            {isAdmin && targets.length > 0 && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className={cn(
-                  'h-7 w-7 p-0 hover:text-primary',
-                  selectionMode ? 'text-primary bg-primary/10' : 'text-muted-foreground',
-                )}
-                onClick={() => (selectionMode ? exitSelectionMode() : setSelectionMode(true))}
-                title={selectionMode ? 'Exit selection' : 'Select multiple'}
-              >
-                <CheckSquare className="h-3.5 w-3.5" />
-              </Button>
-            )}
-            {isAdmin && targets.length > 0 && !selectionMode && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 w-7 p-0 text-muted-foreground hover:text-primary"
-                onClick={handleFetchAll}
-                disabled={fetchingAll}
-                title="Sync all profiles"
-              >
-                {fetchingAll ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <RefreshCw className="h-3.5 w-3.5" />
-                )}
-              </Button>
-            )}
+          <div className="flex gap-1 items-center">
             {isAdmin && targets.length > 0 && !selectionMode && (() => {
               const missingCount = targets.filter((t) => t.enrichment_status !== 'succeeded').length;
-              if (missingCount === 0 && !reEnriching) return null;
+              const missingPosts = targets.filter(
+                (t) => t.is_active && !freshCounts[t.id] && !doneCounts[t.id] && t.last_fetched_at,
+              ).length;
+              const totalErrored = missingCount + (missingPosts > missingCount ? missingPosts - missingCount : 0);
+              if (totalErrored === 0 && !reEnriching && !resyncing) return null;
+              const isRunning = reEnriching || resyncing;
               return (
                 <Button
                   variant="ghost"
                   size="sm"
                   className="h-7 px-2 text-[11px] font-medium text-amber-600 hover:text-amber-700 hover:bg-amber-500/10"
-                  onClick={handleReEnrichMissing}
-                  disabled={reEnriching}
-                  title="Re-fetch profiles that failed enrichment"
+                  onClick={async () => {
+                    if (missingCount > 0) await handleReEnrichMissing();
+                    if (missingPosts > 0) await handleResyncMissingPosts();
+                  }}
+                  disabled={isRunning}
+                  title="Retry profiles that failed to sync"
                 >
-                  {reEnriching ? (
+                  {isRunning ? (
                     <>
                       <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
-                      {reEnrichProgress.done}/{reEnrichProgress.total}
+                      {(reEnriching ? reEnrichProgress : resyncProgress).done}/{(reEnriching ? reEnrichProgress : resyncProgress).total}
                     </>
                   ) : (
                     <>
                       <Wand2 className="h-3.5 w-3.5 mr-1" />
-                      Auto-fill {missingCount}
-                    </>
-                  )}
-                </Button>
-              );
-            })()}
-            {isAdmin && targets.length > 0 && !selectionMode && (() => {
-              const missingPosts = targets.filter(
-                (t) => t.is_active && !freshCounts[t.id] && !doneCounts[t.id],
-              ).length;
-              if (missingPosts === 0 && !resyncing) return null;
-              return (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 px-2 text-[11px] font-medium text-cyan-600 hover:text-cyan-700 hover:bg-cyan-500/10"
-                  onClick={handleResyncMissingPosts}
-                  disabled={resyncing}
-                  title="Fetch posts for profiles with no posts yet"
-                >
-                  {resyncing ? (
-                    <>
-                      <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
-                      {resyncProgress.done}/{resyncProgress.total}
-                    </>
-                  ) : (
-                    <>
-                      <DownloadCloud className="h-3.5 w-3.5 mr-1" />
-                      Sync posts {missingPosts}
+                      Retry {totalErrored} failed
                     </>
                   )}
                 </Button>
