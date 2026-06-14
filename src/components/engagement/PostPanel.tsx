@@ -1,17 +1,26 @@
 import { useState, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useEngagementPosts, useFetchTargetPosts, EngagementTarget, EngagementPost, useLikePost, useFetchCommentEngagement } from '@/hooks/useEngagement';
+import {
+  useEngagementPosts, useFetchTargetPosts, EngagementTarget, EngagementPost,
+  useLikePost, useFetchCommentEngagement,
+} from '@/hooks/useEngagement';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { Publisher } from '@/hooks/usePublishers';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import {
+  Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription,
+} from '@/components/ui/sheet';
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenuSeparator, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
   ExternalLink, ThumbsUp, MessageSquare, Share2, MessageCircle,
-  Flame, RefreshCw, Loader2, Linkedin, Trash2, Users,
-  CheckCircle2, Building2, Briefcase, Sparkles, Heart, Zap,
+  RefreshCw, Loader2, Linkedin, Trash2, Users, CheckCircle2,
+  Sparkles, Heart, Zap, MoreHorizontal, Activity,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { CommentComposer } from './CommentComposer';
@@ -39,12 +48,7 @@ function engagementScore(post: EngagementPost): number {
   return post.likes_count + post.comments_count * 3 + post.shares_count * 5;
 }
 
-function engagementTier(post: EngagementPost): 'hot' | 'warm' | 'normal' {
-  const total = engagementScore(post);
-  if (total >= 200) return 'hot';
-  if (total >= 50) return 'warm';
-  return 'normal';
-}
+type FeedFilter = 'live' | 'done' | 'liked';
 
 export function PostPanel({ target, publisher, isAdmin }: PostPanelProps) {
   const { currentWorkspace } = useWorkspace();
@@ -52,24 +56,15 @@ export function PostPanel({ target, publisher, isAdmin }: PostPanelProps) {
   const { deleteTarget, updateTarget } = useEngagementTargets(publisher.id);
   const fetchPosts = useFetchTargetPosts();
   const likePost = useLikePost();
-  const [commentingPostId, setCommentingPostId] = useState<string | null>(null);
+  const [composerPost, setComposerPost] = useState<EngagementPost | null>(null);
   const [likingPostId, setLikingPostId] = useState<string | null>(null);
   const [isFetching, setIsFetching] = useState(false);
-  const [deletingTarget, setDeletingTarget] = useState(false);
-  const [feedFilter, setFeedFilter] = useState<'all' | 'new' | 'fresh' | 'engaged' | 'liked' | 'not-liked'>('all');
-
-  // A post is "new" if it landed after the last time the user opened this profile.
-  // Falls back to "synced in the last 24h" if the profile has never been viewed.
-  const lastSeenMs = target?.last_seen_at ? new Date(target.last_seen_at).getTime() : 0;
-  const isNewPost = (p: EngagementPost) => {
-    const created = new Date(p.created_at).getTime();
-    if (lastSeenMs) return created > lastSeenMs;
-    return Date.now() - created < 24 * 60 * 60 * 1000;
-  };
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [feedFilter, setFeedFilter] = useState<FeedFilter>('live');
 
   const fetchCommentEngagement = useFetchCommentEngagement();
 
-  // Fetch all comments for this target's posts to show engagement stats
+  // Posted comments for this target's posts (for the engagement popover)
   const { data: allComments = [] } = useQuery({
     queryKey: ['engagement-comments-by-target', currentWorkspace?.id, target?.id],
     queryFn: async () => {
@@ -88,17 +83,11 @@ export function PostPanel({ target, publisher, isAdmin }: PostPanelProps) {
     enabled: !!currentWorkspace && !!target && posts.some((p) => p.is_commented),
   });
 
-  // Map comments by post_id for quick lookup
   const commentsByPostId = allComments.reduce<Record<string, EngagementComment[]>>((acc, c) => {
     if (!acc[c.post_id]) acc[c.post_id] = [];
     acc[c.post_id].push(c);
     return acc;
   }, {});
-
-  const handleSyncEngagement = () => {
-    if (!publisher) return;
-    fetchCommentEngagement.mutate({ publisher_id: publisher.id });
-  };
 
   const handleFetch = () => {
     if (!currentWorkspace || !target) return;
@@ -111,16 +100,16 @@ export function PostPanel({ target, publisher, isAdmin }: PostPanelProps) {
 
   const handleDelete = () => {
     if (!target) return;
-    if (deletingTarget) {
+    if (confirmDelete) {
       deleteTarget.mutate(target.id);
-      setDeletingTarget(false);
+      setConfirmDelete(false);
     } else {
-      setDeletingTarget(true);
-      setTimeout(() => setDeletingTarget(false), 3000);
+      setConfirmDelete(true);
+      setTimeout(() => setConfirmDelete(false), 3000);
     }
   };
 
-  // Auto-like: when enabled, like any not-yet-liked posts (one at a time, throttled)
+  // Auto-like background loop
   const autoLikedRef = useRef<Set<string>>(new Set());
   useEffect(() => {
     if (!target?.auto_like || !posts.length) return;
@@ -136,17 +125,18 @@ export function PostPanel({ target, publisher, isAdmin }: PostPanelProps) {
     );
   }, [posts, target?.auto_like, likingPostId, publisher.id, likePost]);
 
-
   if (!target) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-gradient-to-br from-muted/20 via-background to-muted/10">
+      <div className="flex-1 flex items-center justify-center bg-background">
         <div className="text-center max-w-sm px-6">
-          <div className="h-16 w-16 mx-auto rounded-2xl bg-primary/5 border border-primary/10 flex items-center justify-center mb-4">
-            <Users className="h-7 w-7 text-primary/40" />
+          <div className="h-14 w-14 mx-auto rounded-2xl bg-amber-50 border border-amber-200/60 flex items-center justify-center mb-4">
+            <Users className="h-6 w-6 text-amber-600/70" />
           </div>
-          <p className="font-display font-semibold text-base text-foreground/80">Pick a profile</p>
-          <p className="text-sm text-muted-foreground/70 mt-1">
-            Select a contact on the left to see their LinkedIn activity and engage from here.
+          <p className="font-display font-semibold text-base text-foreground/80">
+            Pick a profile from today's queue
+          </p>
+          <p className="text-sm text-muted-foreground/70 mt-1.5">
+            Choose someone on the left to read their post and write a comment in your voice.
           </p>
         </div>
       </div>
@@ -160,505 +150,491 @@ export function PostPanel({ target, publisher, isAdmin }: PostPanelProps) {
     .slice(0, 2)
     .toUpperCase();
 
-  // Aggregate stats
-  const totalReactions = posts.reduce((s, p) => s + p.likes_count, 0);
-  const totalComments = posts.reduce((s, p) => s + p.comments_count, 0);
-  const commentedCount = posts.filter((p) => p.is_commented).length;
+  // Filter posts
+  const filtered = posts.filter((p) => {
+    switch (feedFilter) {
+      case 'done': return p.is_commented;
+      case 'liked': return p.is_liked;
+      case 'live':
+      default: return !p.is_commented;
+    }
+  });
+
+  // Spotlight = top engagement score among Live posts
+  const spotlightId = feedFilter === 'live' && filtered.length > 0
+    ? filtered.slice().sort((a, b) => engagementScore(b) - engagementScore(a))[0].id
+    : null;
+
+  const counts = {
+    live: posts.filter((p) => !p.is_commented).length,
+    done: posts.filter((p) => p.is_commented).length,
+    liked: posts.filter((p) => p.is_liked).length,
+  };
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden bg-muted/10">
-      {/* ── Profile header — gradient hero ─────────────────────────────── */}
-      <div className="relative border-b bg-background overflow-hidden">
-        {/* Subtle gradient wash using workspace tokens */}
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.04] via-transparent to-accent/[0.04] pointer-events-none" />
-        <div className="absolute -top-24 -right-24 h-48 w-48 rounded-full bg-primary/[0.06] blur-3xl pointer-events-none" />
+    <div className="flex-1 flex flex-col overflow-hidden bg-background">
+      {/* ── Slim profile banner (48px) ─────────────────────────────────── */}
+      <ProfileBanner
+        target={target}
+        initials={initials}
+        isAdmin={isAdmin}
+        isFetching={isFetching}
+        confirmDelete={confirmDelete}
+        fetchCommentPending={fetchCommentEngagement.isPending}
+        onFetchPosts={handleFetch}
+        onSyncEngagement={() => fetchCommentEngagement.mutate({ publisher_id: publisher.id })}
+        onDelete={handleDelete}
+        onToggleAutoLike={(checked) => {
+          if (!checked) autoLikedRef.current.clear();
+          updateTarget.mutate({ id: target.id, updates: { auto_like: checked } });
+        }}
+      />
 
-        <div className="relative px-7 py-5">
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex items-start gap-4 min-w-0 flex-1">
-              {/* Avatar with ring */}
-              <div className="relative flex-shrink-0">
-                <div className="absolute -inset-0.5 rounded-full bg-gradient-to-br from-primary to-accent opacity-20 blur-sm" />
-                <div className="relative h-16 w-16 rounded-full ring-2 ring-background overflow-hidden bg-primary/10 text-primary text-lg font-bold flex items-center justify-center">
-                  {target.avatar_url ? (
-                    <img
-                      src={target.avatar_url}
-                      alt={target.name}
-                      referrerPolicy="no-referrer"
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    initials
-                  )}
-                </div>
-              </div>
-
-              <div className="min-w-0 flex-1 pt-0.5">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h2 className="font-display font-bold text-xl tracking-tight truncate">
-                    {target.name}
-                  </h2>
-                  <a
-                    href={target.linkedin_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center justify-center h-6 w-6 rounded-md text-[#0A66C2] hover:bg-[#0A66C2]/10 transition-colors"
-                    title="View on LinkedIn"
-                  >
-                    <Linkedin className="h-3.5 w-3.5" />
-                  </a>
-                </div>
-
-                {/* Title + Company chips */}
-                <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-                  {target.title && (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-muted/60 text-[11px] font-medium text-foreground/70">
-                      <Briefcase className="h-3 w-3 text-muted-foreground/60" />
-                      {target.title}
-                    </span>
-                  )}
-                  {target.company_name && (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-muted/60 text-[11px] font-medium text-foreground/70">
-                      <Building2 className="h-3 w-3 text-muted-foreground/60" />
-                      {target.company_name}
-                    </span>
-                  )}
-                  {!target.title && !target.company_name && target.headline && (
-                    <span className="text-xs text-muted-foreground line-clamp-1">{target.headline}</span>
-                  )}
-                </div>
-
-                {/* Inline stats row */}
-                {posts.length > 0 && (
-                  <div className="flex items-center gap-4 mt-3 text-[11px] text-muted-foreground/80">
-                    <span><span className="font-semibold text-foreground/80">{posts.length}</span> posts</span>
-                    <span className="text-border">·</span>
-                    <span><span className="font-semibold text-foreground/80">{totalReactions.toLocaleString()}</span> reactions</span>
-                    <span className="text-border">·</span>
-                    <span><span className="font-semibold text-foreground/80">{totalComments.toLocaleString()}</span> comments</span>
-                    {commentedCount > 0 && (
-                      <>
-                        <span className="text-border">·</span>
-                        <span className="text-emerald-600 font-semibold">{commentedCount} engaged</span>
-                      </>
-                    )}
-                    {target.last_fetched_at && (
-                      <span className="ml-auto text-muted-foreground/50">
-                        Synced {timeAgo(target.last_fetched_at)}
-                      </span>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Actions */}
-            {isAdmin && (
-              <div className="flex items-center gap-2 flex-shrink-0">
-                <label
-                  className={cn(
-                    'flex items-center gap-2 h-9 px-3 rounded-md border text-[11px] font-semibold cursor-pointer transition-all select-none',
-                    target.auto_like
-                      ? 'bg-rose-50 border-rose-200 text-rose-700'
-                      : 'bg-background border-border text-muted-foreground hover:text-foreground',
-                  )}
-                  title="Automatically like newly synced posts from this contact"
-                >
-                  <Zap className={cn('h-3.5 w-3.5', target.auto_like && 'fill-current')} />
-                  Auto-like
-                  <Switch
-                    checked={target.auto_like}
-                    onCheckedChange={(checked) => {
-                      if (!checked) autoLikedRef.current.clear();
-                      updateTarget.mutate({ id: target.id, updates: { auto_like: checked } });
-                    }}
-                    className="ml-1 h-4 w-7 data-[state=checked]:bg-rose-600 [&>span]:h-3 [&>span]:w-3 [&>span]:data-[state=checked]:translate-x-3"
-                  />
-                </label>
-                <Button
-                  size="sm"
-                  className={cn(
-                    'h-9 gap-2 text-xs font-semibold px-3.5',
-                    'bg-gradient-to-r from-primary to-primary/90 hover:from-primary hover:to-primary',
-                    'shadow-sm shadow-primary/20 hover:shadow-md hover:shadow-primary/30',
-                    'transition-all',
-                  )}
-                  disabled={isFetching}
-                  onClick={handleFetch}
-                >
-                  {isFetching ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <RefreshCw className="h-3.5 w-3.5" />
-                  )}
-                  {isFetching ? 'Syncing' : 'Sync posts'}
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-9 gap-1.5 text-xs text-muted-foreground hover:text-primary"
-                  onClick={handleSyncEngagement}
-                  disabled={fetchCommentEngagement.isPending}
-                  title="Check reactions and replies on your comments"
-                >
-                  {fetchCommentEngagement.isPending ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <Zap className="h-3.5 w-3.5" />
-                  )}
-                  {fetchCommentEngagement.isPending ? 'Syncing...' : 'Sync engagement'}
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className={cn(
-                    'h-9 w-9 p-0',
-                    deletingTarget
-                      ? 'text-destructive bg-destructive/10 hover:bg-destructive/15'
-                      : 'text-muted-foreground/60 hover:text-destructive hover:bg-destructive/10',
-                  )}
-                  onClick={handleDelete}
-                  title={deletingTarget ? 'Click again to confirm' : 'Remove contact'}
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-            )}
-          </div>
+      {/* ── 3-segment filter ───────────────────────────────────────────── */}
+      {posts.length > 0 && (
+        <div className="px-6 pt-4 pb-2 flex items-center gap-2">
+          <SegmentedFilter value={feedFilter} onChange={setFeedFilter} counts={counts} />
         </div>
-      </div>
+      )}
 
-      {/* ── Feed ───────────────────────────────────────────────────────── */}
+      {/* ── Reader ─────────────────────────────────────────────────────── */}
       <div className="flex-1 overflow-y-auto">
-        {posts.length > 0 && (() => {
-          const newCount = posts.filter(isNewPost).length;
-          const counts = {
-            all: posts.length,
-            new: newCount,
-            fresh: posts.filter((p) => !p.is_commented && !p.is_liked).length,
-            engaged: posts.filter((p) => p.is_commented).length,
-            liked: posts.filter((p) => p.is_liked).length,
-            'not-liked': posts.filter((p) => !p.is_liked).length,
-          } as const;
-          const tabs: Array<{ id: typeof feedFilter; label: string; activeClass: string }> = [
-            { id: 'all', label: 'All', activeClass: 'bg-primary text-primary-foreground' },
-            { id: 'new', label: 'New', activeClass: 'bg-sky-500 text-white' },
-            { id: 'fresh', label: 'New Posts', activeClass: 'bg-cyan-500 text-white' },
-            { id: 'engaged', label: 'Done', activeClass: 'bg-emerald-500 text-white' },
-            { id: 'liked', label: 'Liked', activeClass: 'bg-primary text-primary-foreground' },
-            { id: 'not-liked', label: 'Not liked', activeClass: 'bg-primary text-primary-foreground' },
-          ];
-          return (
-            <div className="sticky top-0 z-10 px-5 py-2.5 bg-background/80 backdrop-blur border-b flex items-center gap-1.5 overflow-x-auto">
-              {tabs.map((t) => {
-                const active = feedFilter === t.id;
-                const isNewTab = t.id === 'new';
-                const hasNew = isNewTab && counts.new > 0;
-                return (
-                  <button
-                    key={t.id}
-                    onClick={() => setFeedFilter(t.id)}
-                    className={cn(
-                      'inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full text-[11px] font-semibold transition-colors whitespace-nowrap',
-                      active
-                        ? t.activeClass + ' shadow-sm'
-                        : hasNew
-                          ? 'bg-sky-100 text-sky-700 hover:bg-sky-200 ring-1 ring-sky-200'
-                          : 'bg-muted/60 text-muted-foreground hover:text-foreground hover:bg-muted',
-                    )}
-                  >
-                    {isNewTab && <Sparkles className="h-3 w-3" />}
-                    {t.label}
-                    <span className={cn(
-                      'rounded-full px-1.5 text-[10px] tabular-nums',
-                      active ? 'bg-white/25 text-white' : hasNew ? 'bg-white text-sky-700' : 'bg-background text-muted-foreground/70',
-                    )}>
-                      {counts[t.id]}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          );
-        })()}
         {isLoading ? (
-          <div className="px-5 py-5 columns-1 md:columns-2 xl:columns-3 gap-4 [column-fill:_balance]">
-            {[1, 2, 3, 4, 5, 6].map((i) => (
-              <div key={i} className="mb-4 break-inside-avoid rounded-xl border bg-background p-4 space-y-3">
+          <div className="max-w-[680px] mx-auto px-6 py-6 space-y-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="rounded-xl border bg-card p-6 space-y-3">
                 <Skeleton className="h-3 w-1/4" />
                 <Skeleton className="h-4 w-full" />
                 <Skeleton className="h-4 w-11/12" />
                 <Skeleton className="h-4 w-3/4" />
-                <div className="flex gap-3 pt-2">
-                  <Skeleton className="h-4 w-12" />
-                  <Skeleton className="h-4 w-12" />
-                  <Skeleton className="h-4 w-12" />
-                </div>
               </div>
             ))}
           </div>
         ) : posts.length === 0 ? (
+          <EmptyState targetName={target.name} isAdmin={isAdmin} isFetching={isFetching} onFetch={handleFetch} />
+        ) : filtered.length === 0 ? (
           <div className="flex items-center justify-center py-24">
-            <div className="text-center max-w-sm px-6">
-              <div className="h-14 w-14 mx-auto rounded-2xl bg-gradient-to-br from-primary/10 to-accent/10 border border-primary/10 flex items-center justify-center mb-4">
-                <Sparkles className="h-6 w-6 text-primary/60" />
-              </div>
-              <p className="font-display font-semibold text-base">No posts yet</p>
-              <p className="text-sm text-muted-foreground/70 mt-1 mb-4">
-                Sync to pull the latest LinkedIn activity from <span className="text-foreground/80 font-medium">{target.name}</span>.
-              </p>
-              {isAdmin && (
-                <Button
-                  size="sm"
-                  onClick={handleFetch}
-                  disabled={isFetching}
-                  className="gap-1.5 bg-gradient-to-r from-primary to-primary/90 shadow-sm shadow-primary/20"
-                >
-                  {isFetching ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
-                  Sync now
-                </Button>
+            <p className="text-sm text-muted-foreground">No posts in this view.</p>
+          </div>
+        ) : (
+          <div className="max-w-[680px] mx-auto px-6 py-6 space-y-4">
+            {filtered.map((post) => (
+              <PostCard
+                key={post.id}
+                post={post}
+                isSpotlight={post.id === spotlightId}
+                isLiking={likingPostId === post.id}
+                commentsForPost={commentsByPostId[post.id] || []}
+                isAdmin={isAdmin}
+                onLike={() => {
+                  setLikingPostId(post.id);
+                  likePost.mutate(
+                    { publisher_id: publisher.id, post_id: post.id },
+                    { onSettled: () => setLikingPostId(null) },
+                  );
+                }}
+                onEngage={() => setComposerPost(post)}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* ── Composer sheet ─────────────────────────────────────────────── */}
+      <Sheet open={!!composerPost} onOpenChange={(open) => !open && setComposerPost(null)}>
+        <SheetContent
+          side="bottom"
+          className="max-w-[720px] mx-auto rounded-t-2xl border-t-2 border-amber-200/40 p-0 max-h-[80vh] overflow-hidden flex flex-col"
+        >
+          <SheetHeader className="sr-only">
+            <SheetTitle>Engage with {target.name}'s post</SheetTitle>
+            <SheetDescription>Draft and post a comment.</SheetDescription>
+          </SheetHeader>
+          {composerPost && (
+            <CommentComposer
+              post={composerPost}
+              publisher={publisher}
+              onClose={() => setComposerPost(null)}
+            />
+          )}
+        </SheetContent>
+      </Sheet>
+    </div>
+  );
+}
+
+// -----------------------------------------------------------------------------
+// ProfileBanner
+// -----------------------------------------------------------------------------
+
+interface ProfileBannerProps {
+  target: EngagementTarget;
+  initials: string;
+  isAdmin: boolean;
+  isFetching: boolean;
+  confirmDelete: boolean;
+  fetchCommentPending: boolean;
+  onFetchPosts: () => void;
+  onSyncEngagement: () => void;
+  onDelete: () => void;
+  onToggleAutoLike: (checked: boolean) => void;
+}
+
+function ProfileBanner({
+  target, initials, isAdmin, isFetching, confirmDelete, fetchCommentPending,
+  onFetchPosts, onSyncEngagement, onDelete, onToggleAutoLike,
+}: ProfileBannerProps) {
+  return (
+    <div className="h-14 px-6 border-b flex items-center gap-3 bg-background">
+      <div className="h-9 w-9 rounded-full overflow-hidden bg-muted text-foreground/60 flex items-center justify-center text-[11px] font-bold flex-shrink-0">
+        {target.avatar_url ? (
+          <img
+            src={target.avatar_url}
+            alt={target.name}
+            referrerPolicy="no-referrer"
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          initials
+        )}
+      </div>
+
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-1.5">
+          <h2 className="font-display font-semibold text-[15px] leading-tight truncate">
+            {target.name}
+          </h2>
+          <a
+            href={target.linkedin_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center justify-center h-5 w-5 rounded text-[#0A66C2]/70 hover:text-[#0A66C2] hover:bg-[#0A66C2]/10 transition-colors"
+            title="View on LinkedIn"
+          >
+            <Linkedin className="h-3 w-3" />
+          </a>
+        </div>
+        {(target.title || target.company_name) && (
+          <p className="text-[11px] text-muted-foreground truncate leading-tight">
+            {[target.title, target.company_name].filter(Boolean).join(' · ')}
+          </p>
+        )}
+      </div>
+
+      {isAdmin && (
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          {/* Auto-like — high-frequency, stays inline */}
+          <label
+            className={cn(
+              'inline-flex items-center gap-1.5 h-7 px-2 rounded-md border text-[10.5px] font-mono uppercase tracking-wider cursor-pointer transition-colors select-none',
+              target.auto_like
+                ? 'bg-amber-50 border-amber-300/60 text-amber-700'
+                : 'bg-background border-border text-muted-foreground hover:text-foreground',
+            )}
+            title="Automatically like newly synced posts"
+          >
+            <Zap className={cn('h-3 w-3', target.auto_like && 'fill-current')} />
+            Auto
+            <Switch
+              checked={target.auto_like}
+              onCheckedChange={onToggleAutoLike}
+              className="ml-0.5 h-3.5 w-6 data-[state=checked]:bg-amber-500 [&>span]:h-2.5 [&>span]:w-2.5 [&>span]:data-[state=checked]:translate-x-2.5"
+            />
+          </label>
+
+          {/* Sync icon */}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+            disabled={isFetching}
+            onClick={onFetchPosts}
+            title="Sync posts"
+          >
+            {isFetching ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <RefreshCw className="h-3.5 w-3.5" />
+            )}
+          </Button>
+
+          {/* Overflow */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+              >
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-52">
+              <DropdownMenuItem onClick={onSyncEngagement} disabled={fetchCommentPending}>
+                {fetchCommentPending ? (
+                  <Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" />
+                ) : (
+                  <Activity className="h-3.5 w-3.5 mr-2" />
+                )}
+                Refresh engagement stats
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={onDelete}
+                className={cn(
+                  'text-destructive focus:text-destructive',
+                  confirmDelete && 'bg-destructive/10',
+                )}
+              >
+                <Trash2 className="h-3.5 w-3.5 mr-2" />
+                {confirmDelete ? 'Click again to confirm' : 'Remove profile'}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// -----------------------------------------------------------------------------
+// SegmentedFilter
+// -----------------------------------------------------------------------------
+
+interface SegmentedFilterProps {
+  value: FeedFilter;
+  onChange: (v: FeedFilter) => void;
+  counts: { live: number; done: number; liked: number };
+}
+
+function SegmentedFilter({ value, onChange, counts }: SegmentedFilterProps) {
+  const segments: Array<{ id: FeedFilter; label: string; count: number; activeClass: string }> = [
+    { id: 'live', label: 'Live', count: counts.live, activeClass: 'bg-amber-500 text-white shadow-sm' },
+    { id: 'done', label: 'Done', count: counts.done, activeClass: 'bg-emerald-600 text-white shadow-sm' },
+    { id: 'liked', label: 'Liked', count: counts.liked, activeClass: 'bg-rose-500 text-white shadow-sm' },
+  ];
+  return (
+    <div className="inline-flex items-center gap-0.5 p-0.5 rounded-lg bg-muted/60 border">
+      {segments.map((s) => {
+        const active = value === s.id;
+        return (
+          <button
+            key={s.id}
+            type="button"
+            onClick={() => onChange(s.id)}
+            className={cn(
+              'inline-flex items-center gap-1.5 h-7 px-3 rounded-md text-[11px] font-semibold transition-colors',
+              active
+                ? s.activeClass
+                : 'text-muted-foreground hover:text-foreground',
+            )}
+          >
+            {s.label}
+            <span className={cn(
+              'tabular-nums text-[10px] font-mono',
+              active ? 'text-white/85' : 'text-muted-foreground/60',
+            )}>
+              {s.count}
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+// -----------------------------------------------------------------------------
+// PostCard — editorial reader card
+// -----------------------------------------------------------------------------
+
+interface PostCardProps {
+  post: EngagementPost;
+  isSpotlight: boolean;
+  isLiking: boolean;
+  isAdmin: boolean;
+  commentsForPost: EngagementComment[];
+  onLike: () => void;
+  onEngage: () => void;
+}
+
+function PostCard({
+  post, isSpotlight, isLiking, isAdmin, commentsForPost, onLike, onEngage,
+}: PostCardProps) {
+  const topComment = commentsForPost[0];
+  const reactions = topComment?.reaction_count || 0;
+  const replies = topComment?.reply_count || 0;
+
+  return (
+    <article
+      className={cn(
+        'relative rounded-xl border bg-card transition-all duration-200',
+        isSpotlight && 'border-amber-300/60 shadow-[0_2px_24px_-4px_hsl(43_96%_56%/0.15)]',
+        post.is_commented && 'border-border/60',
+      )}
+    >
+      {isSpotlight && (
+        <div className="absolute left-0 top-6 bottom-6 w-0.5 rounded-r bg-amber-400" />
+      )}
+
+      <div className="px-6 py-5">
+        {/* Spotlight micro-label */}
+        {isSpotlight && (
+          <p className="text-[9.5px] font-mono uppercase tracking-[0.18em] text-amber-700 mb-2.5">
+            ◆ Spotlight
+          </p>
+        )}
+
+        {/* Author meta strip */}
+        <div className="flex items-center gap-2 text-[11px] font-mono uppercase tracking-wider text-muted-foreground mb-3.5">
+          {post.is_commented && (
+            <span className="inline-flex items-center gap-1 text-emerald-700">
+              <CheckCircle2 className="h-3 w-3" />
+              you replied
+            </span>
+          )}
+          {post.is_commented && <span className="text-border">·</span>}
+          {post.published_at && (
+            <span title={new Date(post.published_at).toLocaleString()}>
+              {timeAgo(post.published_at)}
+            </span>
+          )}
+          <a
+            href={post.linkedin_post_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="ml-auto inline-flex items-center gap-1 text-muted-foreground/60 hover:text-primary transition-colors normal-case tracking-normal font-sans text-[11px]"
+            title="Open on LinkedIn"
+          >
+            Open <ExternalLink className="h-3 w-3" />
+          </a>
+        </div>
+
+        {/* Post content — editorial */}
+        {post.content ? (
+          <p className="font-display text-[16.5px] leading-[1.6] whitespace-pre-wrap text-foreground/90">
+            {post.content}
+          </p>
+        ) : (
+          <p className="text-sm text-muted-foreground italic">
+            Media post (image / video / document)
+          </p>
+        )}
+
+        {/* Metric row */}
+        <div className="flex items-center gap-4 mt-5 pt-4 border-t border-border/50 text-[11px] text-muted-foreground/80">
+          {post.likes_count > 0 && (
+            <span className="inline-flex items-center gap-1 tabular-nums">
+              <ThumbsUp className="h-3 w-3" />
+              {post.likes_count.toLocaleString()}
+            </span>
+          )}
+          {post.comments_count > 0 && (
+            <span className="inline-flex items-center gap-1 tabular-nums">
+              <MessageSquare className="h-3 w-3" />
+              {post.comments_count.toLocaleString()}
+            </span>
+          )}
+          {post.shares_count > 0 && (
+            <span className="inline-flex items-center gap-1 tabular-nums">
+              <Share2 className="h-3 w-3" />
+              {post.shares_count.toLocaleString()}
+            </span>
+          )}
+          {engagementScore(post) === 0 && (
+            <span className="text-muted-foreground/50">No engagement yet</span>
+          )}
+
+          {/* Your reply stats */}
+          {post.is_commented && topComment && (
+            <span className="ml-auto inline-flex items-center gap-1">
+              <span className="text-emerald-700 font-medium">your reply:</span>
+              <CommentEngagementPopover
+                engagementCommentId={topComment.id}
+                reactionCount={reactions}
+                replyCount={replies}
+                commentText={topComment.comment_text}
+                postedAt={topComment.posted_at}
+              />
+            </span>
+          )}
+        </div>
+
+        {/* Actions */}
+        {isAdmin && (
+          <div className="flex items-center gap-2 mt-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={isLiking || post.is_liked}
+              className={cn(
+                'h-8 gap-1.5 text-xs font-semibold px-3 transition-all',
+                post.is_liked
+                  ? 'text-rose-600 bg-rose-50 hover:bg-rose-50'
+                  : 'text-muted-foreground hover:text-rose-600 hover:bg-rose-50',
               )}
-            </div>
+              onClick={onLike}
+            >
+              {isLiking ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Heart className={cn('h-3.5 w-3.5', post.is_liked && 'fill-current')} />
+              )}
+              {post.is_liked ? 'Liked' : 'Like'}
+            </Button>
+            <Button
+              size="sm"
+              className={cn(
+                'h-8 gap-1.5 text-xs font-semibold px-3.5 transition-all',
+                isSpotlight
+                  ? 'bg-amber-500 hover:bg-amber-600 text-white shadow-sm shadow-amber-500/30'
+                  : 'bg-primary hover:bg-primary/90 text-primary-foreground',
+              )}
+              onClick={onEngage}
+            >
+              <MessageCircle className="h-3.5 w-3.5" />
+              {post.is_commented ? 'Reply again' : 'Engage'}
+            </Button>
           </div>
-        ) : (() => {
-          const filtered = posts.filter((p) => {
-            switch (feedFilter) {
-              case 'new': return isNewPost(p);
-              case 'fresh': return !p.is_commented && !p.is_liked;
-              case 'engaged': return p.is_commented;
-              case 'liked': return p.is_liked;
-              case 'not-liked': return !p.is_liked;
-              default: return true;
-            }
-          });
-          // Bubble brand-new posts to the top when viewing All
-          const sorted = feedFilter === 'all'
-            ? [...filtered].sort((a, b) => Number(isNewPost(b)) - Number(isNewPost(a)))
-            : filtered;
-          if (sorted.length === 0) {
-            return (
-              <div className="flex items-center justify-center py-20">
-                <p className="text-sm text-muted-foreground">No posts match this filter.</p>
-              </div>
-            );
-          }
-          return (
-          <div className="px-5 py-5 columns-1 md:columns-2 xl:columns-3 gap-4 [column-fill:_balance]">
-            {sorted.map((post: EngagementPost) => {
-              const tier = engagementTier(post);
-              const isCommenting = commentingPostId === post.id;
-              const isNew = isNewPost(post);
+        )}
+      </div>
+    </article>
+  );
+}
 
-              return (
-                <article
-                  key={post.id}
-                  className={cn(
-                    'group relative mb-4 break-inside-avoid rounded-xl border bg-background transition-all duration-200',
-                    'hover:border-primary/30 hover:shadow-[0_4px_20px_-4px_hsl(var(--primary)/0.08)]',
-                    tier === 'hot' && 'border-primary/30 shadow-[0_2px_12px_-2px_hsl(var(--primary)/0.12)]',
-                    post.is_commented && 'border-emerald-500/30 bg-emerald-50/30',
-                    isNew && !post.is_commented && 'border-sky-400/50 bg-sky-50/40 shadow-[0_2px_12px_-2px_hsl(210_90%_55%/0.15)]',
-                    isCommenting && 'border-primary/50 shadow-[0_4px_20px_-2px_hsl(var(--primary)/0.18)] ring-1 ring-primary/20',
-                  )}
-                >
-                  {isNew && !post.is_commented && (
-                    <div className="absolute left-0 top-4 bottom-4 w-0.5 rounded-r bg-gradient-to-b from-sky-400 to-cyan-400" />
-                  )}
-                  {/* Left accent stripe for hot posts */}
-                  {tier === 'hot' && !post.is_commented && (
-                    <div className="absolute left-0 top-4 bottom-4 w-0.5 rounded-r bg-gradient-to-b from-primary to-accent" />
-                  )}
+// -----------------------------------------------------------------------------
+// EmptyState
+// -----------------------------------------------------------------------------
 
-                  <div className="px-4 py-3.5">
-                    {/* Top row — meta + tags */}
-                    <div className="flex items-center gap-2 mb-2.5">
-                      <span
-                        className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-foreground/80 bg-muted/60 rounded-md px-2 py-0.5"
-                        title={post.published_at ? new Date(post.published_at).toLocaleString() : ''}
-                      >
-                        {post.published_at && (
-                          <span className="tabular-nums">
-                            {new Date(post.published_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-                          </span>
-                        )}
-                        <span className="text-muted-foreground/70 font-normal">· {timeAgo(post.published_at)}</span>
-                      </span>
-
-                      {isNew && (
-                        <Badge
-                          variant="secondary"
-                          className="h-5 gap-1 px-1.5 bg-sky-100 text-sky-700 border-sky-200/60 text-[10px] font-semibold uppercase tracking-wide animate-in fade-in"
-                        >
-                          <Sparkles className="h-2.5 w-2.5" />
-                          New
-                        </Badge>
-                      )}
-
-
-                      {tier === 'hot' && (
-                        <Badge
-                          variant="secondary"
-                          className="h-5 gap-1 px-1.5 bg-gradient-to-r from-primary/10 to-accent/10 text-primary border-primary/20 text-[10px] font-semibold uppercase tracking-wide"
-                        >
-                          <Flame className="h-2.5 w-2.5" />
-                          Hot
-                        </Badge>
-                      )}
-                      {tier === 'warm' && !post.is_commented && (
-                        <Badge
-                          variant="secondary"
-                          className="h-5 px-1.5 bg-amber-50 text-amber-700 border-amber-200/60 text-[10px] font-semibold uppercase tracking-wide"
-                        >
-                          Warm
-                        </Badge>
-                      )}
-                      {post.is_commented && (() => {
-                        const postComments = commentsByPostId[post.id] || [];
-                        const topComment = postComments[0];
-                        const reactions = topComment?.reaction_count || 0;
-                        const replies = topComment?.reply_count || 0;
-                        return (
-                          <>
-                            <Badge
-                              variant="secondary"
-                              className="h-5 gap-1 px-1.5 bg-emerald-100 text-emerald-700 border-emerald-200/60 text-[10px] font-semibold uppercase tracking-wide"
-                            >
-                              <CheckCircle2 className="h-2.5 w-2.5" />
-                              Replied
-                            </Badge>
-                            {topComment && (
-                              <CommentEngagementPopover
-                                engagementCommentId={topComment.id}
-                                reactionCount={reactions}
-                                replyCount={replies}
-                                commentText={topComment.comment_text}
-                                postedAt={topComment.posted_at}
-                              />
-                            )}
-                          </>
-                        );
-                      })()}
-                      {post.is_liked && (
-                        <Badge
-                          variant="secondary"
-                          className="h-5 gap-1 px-1.5 bg-rose-50 text-rose-600 border-rose-200/60 text-[10px] font-semibold uppercase tracking-wide"
-                        >
-                          <Heart className="h-2.5 w-2.5 fill-current" />
-                          Liked
-                        </Badge>
-                      )}
-
-
-                      <a
-                        href={post.linkedin_post_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="ml-auto inline-flex items-center justify-center h-6 w-6 rounded-md text-muted-foreground/50 hover:text-primary hover:bg-primary/10 transition-colors opacity-0 group-hover:opacity-100"
-                        title="Open on LinkedIn"
-                      >
-                        <ExternalLink className="h-3.5 w-3.5" />
-                      </a>
-                    </div>
-
-                    {/* Content */}
-                    {post.content ? (
-                      <p className="text-[13.5px] leading-[1.6] whitespace-pre-wrap text-foreground/90">
-                        {post.content}
-                      </p>
-                    ) : (
-                      <p className="text-sm text-muted-foreground italic">
-                        Media post (image / video / document)
-                      </p>
-                    )}
-
-                    {/* Footer — metrics + actions */}
-                    <div className="flex items-center justify-between mt-4 pt-3 border-t border-border/50">
-                      <div className="flex items-center gap-1">
-                        {post.likes_count > 0 && (
-                          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold text-rose-600/90 hover:bg-rose-50 transition-colors">
-                            <ThumbsUp className="h-3 w-3" />
-                            {post.likes_count.toLocaleString()}
-                          </span>
-                        )}
-                        {post.comments_count > 0 && (
-                          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold text-sky-600/90 hover:bg-sky-50 transition-colors">
-                            <MessageSquare className="h-3 w-3" />
-                            {post.comments_count.toLocaleString()}
-                          </span>
-                        )}
-                        {post.shares_count > 0 && (
-                          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold text-emerald-600/90 hover:bg-emerald-50 transition-colors">
-                            <Share2 className="h-3 w-3" />
-                            {post.shares_count.toLocaleString()}
-                          </span>
-                        )}
-                        {engagementScore(post) === 0 && (
-                          <span className="text-[11px] text-muted-foreground/50 px-2">No engagement yet</span>
-                        )}
-                      </div>
-
-                      {isAdmin && (
-                        <div className="flex items-center gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            disabled={likingPostId === post.id || post.is_liked}
-                            className={cn(
-                              'h-7 gap-1.5 text-xs font-semibold px-2.5 transition-all',
-                              post.is_liked
-                                ? 'text-rose-600 bg-rose-50 hover:bg-rose-50'
-                                : 'text-muted-foreground hover:text-rose-600 hover:bg-rose-50',
-                            )}
-                            onClick={() => {
-                              setLikingPostId(post.id);
-                              likePost.mutate(
-                                { publisher_id: publisher.id, post_id: post.id },
-                                { onSettled: () => setLikingPostId(null) },
-                              );
-                            }}
-                          >
-                            {likingPostId === post.id ? (
-                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                            ) : (
-                              <Heart className={cn('h-3.5 w-3.5', post.is_liked && 'fill-current')} />
-                            )}
-                            {post.is_liked ? 'Liked' : 'Like'}
-                          </Button>
-                          <Button
-                            variant={isCommenting ? 'default' : 'ghost'}
-                            size="sm"
-                            className={cn(
-                              'h-7 gap-1.5 text-xs font-semibold px-2.5 transition-all',
-                              isCommenting
-                                ? 'bg-primary text-primary-foreground shadow-sm shadow-primary/20'
-                                : 'text-primary hover:text-primary hover:bg-primary/10',
-                            )}
-                            onClick={() => setCommentingPostId(isCommenting ? null : post.id)}
-                          >
-                            <MessageCircle className="h-3.5 w-3.5" />
-                            {post.is_commented ? 'Reply again' : 'Engage'}
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Composer */}
-                    {isCommenting && (
-                      <div className="mt-3 pt-3 border-t border-primary/15 animate-in slide-in-from-top-2 fade-in duration-200">
-                        <CommentComposer
-                          post={post}
-                          publisher={publisher}
-                          onClose={() => setCommentingPostId(null)}
-                        />
-                      </div>
-                    )}
-                  </div>
-                </article>
-              );
-            })}
-          </div>
-          );
-        })()}
+function EmptyState({
+  targetName, isAdmin, isFetching, onFetch,
+}: {
+  targetName: string;
+  isAdmin: boolean;
+  isFetching: boolean;
+  onFetch: () => void;
+}) {
+  return (
+    <div className="flex items-center justify-center py-24">
+      <div className="text-center max-w-sm px-6">
+        <div className="h-14 w-14 mx-auto rounded-2xl bg-amber-50 border border-amber-200/60 flex items-center justify-center mb-4">
+          <Sparkles className="h-6 w-6 text-amber-600/70" />
+        </div>
+        <p className="font-display font-semibold text-base">No posts yet</p>
+        <p className="text-sm text-muted-foreground/70 mt-1 mb-4">
+          Sync to pull the latest LinkedIn activity from{' '}
+          <span className="text-foreground/80 font-medium">{targetName}</span>.
+        </p>
+        {isAdmin && (
+          <Button
+            size="sm"
+            onClick={onFetch}
+            disabled={isFetching}
+            className="gap-1.5"
+          >
+            {isFetching ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+            Sync now
+          </Button>
+        )}
       </div>
     </div>
   );

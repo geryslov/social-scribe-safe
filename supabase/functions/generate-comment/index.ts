@@ -5,7 +5,7 @@
 // Phase 2: Generate comment using type-specific strategy + publisher voice
 //
 // Input:  { post_content, author_name, publisher_name, voice_profile? }
-// Output: { success, comment }
+// Output: { success, comment, classification }
 // =============================================================================
 
 const corsHeaders = {
@@ -13,9 +13,9 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const SYSTEM_PROMPT = `You are a comment-writing agent. You work in two phases.
+const SYSTEM_PROMPT = `You are a comment-writing agent. You work in two phases and return a structured JSON response.
 
-PHASE 1 — CLASSIFY THE POST (do this silently, do not output it)
+PHASE 1 — CLASSIFY THE POST
 
 Read the post and determine:
 - post_type: match against these known types, or create a new one if none fit:
@@ -34,10 +34,8 @@ Read the post and determine:
 
   If the post doesn't fit any of these, create a new type label that describes it and infer the comment strategy from the post's nature.
 
-- subject: the company, person, or product the post is about (by name)
-- key_entities: specific names, companies, investors, stats, people mentioned
-- core_event: what HAPPENED, in one short phrase
-- emotional_tone: the author's emotional register
+- subject: the company, person, or product the post is about (by name, short)
+- comment_strategy: one short phrase describing what to focus the comment on (e.g. "1-sentence congrats mentioning company")
 
 PHASE 2 — WRITE THE COMMENT
 
@@ -89,7 +87,14 @@ ABSOLUTE RULES (apply to ALL types, override everything):
 5. Respond to what HAPPENED or what was ARGUED, not the general topic area.
 6. Max 2 sentences. 1 is usually better.
 7. Match the publisher's voice profile for tone, vocabulary, and formality. The voice profile decides HOW you sound. The classification decides WHAT you talk about.
-8. Output raw comment text only. No quotes, no "Comment:", no headers, no formatting.`;
+
+OUTPUT FORMAT
+
+Return ONLY a JSON object, nothing else, no markdown fences:
+
+{"post_type":"...","subject":"...","comment_strategy":"...","comment":"..."}
+
+The comment field is the raw comment text only. No quotes inside, no "Comment:" prefix, no headers.`;
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -122,7 +127,7 @@ Deno.serve(async (req) => {
       userMessage += `You are ${publisher_name}.\n\n`;
     }
 
-    userMessage += `Post by ${author_name || 'someone'}:\n\n"""\n${post_content.slice(0, 2500)}\n"""\n\nClassify this post silently in your head, then output ONLY your comment text. Nothing else. No labels, no headers, no classification output.`;
+    userMessage += `Post by ${author_name || 'someone'}:\n\n"""\n${post_content.slice(0, 2500)}\n"""\n\nClassify it and write the comment. Return the JSON object only.`;
 
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -133,7 +138,7 @@ Deno.serve(async (req) => {
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-5-20250929',
-        max_tokens: 100,
+        max_tokens: 300,
         system: SYSTEM_PROMPT,
         messages: [{ role: 'user', content: userMessage }],
       }),
@@ -149,18 +154,42 @@ Deno.serve(async (req) => {
     }
 
     const data = await res.json();
-    let comment = data.content?.[0]?.text?.trim() || '';
+    const raw = (data.content?.[0]?.text || '').trim();
 
-    // Strip classification output if Claude leaked it
-    comment = comment.replace(/\*\*CLASSIFICATION[^*]*\*\*[\s\S]*?(?=\n[A-Z]|$)/i, '').trim();
-    comment = comment.replace(/^[\s\S]*?(?:post_type|emotional_tone|core_event)[^\n]*\n/gim, '').trim();
-    comment = comment.replace(/^-\s*(post_type|subject|key_entities|core_event|emotional_tone|comment_strategy)[:\s][^\n]*\n?/gim, '').trim();
-    // Strip other artifacts
+    let comment = '';
+    let classification: { post_type?: string; subject?: string; comment_strategy?: string } = {};
+
+    // Try parsing as JSON first (the expected path)
+    const jsonMatch = raw.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      try {
+        const parsed = JSON.parse(jsonMatch[0]);
+        if (typeof parsed.comment === 'string') {
+          comment = parsed.comment.trim();
+        }
+        classification = {
+          post_type: typeof parsed.post_type === 'string' ? parsed.post_type : undefined,
+          subject: typeof parsed.subject === 'string' ? parsed.subject : undefined,
+          comment_strategy: typeof parsed.comment_strategy === 'string' ? parsed.comment_strategy : undefined,
+        };
+      } catch {
+        // fall through to raw-text fallback
+      }
+    }
+
+    // Fallback: treat the response as raw comment text with old strip logic
+    if (!comment) {
+      comment = raw;
+      comment = comment.replace(/\*\*CLASSIFICATION[^*]*\*\*[\s\S]*?(?=\n[A-Z]|$)/i, '').trim();
+      comment = comment.replace(/^[\s\S]*?(?:post_type|emotional_tone|core_event)[^\n]*\n/gim, '').trim();
+      comment = comment.replace(/^-\s*(post_type|subject|key_entities|core_event|emotional_tone|comment_strategy)[:\s][^\n]*\n?/gim, '').trim();
+      const paragraphs = comment.split('\n\n').map((p: string) => p.trim()).filter(Boolean);
+      comment = paragraphs[paragraphs.length - 1] || comment;
+    }
+
+    // Common cleanup on the comment
     comment = comment.replace(/^["'`]+|["'`]+$/g, '');
     comment = comment.replace(/^(Comment|Reply|Response|Here'?s my comment|\*\*Comment[:\s]*\*\*)[:\s]*/i, '');
-    // Take last paragraph (the actual comment) if classification leaked before it
-    const paragraphs = comment.split('\n\n').map((p: string) => p.trim()).filter(Boolean);
-    comment = paragraphs[paragraphs.length - 1] || comment;
     comment = comment.trim();
 
     if (!comment) {
@@ -171,7 +200,7 @@ Deno.serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ success: true, comment }),
+      JSON.stringify({ success: true, comment, classification }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     );
 

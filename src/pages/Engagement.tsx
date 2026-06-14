@@ -1,15 +1,23 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { Header } from '@/components/Header';
 import { useAuth } from '@/hooks/useAuth';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { usePublishers, Publisher } from '@/hooks/usePublishers';
 import { Navigate } from 'react-router-dom';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Popover, PopoverContent, PopoverTrigger,
+} from '@/components/ui/popover';
+import { Button } from '@/components/ui/button';
 import { ContactList } from '@/components/engagement/ContactList';
 import { PostPanel } from '@/components/engagement/PostPanel';
-import { SyncStatusBar } from '@/components/engagement/SyncStatusBar';
 import { EngagementTarget, useEngagementTargets } from '@/hooks/useEngagement';
-import { MessageCircle } from 'lucide-react';
+import { useEngagementSync, getNextScheduledSync } from '@/hooks/useEngagementSync';
+import {
+  RefreshCw, Loader2, ChevronDown, Check, Play, Clock,
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 export default function Engagement() {
   const { user, isAdmin } = useAuth();
@@ -21,7 +29,6 @@ export default function Engagement() {
 
   const handleSelectTarget = (target: EngagementTarget) => {
     setSelectedTarget(target);
-    // Mark as seen to clear the unseen badge
     markSeen.mutate(target.id);
   };
 
@@ -37,43 +44,24 @@ export default function Engagement() {
     <div className="min-h-screen bg-background">
       <Header />
       <main id="main-content" className="h-[calc(100vh-3.5rem)] flex flex-col">
-        {/* Top bar */}
-        <div className="flex items-center justify-between px-5 py-3 border-b bg-background">
-          <div className="flex items-center gap-3">
-            <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
-              <MessageCircle className="h-4 w-4 text-primary" />
-            </div>
-            <div>
-              <h1 className="text-base font-display font-bold tracking-tight leading-none">Engagement</h1>
-              <p className="text-[11px] text-muted-foreground mt-0.5">
-                Monitor profiles, fetch posts, engage
-              </p>
-            </div>
-          </div>
+        {/* ── Command bar ─────────────────────────────────────────────── */}
+        <CommandBar
+          selectedPublisher={selectedPublisher}
+          publishers={publishers}
+          onSelectPublisher={(id) => {
+            setSelectedPublisherId(id);
+            setSelectedTarget(null);
+          }}
+        />
 
-          <Select value={selectedPublisherId || ''} onValueChange={(id) => { setSelectedPublisherId(id); setSelectedTarget(null); }}>
-            <SelectTrigger className="w-[180px] h-8 text-sm focus:ring-primary/30">
-              <SelectValue placeholder="Select publisher" />
-            </SelectTrigger>
-            <SelectContent>
-              {publishers.map((p: Publisher) => (
-                <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <SyncStatusBar />
-
-        {/* Master-detail layout */}
+        {/* ── Master-detail body ──────────────────────────────────────── */}
         {!selectedPublisher ? (
           <div className="flex-1 flex items-center justify-center text-muted-foreground">
-            {pubsLoading ? 'Loading publishers...' : 'No publishers in this workspace.'}
+            {pubsLoading ? 'Loading publishers…' : 'No publishers in this workspace.'}
           </div>
         ) : (
           <div className="flex-1 flex overflow-hidden">
-            {/* Left: Contact list (fixed 340px) */}
-            <div className="w-[340px] flex-shrink-0 border-r flex flex-col bg-muted/20">
+            <div className="w-[320px] flex-shrink-0 border-r flex flex-col bg-muted/10">
               <ContactList
                 publisher={selectedPublisher}
                 isAdmin={isAdmin}
@@ -81,8 +69,6 @@ export default function Engagement() {
                 onSelectTarget={handleSelectTarget}
               />
             </div>
-
-            {/* Right: Post detail panel */}
             <div className="flex-1 flex flex-col overflow-hidden">
               <PostPanel
                 target={selectedTarget}
@@ -93,6 +79,261 @@ export default function Engagement() {
           </div>
         )}
       </main>
+    </div>
+  );
+}
+
+// =============================================================================
+// CommandBar — eyebrow + publisher switcher + day counter + sync controls
+// =============================================================================
+
+interface CommandBarProps {
+  selectedPublisher: Publisher | null;
+  publishers: Publisher[];
+  onSelectPublisher: (id: string) => void;
+}
+
+function CommandBar({ selectedPublisher, publishers, onSelectPublisher }: CommandBarProps) {
+  const { runNow, lastRun, settings } = useEngagementSync();
+  const isSyncing = runNow.isPending;
+  const autoEnabled = settings?.auto_sync_enabled ?? true;
+  const nextSync = getNextScheduledSync();
+  const minsUntilNext = Math.max(0, Math.floor((nextSync.getTime() - Date.now()) / 60_000));
+  const nextLabel = autoEnabled
+    ? minsUntilNext > 60
+      ? `${Math.floor(minsUntilNext / 60)}h ${minsUntilNext % 60}m`
+      : `${minsUntilNext}m`
+    : 'off';
+
+  return (
+    <div className="relative bg-background border-b">
+      <div className="h-12 px-5 flex items-center gap-4">
+        {/* Eyebrow */}
+        <span className="text-[10.5px] font-mono uppercase tracking-[0.18em] text-muted-foreground/80 hidden sm:inline">
+          Engagement
+        </span>
+        <span className="text-border hidden sm:inline">·</span>
+
+        {/* Publisher switcher */}
+        <PublisherSwitcher
+          selected={selectedPublisher}
+          publishers={publishers}
+          onSelect={onSelectPublisher}
+        />
+
+        {/* Day counter */}
+        {selectedPublisher && (
+          <>
+            <span className="text-border hidden md:inline">·</span>
+            <DayCounter publisherId={selectedPublisher.id} />
+          </>
+        )}
+
+        <div className="flex-1" />
+
+        {/* Last pull mono micro-text */}
+        {lastRun && (
+          <span className="hidden lg:inline text-[10.5px] font-mono text-muted-foreground/70 tabular-nums">
+            <span className="text-emerald-700 font-semibold">+{lastRun.new_posts}</span> new
+            <span className="mx-1.5 text-border">·</span>
+            <span>{lastRun.synced}/{lastRun.total_targets} pulled</span>
+          </span>
+        )}
+
+        {/* Next pull */}
+        <span className="inline-flex items-center gap-1 text-[10.5px] font-mono text-muted-foreground/60 tabular-nums">
+          <Clock className="h-3 w-3" />
+          next {nextLabel}
+        </span>
+
+        {/* Run queue / sync */}
+        <Button
+          size="sm"
+          onClick={() => runNow.mutate()}
+          disabled={isSyncing}
+          className={cn(
+            'h-8 gap-1.5 text-xs font-semibold px-3',
+            'bg-amber-500 hover:bg-amber-600 text-white shadow-sm shadow-amber-500/30',
+          )}
+        >
+          {isSyncing ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <Play className="h-3.5 w-3.5 fill-current" />
+          )}
+          {isSyncing ? 'Syncing' : 'Run queue'}
+        </Button>
+      </div>
+
+      {/* 3px progress strip (only visible during sync) */}
+      <div
+        className={cn(
+          'absolute left-0 right-0 -bottom-px h-[3px] overflow-hidden pointer-events-none',
+          !isSyncing && 'opacity-0',
+        )}
+      >
+        <div className="h-full bg-gradient-to-r from-amber-400 via-amber-500 to-amber-400 animate-pulse" />
+      </div>
+    </div>
+  );
+}
+
+// -----------------------------------------------------------------------------
+// PublisherSwitcher
+// -----------------------------------------------------------------------------
+
+interface PublisherSwitcherProps {
+  selected: Publisher | null;
+  publishers: Publisher[];
+  onSelect: (id: string) => void;
+}
+
+function PublisherSwitcher({ selected, publishers, onSelect }: PublisherSwitcherProps) {
+  const [open, setOpen] = useState(false);
+  if (!selected) return null;
+  const initials = selected.name
+    .split(' ')
+    .map((w) => w[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="inline-flex items-center gap-2 h-8 px-1.5 pr-2 rounded-md hover:bg-muted/60 transition-colors"
+        >
+          <div className="h-6 w-6 rounded-full overflow-hidden bg-muted text-[9px] font-bold text-foreground/60 flex items-center justify-center flex-shrink-0">
+            {selected.avatar_url ? (
+              <img
+                src={selected.avatar_url}
+                alt={selected.name}
+                referrerPolicy="no-referrer"
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              initials
+            )}
+          </div>
+          <span className="text-sm font-display font-semibold leading-none">
+            {selected.name}
+          </span>
+          <ChevronDown className="h-3 w-3 text-muted-foreground/60" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-64 p-1">
+        <div className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/60 px-2 py-1.5">
+          Engager
+        </div>
+        {publishers.map((p) => {
+          const isActive = p.id === selected.id;
+          const pInitials = p.name
+            .split(' ')
+            .map((w) => w[0])
+            .join('')
+            .slice(0, 2)
+            .toUpperCase();
+          return (
+            <button
+              key={p.id}
+              type="button"
+              onClick={() => {
+                onSelect(p.id);
+                setOpen(false);
+              }}
+              className={cn(
+                'w-full flex items-center gap-2.5 px-2 py-1.5 rounded text-left transition-colors',
+                isActive ? 'bg-amber-50' : 'hover:bg-muted/60',
+              )}
+            >
+              <div className="h-7 w-7 rounded-full overflow-hidden bg-muted text-[10px] font-bold text-foreground/60 flex items-center justify-center flex-shrink-0">
+                {p.avatar_url ? (
+                  <img
+                    src={p.avatar_url}
+                    alt={p.name}
+                    referrerPolicy="no-referrer"
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  pInitials
+                )}
+              </div>
+              <span className="flex-1 text-sm font-medium truncate">{p.name}</span>
+              {isActive && <Check className="h-3.5 w-3.5 text-amber-600" />}
+            </button>
+          );
+        })}
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+// -----------------------------------------------------------------------------
+// DayCounter — "4 of 12 today" with 12 progress dots
+// -----------------------------------------------------------------------------
+
+interface DayCounterProps {
+  publisherId: string;
+}
+
+function DayCounter({ publisherId }: DayCounterProps) {
+  const { currentWorkspace } = useWorkspace();
+
+  const { data } = useQuery({
+    queryKey: ['day-counter', currentWorkspace?.id, publisherId],
+    queryFn: async () => {
+      if (!currentWorkspace) return { fresh: 0, done: 0 };
+      // Fetch the publisher's targets
+      const { data: targets, error: tErr } = await (supabase as any)
+        .from('engagement_targets')
+        .select('id')
+        .eq('workspace_id', currentWorkspace.id)
+        .eq('publisher_id', publisherId);
+      if (tErr || !targets || targets.length === 0) return { fresh: 0, done: 0 };
+      const ids = targets.map((t: any) => t.id);
+      const { data: rows } = await (supabase as any)
+        .from('engagement_posts')
+        .select('is_commented, is_liked')
+        .in('target_id', ids);
+      const r = (rows || []) as Array<{ is_commented: boolean; is_liked: boolean }>;
+      const fresh = r.filter((p) => !p.is_commented && !p.is_liked).length;
+      const done = r.filter((p) => p.is_commented || p.is_liked).length;
+      return { fresh, done };
+    },
+    enabled: !!currentWorkspace,
+    refetchInterval: 30_000,
+  });
+
+  const fresh = data?.fresh ?? 0;
+  const done = data?.done ?? 0;
+  const total = fresh + done;
+  const dotCount = useMemo(() => Math.min(Math.max(total, 1), 12), [total]);
+
+  if (total === 0) return null;
+
+  // Distribute dots — first N filled jade for done, the rest empty
+  const filled = Math.round((done / Math.max(total, 1)) * dotCount);
+
+  return (
+    <div className="hidden md:flex items-center gap-2.5">
+      <span className="text-[11px] font-medium tabular-nums">
+        <span className="text-emerald-700 font-semibold">{done}</span>
+        <span className="text-muted-foreground/70 mx-0.5">of</span>
+        <span className="text-foreground/80">{total}</span>
+        <span className="text-muted-foreground/70 ml-1">today</span>
+      </span>
+      <div className="flex items-center gap-[3px]">
+        {Array.from({ length: dotCount }).map((_, i) => (
+          <span
+            key={i}
+            className={cn(
+              'h-1.5 w-1.5 rounded-full transition-colors',
+              i < filled ? 'bg-emerald-500' : 'bg-muted-foreground/15',
+            )}
+          />
+        ))}
+      </div>
     </div>
   );
 }

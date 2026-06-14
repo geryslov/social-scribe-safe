@@ -7,7 +7,16 @@ import { usePublishers, Publisher } from '@/hooks/usePublishers';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import {
   Dialog,
   DialogContent,
@@ -16,11 +25,14 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { Plus, Search, Loader2, Linkedin, Building2, Upload, CheckCircle2, Sparkles, Zap, CheckSquare, Trash2, ArrowRightLeft, X, Wand2 } from 'lucide-react';
+import {
+  Plus, Search, Loader2, Linkedin, Upload, CheckSquare, Trash2,
+  ArrowRightLeft, X, Wand2, MoreHorizontal, Zap, ChevronDown,
+} from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
-import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
+import { ActivityRing } from './ActivityRing';
 
 interface ContactListProps {
   publisher: Publisher;
@@ -40,9 +52,14 @@ function timeAgoShort(dateStr: string | null): string {
   return `${Math.floor(days / 7)}w`;
 }
 
+const QUEUE_MAX = 5;
+
 export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarget }: ContactListProps) {
   const { currentWorkspace } = useWorkspace();
-  const { targets, isLoading, createTarget, enrichTarget, updateTarget, bulkDeleteTargets, bulkReassignTargets } = useEngagementTargets(publisher.id);
+  const {
+    targets, isLoading, createTarget, enrichTarget, updateTarget,
+    bulkDeleteTargets, bulkReassignTargets,
+  } = useEngagementTargets(publisher.id);
   const { publishers } = usePublishers();
   const fetchPosts = useFetchTargetPosts();
 
@@ -72,15 +89,13 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [newName, setNewName] = useState('');
   const [newUrl, setNewUrl] = useState('');
-  const [fetchingAll, setFetchingAll] = useState(false);
   const [fetchingTargetId, setFetchingTargetId] = useState<string | null>(null);
   const prevAutoName = useRef<string>('');
   const [bulkUrls, setBulkUrls] = useState('');
   const [bulkImporting, setBulkImporting] = useState(false);
   const [bulkProgress, setBulkProgress] = useState({ done: 0, total: 0 });
-  const [onlyFresh, setOnlyFresh] = useState(false);
 
-  // Unseen post counts + fresh/done engagement status counts per target
+  // Per-target counts (unseen / fresh / done)
   const { data: countMaps = { unseen: {}, fresh: {}, done: {} } } = useQuery({
     queryKey: ['target-counts', currentWorkspace?.id, publisher.id, targets.map((t) => `${t.id}:${t.last_seen_at}:${t.last_fetched_at}`).join(',')],
     queryFn: async () => {
@@ -89,7 +104,6 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
       const fresh: Record<string, number> = {};
       const done: Record<string, number> = {};
       for (const target of targets) {
-        // Unseen (newly synced since last visit)
         let unseenQ = (supabase as any)
           .from('engagement_posts')
           .select('id', { count: 'exact', head: true })
@@ -113,23 +127,16 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
     },
     enabled: !!currentWorkspace && targets.length > 0,
   });
-  const unseenCounts = countMaps.unseen as Record<string, number>;
   const freshCounts = countMaps.fresh as Record<string, number>;
   const doneCounts = countMaps.done as Record<string, number>;
   const totalFresh = Object.values(freshCounts).reduce((s, n) => s + n, 0);
-  const targetsWithFresh = Object.keys(freshCounts).length;
   const totalDone = Object.values(doneCounts).reduce((s, n) => s + n, 0);
-  const targetsWithDone = Object.keys(doneCounts).length;
 
-  const filtered = useMemo(() => {
-    let list = targets;
-    if (onlyFresh) list = list.filter((t) => (freshCounts[t.id] || 0) > 0);
-    if (!search.trim()) {
-      // sort by fresh count desc so net-new opportunities float up
-      return [...list].sort((a, b) => (freshCounts[b.id] || 0) - (freshCounts[a.id] || 0));
-    }
+  // Search filter
+  const searchFiltered = useMemo(() => {
+    if (!search.trim()) return targets;
     const q = search.toLowerCase();
-    return list.filter(
+    return targets.filter(
       (t) =>
         t.name.toLowerCase().includes(q) ||
         (t.headline || '').toLowerCase().includes(q) ||
@@ -137,12 +144,26 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
         (t.title || '').toLowerCase().includes(q) ||
         (t.linkedin_username || '').toLowerCase().includes(q),
     );
-  }, [targets, search, onlyFresh, freshCounts]);
+  }, [targets, search]);
+
+  // Split into Queue (fresh > 0) and Watching (the rest)
+  const queueList = useMemo(() => {
+    return [...searchFiltered]
+      .filter((t) => (freshCounts[t.id] || 0) > 0)
+      .sort((a, b) => (freshCounts[b.id] || 0) - (freshCounts[a.id] || 0))
+      .slice(0, QUEUE_MAX);
+  }, [searchFiltered, freshCounts]);
+
+  const watchingList = useMemo(() => {
+    const queueIds = new Set(queueList.map((t) => t.id));
+    return [...searchFiltered]
+      .filter((t) => !queueIds.has(t.id))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [searchFiltered, queueList]);
 
   // Auto-fetch after adding a target
   const handleAdd = useCallback(() => {
     if (!newUrl.trim() || !currentWorkspace) return;
-    // Use entered name, or extract from URL as fallback
     const name = newName.trim() || newUrl.match(/linkedin\.com\/in\/([^/?#]+)/)?.[1]?.replace(/-/g, ' ')?.replace(/\b\w/g, (c) => c.toUpperCase()) || 'Unknown';
     createTarget.mutate(
       { publisher_id: publisher.id, name, linkedin_url: newUrl.trim() },
@@ -151,7 +172,6 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
           setNewName('');
           setNewUrl('');
           setShowAddDialog(false);
-          // Auto-fetch posts to pull profile data
           if (data?.id) {
             setFetchingTargetId(data.id);
             fetchPosts.mutate(
@@ -164,16 +184,13 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
     );
   }, [newName, newUrl, currentWorkspace, publisher.id, createTarget, fetchPosts]);
 
-  // Bulk import: parse URLs, add each, enrich in background
+  // Bulk import
   const handleBulkImport = useCallback(async () => {
     if (!currentWorkspace || !bulkUrls.trim()) return;
-    // Extract all LinkedIn URLs from the textarea
     const lines = bulkUrls.split(/[\n,]+/).map((l) => l.trim()).filter(Boolean);
     const urls = lines
       .map((line) => {
-        // Accept full URLs or just usernames
         if (line.includes('linkedin.com/in/')) return line;
-        // If just a username, build URL
         if (/^[a-zA-Z0-9-]+$/.test(line)) return `https://www.linkedin.com/in/${line}`;
         return null;
       })
@@ -187,7 +204,6 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
     setBulkImporting(true);
     setBulkProgress({ done: 0, total: urls.length });
 
-    // 1) Create all rows first (skip auto-enrichment to avoid Apify rate limits)
     const createdIds: string[] = [];
     for (let i = 0; i < urls.length; i++) {
       const url = urls[i];
@@ -201,9 +217,7 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
           skipEnrich: true,
         });
         if (row?.id) createdIds.push(row.id);
-      } catch {
-        // skip duplicates / errors
-      }
+      } catch { /* skip duplicates */ }
       setBulkProgress({ done: i + 1, total: urls.length });
     }
 
@@ -212,7 +226,6 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
     setShowAddDialog(false);
     toast.success(`Imported ${createdIds.length} profiles — enriching in background`);
 
-    // 2) Enrich with limited concurrency (2 at a time) so Apify doesn't 429
     (async () => {
       const CONCURRENCY = 2;
       let cursor = 0;
@@ -227,25 +240,12 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
         }
       });
       await Promise.all(workers);
-      // Final refresh so any updated rows render
-      // (the polling refetchInterval also picks up pending rows during the run)
       window.dispatchEvent(new Event('focus'));
     })();
   }, [bulkUrls, currentWorkspace, publisher.id, createTarget]);
 
-  const handleFetchAll = async () => {
-    if (!currentWorkspace || fetchingAll) return;
-    setFetchingAll(true);
-    for (const target of targets.filter((t) => t.is_active)) {
-      try {
-        await fetchPosts.mutateAsync({ workspace_id: currentWorkspace.id, target_id: target.id });
-      } catch { /* continue */ }
-    }
-    setFetchingAll(false);
-  };
-
+  // ⋮ Retry-failed actions
   const [reEnriching, setReEnriching] = useState(false);
-  const [reEnrichProgress, setReEnrichProgress] = useState({ done: 0, total: 0 });
   const handleReEnrichMissing = async () => {
     if (reEnriching) return;
     const missing = targets.filter((t) => t.enrichment_status !== 'succeeded');
@@ -254,9 +254,7 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
       return;
     }
     setReEnriching(true);
-    setReEnrichProgress({ done: 0, total: missing.length });
     toast.info(`Re-enriching ${missing.length} profile${missing.length === 1 ? '' : 's'}…`);
-
     const CONCURRENCY = 2;
     let idx = 0;
     let done = 0;
@@ -264,29 +262,21 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
     const worker = async () => {
       while (idx < missing.length) {
         const i = idx++;
-        const t = missing[i];
         try {
-          await enrichTarget.mutateAsync(t.id);
+          await enrichTarget.mutateAsync(missing[i].id);
         } catch {
           failed++;
         }
         done++;
-        setReEnrichProgress({ done, total: missing.length });
       }
     };
     await Promise.all(Array.from({ length: CONCURRENCY }, worker));
-
     setReEnriching(false);
-    if (failed > 0) {
-      toast.warning(`Re-enriched ${done - failed}/${missing.length}. ${failed} failed.`);
-    } else {
-      toast.success(`Re-enriched ${done} profile${done === 1 ? '' : 's'}`);
-    }
-    window.dispatchEvent(new Event('focus'));
+    if (failed > 0) toast.warning(`Re-enriched ${done - failed}/${missing.length}. ${failed} failed.`);
+    else toast.success(`Re-enriched ${done} profile${done === 1 ? '' : 's'}`);
   };
 
   const [resyncing, setResyncing] = useState(false);
-  const [resyncProgress, setResyncProgress] = useState({ done: 0, total: 0 });
   const handleResyncMissingPosts = async () => {
     if (resyncing || !currentWorkspace) return;
     const missing = targets.filter(
@@ -297,9 +287,7 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
       return;
     }
     setResyncing(true);
-    setResyncProgress({ done: 0, total: missing.length });
     toast.info(`Fetching posts for ${missing.length} profile${missing.length === 1 ? '' : 's'}…`);
-
     const CONCURRENCY = 2;
     let idx = 0;
     let done = 0;
@@ -308,25 +296,19 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
     const worker = async () => {
       while (idx < missing.length) {
         const i = idx++;
-        const t = missing[i];
         try {
-          const res = await fetchPosts.mutateAsync({ workspace_id: currentWorkspace.id, target_id: t.id });
+          const res = await fetchPosts.mutateAsync({ workspace_id: currentWorkspace.id, target_id: missing[i].id });
           totalFound += res?.posts_found || 0;
         } catch {
           failed++;
         }
         done++;
-        setResyncProgress({ done, total: missing.length });
       }
     };
     await Promise.all(Array.from({ length: CONCURRENCY }, worker));
-
     setResyncing(false);
-    if (failed > 0) {
-      toast.warning(`Synced ${done - failed}/${missing.length} · ${totalFound} posts · ${failed} failed`);
-    } else {
-      toast.success(`Synced ${done} profile${done === 1 ? '' : 's'} · ${totalFound} posts`);
-    }
+    if (failed > 0) toast.warning(`Synced ${done - failed}/${missing.length} · ${totalFound} posts · ${failed} failed`);
+    else toast.success(`Synced ${done} profile${done === 1 ? '' : 's'} · ${totalFound} posts`);
   };
 
   const activeTargets = targets.filter((t) => t.is_active);
@@ -347,79 +329,129 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
     }
   };
 
+  const missingCount = targets.filter((t) => t.enrichment_status !== 'succeeded').length;
+  const missingPosts = targets.filter(
+    (t) => t.is_active && !freshCounts[t.id] && !doneCounts[t.id] && t.last_fetched_at,
+  ).length;
+  const totalErrored = missingCount + (missingPosts > missingCount ? missingPosts - missingCount : 0);
+
   return (
     <>
-      {/* Header */}
-      <div className="p-3 space-y-2 border-b">
-        <div className="flex items-center justify-between">
-          <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
-            Profiles ({targets.length})
-          </span>
-          <div className="flex gap-1 items-center">
-            {isAdmin && targets.length > 0 && !selectionMode && (() => {
-              const missingCount = targets.filter((t) => t.enrichment_status !== 'succeeded').length;
-              const missingPosts = targets.filter(
-                (t) => t.is_active && !freshCounts[t.id] && !doneCounts[t.id] && t.last_fetched_at,
-              ).length;
-              const totalErrored = missingCount + (missingPosts > missingCount ? missingPosts - missingCount : 0);
-              if (totalErrored === 0 && !reEnriching && !resyncing) return null;
-              const isRunning = reEnriching || resyncing;
-              return (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 px-2 text-[11px] font-medium text-amber-600 hover:text-amber-700 hover:bg-amber-500/10"
-                  onClick={async () => {
-                    if (missingCount > 0) await handleReEnrichMissing();
-                    if (missingPosts > 0) await handleResyncMissingPosts();
-                  }}
-                  disabled={isRunning}
-                  title="Retry profiles that failed to sync"
-                >
-                  {isRunning ? (
-                    <>
-                      <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
-                      {(reEnriching ? reEnrichProgress : resyncProgress).done}/{(reEnriching ? reEnrichProgress : resyncProgress).total}
-                    </>
-                  ) : (
-                    <>
-                      <Wand2 className="h-3.5 w-3.5 mr-1" />
-                      Retry {totalErrored} failed
-                    </>
-                  )}
-                </Button>
-              );
-            })()}
-            {isAdmin && !selectionMode && (
+      {/* Header — search + actions */}
+      <div className="px-3 pt-3 pb-2 space-y-2.5 border-b">
+        {/* Search + +Add + List menu */}
+        <div className="flex items-center gap-1.5">
+          <div className="relative flex-1">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/50" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search profiles…"
+              className="h-8 pl-8 text-sm bg-background focus-visible:ring-primary/30"
+            />
+          </div>
+          {isAdmin && (
+            <>
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-7 w-7 p-0 text-primary hover:bg-primary/10"
+                className="h-8 w-8 p-0 text-primary hover:bg-primary/10 flex-shrink-0"
                 onClick={() => setShowAddDialog(true)}
                 title="Add person"
               >
                 <Plus className="h-4 w-4" />
               </Button>
-            )}
-          </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground flex-shrink-0"
+                    title="List actions"
+                  >
+                    <MoreHorizontal className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuLabel className="text-xs">List actions</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={() => (selectionMode ? exitSelectionMode() : setSelectionMode(true))}
+                  >
+                    <CheckSquare className="h-3.5 w-3.5 mr-2" />
+                    {selectionMode ? 'Cancel selection' : 'Select multiple'}
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <div className="px-2 py-1.5 flex items-center justify-between gap-2">
+                    <span className="inline-flex items-center gap-1.5 text-xs">
+                      <Zap className={cn('h-3 w-3', allAutoLike ? 'fill-amber-500 text-amber-500' : 'text-muted-foreground')} />
+                      Auto-like all
+                    </span>
+                    {bulkAutoLiking ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+                    ) : (
+                      <Switch
+                        checked={allAutoLike}
+                        onCheckedChange={handleToggleAllAutoLike}
+                        className="data-[state=checked]:bg-amber-500"
+                      />
+                    )}
+                  </div>
+                  {totalErrored > 0 && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onClick={async () => {
+                          if (missingCount > 0) await handleReEnrichMissing();
+                          if (missingPosts > 0) await handleResyncMissingPosts();
+                        }}
+                        disabled={reEnriching || resyncing}
+                        className="text-amber-700 focus:text-amber-700"
+                      >
+                        {reEnriching || resyncing ? (
+                          <Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" />
+                        ) : (
+                          <Wand2 className="h-3.5 w-3.5 mr-2" />
+                        )}
+                        Retry {totalErrored} failed
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </>
+          )}
         </div>
 
-        {/* Bulk action bar */}
+        {/* Single-line summary */}
+        <p className="text-[10.5px] font-mono uppercase tracking-wider text-muted-foreground/70">
+          <span className="text-amber-600 font-semibold">{totalFresh}</span> fresh
+          <span className="mx-1.5 text-border">·</span>
+          <span className="text-emerald-600 font-semibold">{totalDone}</span> done
+          <span className="mx-1.5 text-border">·</span>
+          <span>{targets.length}</span> watching
+        </p>
+
+        {/* Multi-select bar */}
         {selectionMode && (
-          <div className="flex items-center gap-2 rounded-md bg-primary/5 border border-primary/30 px-2 py-1.5">
-            <span className="text-[11px] font-semibold text-primary">
+          <div className="flex items-center gap-1.5 rounded-md bg-muted/50 border border-amber-300/40 px-2 py-1.5">
+            <span className="text-[11px] font-semibold text-amber-700">
               {selectedIds.size} selected
             </span>
             <div className="flex-1" />
             <button
               type="button"
               onClick={() => {
-                if (selectedIds.size === filtered.length) setSelectedIds(new Set());
-                else setSelectedIds(new Set(filtered.map((t) => t.id)));
+                const all = [...queueList, ...watchingList];
+                if (selectedIds.size === all.length) setSelectedIds(new Set());
+                else setSelectedIds(new Set(all.map((t) => t.id)));
               }}
-              className="text-[10px] text-primary hover:underline font-medium"
+              className="text-[10px] text-amber-700 hover:underline font-medium"
             >
-              {selectedIds.size === filtered.length && filtered.length > 0 ? 'Clear' : 'All'}
+              {(() => {
+                const all = [...queueList, ...watchingList];
+                return selectedIds.size === all.length && all.length > 0 ? 'Clear' : 'All';
+              })()}
             </button>
             <Button
               size="sm"
@@ -472,261 +504,102 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
             </button>
           </div>
         )}
-
-        <div className="relative">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/50" />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search..."
-            className="h-8 pl-8 text-sm bg-background focus-visible:ring-primary/30"
-          />
-        </div>
-
-        {/* Bulk auto-like toggle for all profiles */}
-        {isAdmin && activeTargets.length > 0 && (
-          <div
-            className={cn(
-              'flex items-center justify-between gap-2 rounded-md px-2.5 py-1.5 border transition-colors',
-              allAutoLike
-                ? 'bg-amber-50 border-amber-200/70'
-                : 'bg-muted/40 border-border',
-            )}
-            title="Auto-like every new post from all profiles in this list"
-          >
-            <span className="flex items-center gap-1.5 min-w-0">
-              <Zap className={cn('h-3.5 w-3.5 flex-shrink-0', allAutoLike ? 'fill-amber-500 text-amber-500' : 'text-muted-foreground')} />
-              <span className="text-[11px] font-semibold truncate">
-                Auto-like all ({activeTargets.length})
-              </span>
-            </span>
-            {bulkAutoLiking ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
-            ) : (
-              <Switch
-                checked={allAutoLike}
-                onCheckedChange={handleToggleAllAutoLike}
-                className="data-[state=checked]:bg-amber-500"
-              />
-            )}
-          </div>
-        )}
-
-
-        {/* Engagement status summary */}
-        <div className="grid grid-cols-2 gap-1.5">
-          <button
-            type="button"
-            onClick={() => setOnlyFresh((v) => !v)}
-            className={cn(
-              'flex min-w-0 items-center justify-between gap-2 rounded-md px-2.5 py-1.5 text-[11px] font-semibold transition-colors border',
-              onlyFresh
-                ? 'bg-primary text-primary-foreground border-primary shadow-sm'
-                : 'bg-sky-50 text-sky-800 border-sky-200/70 hover:bg-sky-100/70',
-            )}
-            title="Show only profiles with new posts you haven't engaged with"
-          >
-            <span className="flex min-w-0 items-center gap-1.5">
-              <Sparkles className="h-3 w-3 flex-shrink-0" />
-              <span className="truncate">New posts</span>
-            </span>
-            <span className="tabular-nums">{totalFresh}</span>
-          </button>
-
-          <div
-            className="flex min-w-0 items-center justify-between gap-2 rounded-md px-2.5 py-1.5 text-[11px] font-semibold border bg-emerald-50 text-emerald-700 border-emerald-200/70"
-            title={`${targetsWithDone} profile${targetsWithDone === 1 ? '' : 's'} already have posts you engaged with`}
-          >
-            <span className="flex min-w-0 items-center gap-1.5">
-              <CheckCircle2 className="h-3 w-3 flex-shrink-0" />
-              <span className="truncate">Done</span>
-            </span>
-            <span className="tabular-nums">{totalDone}</span>
-          </div>
-        </div>
-
-        {isAdmin && targets.length > 0 && (
-          <div className="flex items-center justify-between text-[10px] px-0.5">
-            <button
-              type="button"
-              onClick={() => (selectionMode ? exitSelectionMode() : setSelectionMode(true))}
-              className="font-medium text-muted-foreground hover:text-primary transition-colors inline-flex items-center gap-1"
-            >
-              <CheckSquare className="h-3 w-3" />
-              {selectionMode ? 'Cancel selection' : 'Select multiple'}
-            </button>
-            {onlyFresh && (
-              <span className="text-muted-foreground">Showing {targetsWithFresh} with new posts</span>
-            )}
-          </div>
-        )}
       </div>
 
-      {/* Contact rows */}
+      {/* Body — queue + watching */}
       <div className="flex-1 overflow-y-auto">
         {isLoading ? (
-          <div className="p-4 text-center text-sm text-muted-foreground">Loading...</div>
-        ) : filtered.length === 0 ? (
-          <div className="p-6 text-center">
-            {targets.length === 0 ? (
-              <>
-                <Linkedin className="h-8 w-8 mx-auto text-muted-foreground/20 mb-2" />
-                <p className="text-xs text-muted-foreground">No profiles yet</p>
-                {isAdmin && (
-                  <Button
-                    variant="link"
-                    size="sm"
-                    className="text-xs text-primary mt-1 h-auto p-0"
-                    onClick={() => setShowAddDialog(true)}
-                  >
-                    Add your first profile
-                  </Button>
-                )}
-              </>
-            ) : (
-              <p className="text-xs text-muted-foreground">No results for "{search}"</p>
+          <div className="p-4 text-center text-sm text-muted-foreground">Loading…</div>
+        ) : targets.length === 0 ? (
+          <div className="p-8 text-center">
+            <Linkedin className="h-8 w-8 mx-auto text-muted-foreground/20 mb-2" />
+            <p className="text-xs text-muted-foreground">No profiles yet</p>
+            {isAdmin && (
+              <Button
+                variant="link"
+                size="sm"
+                className="text-xs text-primary mt-1 h-auto p-0"
+                onClick={() => setShowAddDialog(true)}
+              >
+                Add your first profile
+              </Button>
             )}
           </div>
         ) : (
           <div>
-            {filtered.map((target) => {
-              const isSelected = selectedTargetId === target.id;
-              const isFetching = fetchingTargetId === target.id;
-              const unseen = unseenCounts[target.id] || 0;
-              const fresh = freshCounts[target.id] || 0;
-              const done = doneCounts[target.id] || 0;
-              const initials = target.name
-                .split(' ')
-                .map((w) => w[0])
-                .join('')
-                .slice(0, 2)
-                .toUpperCase();
+            {/* Today's queue */}
+            {queueList.length > 0 && (
+              <section className="pb-2">
+                <header className="px-3 pt-3 pb-1.5 flex items-center justify-between">
+                  <span className="text-[10px] font-mono uppercase tracking-[0.14em] text-amber-700">
+                    Today's queue
+                  </span>
+                  <span className="text-[10px] font-mono text-muted-foreground/60">
+                    {queueList.length}
+                  </span>
+                </header>
+                {queueList.map((target) => (
+                  <TargetRow
+                    key={target.id}
+                    target={target}
+                    isSelected={selectedTargetId === target.id}
+                    isFetching={fetchingTargetId === target.id}
+                    isChecked={selectedIds.has(target.id)}
+                    selectionMode={selectionMode}
+                    fresh={freshCounts[target.id] || 0}
+                    done={doneCounts[target.id] || 0}
+                    onClick={() => {
+                      if (selectionMode) toggleSelected(target.id);
+                      else onSelectTarget(target);
+                    }}
+                    onToggleSelect={() => toggleSelected(target.id)}
+                    onRetryEnrich={() => enrichTarget.mutate(target.id)}
+                    queueMode
+                  />
+                ))}
+              </section>
+            )}
 
-              const isChecked = selectedIds.has(target.id);
+            {/* Watching */}
+            {watchingList.length > 0 && (
+              <section>
+                <header className="px-3 pt-3 pb-1.5 flex items-center justify-between border-t border-border/60">
+                  <span className="text-[10px] font-mono uppercase tracking-[0.14em] text-muted-foreground/70">
+                    Watching
+                  </span>
+                  <span className="text-[10px] font-mono text-muted-foreground/60">
+                    {watchingList.length}
+                  </span>
+                </header>
+                {watchingList.map((target) => (
+                  <TargetRow
+                    key={target.id}
+                    target={target}
+                    isSelected={selectedTargetId === target.id}
+                    isFetching={fetchingTargetId === target.id}
+                    isChecked={selectedIds.has(target.id)}
+                    selectionMode={selectionMode}
+                    fresh={freshCounts[target.id] || 0}
+                    done={doneCounts[target.id] || 0}
+                    onClick={() => {
+                      if (selectionMode) toggleSelected(target.id);
+                      else onSelectTarget(target);
+                    }}
+                    onToggleSelect={() => toggleSelected(target.id)}
+                    onRetryEnrich={() => enrichTarget.mutate(target.id)}
+                  />
+                ))}
+              </section>
+            )}
 
-              return (
-                <button
-                  key={target.id}
-                  onClick={() => {
-                    if (selectionMode) toggleSelected(target.id);
-                    else onSelectTarget(target);
-                  }}
-                  className={cn(
-                    'w-full flex items-center gap-3 px-3 py-3 text-left transition-all border-l-[3px] border-l-transparent',
-                    isSelected && !selectionMode
-                      ? 'bg-primary/[0.06] border-l-primary'
-                      : 'hover:bg-muted/50',
-                    selectionMode && isChecked && 'bg-primary/[0.08] border-l-primary',
-                    !target.is_active && 'opacity-40',
-                  )}
-                >
-                  {selectionMode && (
-                    <Checkbox
-                      checked={isChecked}
-                      onCheckedChange={() => toggleSelected(target.id)}
-                      onClick={(e) => e.stopPropagation()}
-                      className="flex-shrink-0"
-                    />
-                  )}
-                  {/* Avatar */}
-                  <div className="relative flex-shrink-0">
-                    <div className={cn(
-                      'h-11 w-11 rounded-full flex items-center justify-center text-xs font-bold overflow-hidden',
-                      isSelected
-                        ? 'ring-2 ring-primary ring-offset-1'
-                        : '',
-                      target.avatar_url
-                        ? 'bg-muted'
-                        : 'bg-[#0A66C2]/10 text-[#0A66C2]',
-                    )}>
-                      {target.avatar_url ? (
-                        <img src={target.avatar_url} alt={target.name} referrerPolicy="no-referrer" loading="lazy" className="h-full w-full object-cover" />
-                      ) : isFetching ? (
-                        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                      ) : (
-                        initials
-                      )}
-                    </div>
-                    {/* New-posts badge on avatar */}
-                    {fresh > 0 && (
-                      <span
-                        className="absolute -top-1 -right-1 h-[18px] min-w-[18px] px-1 rounded-full bg-sky-500 text-white text-[9px] font-bold flex items-center justify-center ring-2 ring-background shadow-sm"
-                        title={`${fresh} new post${fresh === 1 ? '' : 's'} to engage with`}
-                      >
-                        {fresh}
-                      </span>
-                    )}
-                    {/* Sync failed indicator dot */}
-                    {target.enrichment_status === 'failed' && fresh === 0 && (
-                      <span
-                        className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-destructive ring-2 ring-background"
-                        title="Sync failed"
-                      />
-                    )}
-                  </div>
-
-                  {/* Info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="font-display font-semibold text-[13px] leading-tight truncate flex items-center gap-1.5">
-                      <span className="truncate">{target.name}</span>
-                      {target.enrichment_status === 'pending' && (
-                        <Loader2 className="h-3 w-3 animate-spin text-primary/60" />
-                      )}
-                      {done > 0 && (
-                        <span
-                          className="inline-flex items-center gap-0.5 text-[9px] font-bold text-emerald-600"
-                          title={`${done} post${done === 1 ? '' : 's'} engaged`}
-                        >
-                          <CheckCircle2 className="h-2.5 w-2.5" />
-                          {done}
-                        </span>
-                      )}
-                    </div>
-                    {target.title && (
-                      <p className="text-[11px] text-muted-foreground truncate mt-0.5 leading-tight">
-                        {target.title}
-                      </p>
-                    )}
-                    {target.company_name && (
-                      <p className="text-[10px] text-muted-foreground/60 truncate leading-tight flex items-center gap-1 mt-0.5">
-                        <Building2 className="h-2.5 w-2.5 flex-shrink-0" />
-                        {target.company_name}
-                      </p>
-                    )}
-                    {!target.title && !target.company_name && target.headline && (
-                      <p className="text-[11px] text-muted-foreground truncate mt-0.5 leading-tight">
-                        {target.headline}
-                      </p>
-                    )}
-                    {target.enrichment_status === 'failed' && (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          enrichTarget.mutate(target.id);
-                        }}
-                        className="text-[10px] text-destructive hover:underline mt-0.5"
-                      >
-                        Sync failed · Retry
-                      </button>
-                    )}
-                  </div>
-
-                  {/* Meta */}
-                  <div className="flex-shrink-0 text-right">
-                    {target.last_fetched_at && (
-                      <span className="text-[10px] text-muted-foreground/40 tabular-nums">
-                        {timeAgoShort(target.last_fetched_at)}
-                      </span>
-                    )}
-                  </div>
-                </button>
-              );
-            })}
+            {queueList.length === 0 && watchingList.length === 0 && (
+              <div className="p-6 text-center">
+                <p className="text-xs text-muted-foreground">No results for "{search}"</p>
+              </div>
+            )}
           </div>
         )}
       </div>
-
 
       {/* Add Dialog */}
       <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
@@ -750,7 +623,6 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
               </TabsTrigger>
             </TabsList>
 
-            {/* Single add */}
             <TabsContent value="single" className="space-y-3 pt-2">
               <div>
                 <label className="text-xs font-medium text-muted-foreground mb-1.5 block">LinkedIn URL</label>
@@ -801,7 +673,6 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
               </div>
             </TabsContent>
 
-            {/* Bulk import */}
             <TabsContent value="bulk" className="space-y-3 pt-2">
               <div>
                 <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
@@ -823,7 +694,7 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
               {bulkImporting && (
                 <div className="flex items-center gap-2 text-xs text-primary">
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  Importing {bulkProgress.done} of {bulkProgress.total}...
+                  Importing {bulkProgress.done} of {bulkProgress.total}…
                 </div>
               )}
 
@@ -844,7 +715,7 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
                     ) : (
                       <Upload className="h-3.5 w-3.5" />
                     )}
-                    {bulkImporting ? 'Importing...' : 'Import All'}
+                    {bulkImporting ? 'Importing…' : 'Import All'}
                   </Button>
                 </div>
               </div>
@@ -867,7 +738,7 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
             <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Engager</label>
             <Select value={reassignPublisherId} onValueChange={setReassignPublisherId}>
               <SelectTrigger className="focus:ring-primary/30">
-                <SelectValue placeholder="Choose an engager..." />
+                <SelectValue placeholder="Choose an engager…" />
               </SelectTrigger>
               <SelectContent>
                 {publishers
@@ -917,4 +788,140 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
       </Dialog>
     </>
   );
+}
+
+// -----------------------------------------------------------------------------
+// TargetRow — used in both Queue and Watching sections
+// -----------------------------------------------------------------------------
+
+interface TargetRowProps {
+  target: EngagementTarget;
+  isSelected: boolean;
+  isFetching: boolean;
+  isChecked: boolean;
+  selectionMode: boolean;
+  fresh: number;
+  done: number;
+  queueMode?: boolean;
+  onClick: () => void;
+  onToggleSelect: () => void;
+  onRetryEnrich: () => void;
+}
+
+function TargetRow({
+  target, isSelected, isFetching, isChecked, selectionMode,
+  fresh, done, queueMode, onClick, onToggleSelect, onRetryEnrich,
+}: TargetRowProps) {
+  const initials = target.name
+    .split(' ')
+    .map((w) => w[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
+
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        'w-full flex items-center gap-3 px-3 py-2.5 text-left transition-all border-l-2 border-l-transparent',
+        isSelected && !selectionMode && 'bg-amber-50/40 border-l-amber-500',
+        !isSelected && 'hover:bg-muted/40',
+        selectionMode && isChecked && 'bg-amber-50/60 border-l-amber-500',
+        !target.is_active && 'opacity-40',
+      )}
+    >
+      {selectionMode && (
+        <Checkbox
+          checked={isChecked}
+          onCheckedChange={onToggleSelect}
+          onClick={(e) => e.stopPropagation()}
+          className="flex-shrink-0"
+        />
+      )}
+
+      {/* Avatar (ring on queue mode only) */}
+      <div className="flex-shrink-0">
+        {queueMode ? (
+          <ActivityRing fresh={fresh} done={done} size={40}>
+            <AvatarInner target={target} initials={initials} isFetching={isFetching} />
+          </ActivityRing>
+        ) : (
+          <div className={cn(
+            'h-9 w-9 rounded-full overflow-hidden flex items-center justify-center text-[11px] font-bold',
+            target.avatar_url ? 'bg-muted' : 'bg-muted text-foreground/60',
+          )}>
+            <AvatarInner target={target} initials={initials} isFetching={isFetching} />
+          </div>
+        )}
+      </div>
+
+      {/* Info */}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-1.5">
+          <span className="font-display font-semibold text-[13px] leading-tight truncate">
+            {target.name}
+          </span>
+          {target.enrichment_status === 'pending' && (
+            <Loader2 className="h-3 w-3 animate-spin text-primary/60 flex-shrink-0" />
+          )}
+        </div>
+        {(target.title || target.company_name) ? (
+          <p className="text-[11px] text-muted-foreground truncate mt-0.5 leading-tight">
+            {[target.title, target.company_name].filter(Boolean).join(' · ')}
+          </p>
+        ) : target.headline ? (
+          <p className="text-[11px] text-muted-foreground truncate mt-0.5 leading-tight">
+            {target.headline}
+          </p>
+        ) : null}
+        {target.enrichment_status === 'failed' && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onRetryEnrich();
+            }}
+            className="text-[10px] text-destructive hover:underline mt-0.5"
+          >
+            Sync failed · Retry
+          </button>
+        )}
+      </div>
+
+      {/* Right meta */}
+      <div className="flex-shrink-0 flex flex-col items-end gap-0.5">
+        {queueMode && fresh > 0 && (
+          <span className="text-[10px] font-mono font-semibold text-amber-700 tabular-nums">
+            {fresh} fresh
+          </span>
+        )}
+        {!queueMode && fresh > 0 && (
+          <span className="h-1.5 w-1.5 rounded-full bg-amber-500" title={`${fresh} fresh`} />
+        )}
+        {target.last_fetched_at && (
+          <span className="text-[10px] text-muted-foreground/40 tabular-nums">
+            {timeAgoShort(target.last_fetched_at)}
+          </span>
+        )}
+      </div>
+    </button>
+  );
+}
+
+function AvatarInner({ target, initials, isFetching }: { target: EngagementTarget; initials: string; isFetching: boolean }) {
+  if (target.avatar_url) {
+    return (
+      <img
+        src={target.avatar_url}
+        alt={target.name}
+        referrerPolicy="no-referrer"
+        loading="lazy"
+        className="h-full w-full object-cover rounded-full"
+      />
+    );
+  }
+  if (isFetching) {
+    return <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />;
+  }
+  return <span className="text-foreground/60">{initials}</span>;
 }
