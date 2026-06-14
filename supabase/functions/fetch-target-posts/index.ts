@@ -73,8 +73,8 @@ async function startApifyRun(
       maxPosts,
       scrapeReactions: false,
       scrapeComments: false,
-      includeReposts: false,
-      includeQuotePosts: false,
+      includeReposts: true,
+      includeQuotePosts: true,
     }),
   });
 
@@ -178,18 +178,6 @@ function parseApifyItems(items: Record<string, unknown>[]): FetchedPost[] {
   const posts: FetchedPost[] = [];
 
   for (const item of items) {
-    // Only keep original posts — skip reposts/shares
-    const itemType = item.type as string | undefined;
-    if (itemType === 'repost' || itemType === 'share') {
-      console.log(`Skipping ${itemType}`);
-      continue;
-    }
-    // Also skip if there's no type but it looks like a repost (has resharedPost field)
-    if (item.resharedPost || item.repostedPost || item.originalPost) {
-      console.log('Skipping reshared/reposted item');
-      continue;
-    }
-
     // Try multiple possible URL field names
     const postUrl =
       (item.linkedinUrl as string) ||
