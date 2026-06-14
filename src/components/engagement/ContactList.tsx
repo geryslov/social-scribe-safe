@@ -259,6 +259,36 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
           />
         </div>
 
+        {/* Bulk auto-like toggle for all profiles */}
+        {isAdmin && activeTargets.length > 0 && (
+          <div
+            className={cn(
+              'flex items-center justify-between gap-2 rounded-md px-2.5 py-1.5 border transition-colors',
+              allAutoLike
+                ? 'bg-amber-50 border-amber-200/70'
+                : 'bg-muted/40 border-border',
+            )}
+            title="Auto-like every new post from all profiles in this list"
+          >
+            <span className="flex items-center gap-1.5 min-w-0">
+              <Zap className={cn('h-3.5 w-3.5 flex-shrink-0', allAutoLike ? 'fill-amber-500 text-amber-500' : 'text-muted-foreground')} />
+              <span className="text-[11px] font-semibold truncate">
+                Auto-like all ({activeTargets.length})
+              </span>
+            </span>
+            {bulkAutoLiking ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+            ) : (
+              <Switch
+                checked={allAutoLike}
+                onCheckedChange={handleToggleAllAutoLike}
+                className="data-[state=checked]:bg-amber-500"
+              />
+            )}
+          </div>
+        )}
+
+
         {/* Engagement status summary */}
         <div className="grid grid-cols-2 gap-1.5">
           <button
