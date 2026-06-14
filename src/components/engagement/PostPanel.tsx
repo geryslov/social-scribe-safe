@@ -439,9 +439,10 @@ export function PostPanel({ target, publisher, isAdmin }: PostPanelProps) {
           }
           return (
           <div className="px-5 py-5 columns-1 md:columns-2 xl:columns-3 gap-4 [column-fill:_balance]">
-            {filtered.map((post: EngagementPost) => {
+            {sorted.map((post: EngagementPost) => {
               const tier = engagementTier(post);
               const isCommenting = commentingPostId === post.id;
+              const isNew = isNewPost(post);
 
               return (
                 <article
