@@ -73,8 +73,8 @@ async function startApifyRun(
       maxPosts,
       scrapeReactions: false,
       scrapeComments: false,
-      includeReposts: false,
-      includeQuotePosts: false,
+      includeReposts: true,
+      includeQuotePosts: true,
     }),
   });
 
