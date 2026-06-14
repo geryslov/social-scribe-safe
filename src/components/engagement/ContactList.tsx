@@ -16,7 +16,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { Plus, Search, Loader2, Linkedin, RefreshCw, Building2, Upload, CheckCircle2, Sparkles, Zap, CheckSquare, Trash2, ArrowRightLeft, X, Wand2, DownloadCloud } from 'lucide-react';
+import { Plus, Search, Loader2, Linkedin, Building2, Upload, CheckCircle2, Sparkles, Zap, CheckSquare, Trash2, ArrowRightLeft, X, Wand2 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
@@ -355,86 +355,36 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
           <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
             Profiles ({targets.length})
           </span>
-          <div className="flex gap-1">
-            {isAdmin && targets.length > 0 && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className={cn(
-                  'h-7 w-7 p-0 hover:text-primary',
-                  selectionMode ? 'text-primary bg-primary/10' : 'text-muted-foreground',
-                )}
-                onClick={() => (selectionMode ? exitSelectionMode() : setSelectionMode(true))}
-                title={selectionMode ? 'Exit selection' : 'Select multiple'}
-              >
-                <CheckSquare className="h-3.5 w-3.5" />
-              </Button>
-            )}
-            {isAdmin && targets.length > 0 && !selectionMode && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 w-7 p-0 text-muted-foreground hover:text-primary"
-                onClick={handleFetchAll}
-                disabled={fetchingAll}
-                title="Sync all profiles"
-              >
-                {fetchingAll ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <RefreshCw className="h-3.5 w-3.5" />
-                )}
-              </Button>
-            )}
+          <div className="flex gap-1 items-center">
             {isAdmin && targets.length > 0 && !selectionMode && (() => {
               const missingCount = targets.filter((t) => t.enrichment_status !== 'succeeded').length;
-              if (missingCount === 0 && !reEnriching) return null;
+              const missingPosts = targets.filter(
+                (t) => t.is_active && !freshCounts[t.id] && !doneCounts[t.id] && t.last_fetched_at,
+              ).length;
+              const totalErrored = missingCount + (missingPosts > missingCount ? missingPosts - missingCount : 0);
+              if (totalErrored === 0 && !reEnriching && !resyncing) return null;
+              const isRunning = reEnriching || resyncing;
               return (
                 <Button
                   variant="ghost"
                   size="sm"
                   className="h-7 px-2 text-[11px] font-medium text-amber-600 hover:text-amber-700 hover:bg-amber-500/10"
-                  onClick={handleReEnrichMissing}
-                  disabled={reEnriching}
-                  title="Re-fetch profiles that failed enrichment"
+                  onClick={async () => {
+                    if (missingCount > 0) await handleReEnrichMissing();
+                    if (missingPosts > 0) await handleResyncMissingPosts();
+                  }}
+                  disabled={isRunning}
+                  title="Retry profiles that failed to sync"
                 >
-                  {reEnriching ? (
+                  {isRunning ? (
                     <>
                       <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
-                      {reEnrichProgress.done}/{reEnrichProgress.total}
+                      {(reEnriching ? reEnrichProgress : resyncProgress).done}/{(reEnriching ? reEnrichProgress : resyncProgress).total}
                     </>
                   ) : (
                     <>
                       <Wand2 className="h-3.5 w-3.5 mr-1" />
-                      Auto-fill {missingCount}
-                    </>
-                  )}
-                </Button>
-              );
-            })()}
-            {isAdmin && targets.length > 0 && !selectionMode && (() => {
-              const missingPosts = targets.filter(
-                (t) => t.is_active && !freshCounts[t.id] && !doneCounts[t.id],
-              ).length;
-              if (missingPosts === 0 && !resyncing) return null;
-              return (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 px-2 text-[11px] font-medium text-cyan-600 hover:text-cyan-700 hover:bg-cyan-500/10"
-                  onClick={handleResyncMissingPosts}
-                  disabled={resyncing}
-                  title="Fetch posts for profiles with no posts yet"
-                >
-                  {resyncing ? (
-                    <>
-                      <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
-                      {resyncProgress.done}/{resyncProgress.total}
-                    </>
-                  ) : (
-                    <>
-                      <DownloadCloud className="h-3.5 w-3.5 mr-1" />
-                      Sync posts {missingPosts}
+                      Retry {totalErrored} failed
                     </>
                   )}
                 </Button>
@@ -572,13 +522,13 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
               'flex min-w-0 items-center justify-between gap-2 rounded-md px-2.5 py-1.5 text-[11px] font-semibold transition-colors border',
               onlyFresh
                 ? 'bg-primary text-primary-foreground border-primary shadow-sm'
-                : 'bg-amber-50 text-amber-800 border-amber-200/70 hover:bg-amber-100/70',
+                : 'bg-sky-50 text-sky-800 border-sky-200/70 hover:bg-sky-100/70',
             )}
-            title="Show only profiles with posts you haven't engaged with"
+            title="Show only profiles with new posts you haven't engaged with"
           >
             <span className="flex min-w-0 items-center gap-1.5">
               <Sparkles className="h-3 w-3 flex-shrink-0" />
-              <span className="truncate">Fresh</span>
+              <span className="truncate">New posts</span>
             </span>
             <span className="tabular-nums">{totalFresh}</span>
           </button>
@@ -595,9 +545,19 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
           </div>
         </div>
 
-        {onlyFresh && (
-          <div className="text-[10px] font-medium text-muted-foreground px-0.5">
-            Showing {targetsWithFresh} profile{targetsWithFresh === 1 ? '' : 's'} with fresh posts
+        {isAdmin && targets.length > 0 && (
+          <div className="flex items-center justify-between text-[10px] px-0.5">
+            <button
+              type="button"
+              onClick={() => (selectionMode ? exitSelectionMode() : setSelectionMode(true))}
+              className="font-medium text-muted-foreground hover:text-primary transition-colors inline-flex items-center gap-1"
+            >
+              <CheckSquare className="h-3 w-3" />
+              {selectionMode ? 'Cancel selection' : 'Select multiple'}
+            </button>
+            {onlyFresh && (
+              <span className="text-muted-foreground">Showing {targetsWithFresh} with new posts</span>
+            )}
           </div>
         )}
       </div>
@@ -687,11 +647,21 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
                         initials
                       )}
                     </div>
-                    {/* Unseen badge */}
-                    {unseen > 0 && (
-                      <span className="absolute -top-1 -right-1 h-[18px] min-w-[18px] px-1 rounded-full bg-primary text-primary-foreground text-[9px] font-bold flex items-center justify-center ring-2 ring-background">
-                        {unseen}
+                    {/* New-posts badge on avatar */}
+                    {fresh > 0 && (
+                      <span
+                        className="absolute -top-1 -right-1 h-[18px] min-w-[18px] px-1 rounded-full bg-sky-500 text-white text-[9px] font-bold flex items-center justify-center ring-2 ring-background shadow-sm"
+                        title={`${fresh} new post${fresh === 1 ? '' : 's'} to engage with`}
+                      >
+                        {fresh}
                       </span>
+                    )}
+                    {/* Sync failed indicator dot */}
+                    {target.enrichment_status === 'failed' && fresh === 0 && (
+                      <span
+                        className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-destructive ring-2 ring-background"
+                        title="Sync failed"
+                      />
                     )}
                   </div>
 
@@ -702,32 +672,15 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
                       {target.enrichment_status === 'pending' && (
                         <Loader2 className="h-3 w-3 animate-spin text-primary/60" />
                       )}
-                    </div>
-                    <div className="mt-1 flex items-center gap-1.5 flex-wrap">
-                      <span
-                        className={cn(
-                          'inline-flex items-center gap-1 h-4 px-1.5 rounded-full text-[9px] font-bold uppercase tracking-wide',
-                          fresh > 0
-                            ? 'bg-amber-100 text-amber-700'
-                            : 'bg-muted text-muted-foreground/60',
-                        )}
-                        title={`${fresh} post${fresh === 1 ? '' : 's'} to engage with`}
-                      >
-                        <Sparkles className="h-2.5 w-2.5" />
-                        {fresh} fresh
-                      </span>
-                      <span
-                        className={cn(
-                          'inline-flex items-center gap-1 h-4 px-1.5 rounded-full text-[9px] font-bold uppercase tracking-wide',
-                          done > 0
-                            ? 'bg-emerald-100 text-emerald-700'
-                            : 'bg-muted text-muted-foreground/60',
-                        )}
-                        title={`${done} post${done === 1 ? '' : 's'} already liked or replied to`}
-                      >
-                        <CheckCircle2 className="h-2.5 w-2.5" />
-                        {done} done
-                      </span>
+                      {done > 0 && (
+                        <span
+                          className="inline-flex items-center gap-0.5 text-[9px] font-bold text-emerald-600"
+                          title={`${done} post${done === 1 ? '' : 's'} engaged`}
+                        >
+                          <CheckCircle2 className="h-2.5 w-2.5" />
+                          {done}
+                        </span>
+                      )}
                     </div>
                     {target.title && (
                       <p className="text-[11px] text-muted-foreground truncate mt-0.5 leading-tight">
@@ -740,7 +693,6 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
                         {target.company_name}
                       </p>
                     )}
-                    {/* Fallback to headline if no separate title/company */}
                     {!target.title && !target.company_name && target.headline && (
                       <p className="text-[11px] text-muted-foreground truncate mt-0.5 leading-tight">
                         {target.headline}
@@ -755,7 +707,7 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
                         }}
                         className="text-[10px] text-destructive hover:underline mt-0.5"
                       >
-                        Auto-fill failed · Retry
+                        Sync failed · Retry
                       </button>
                     )}
                   </div>
@@ -774,6 +726,7 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
           </div>
         )}
       </div>
+
 
       {/* Add Dialog */}
       <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>

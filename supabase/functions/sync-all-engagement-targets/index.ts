@@ -168,6 +168,33 @@ Deno.serve(async (req) => {
 
       overall.push({ workspace_id, summary });
       console.log('sync workspace done:', workspace_id, summary);
+
+      // After posts sync, refresh comment-engagement (reactions + replies on our comments)
+      // for every publisher that has engagement targets in this workspace.
+      try {
+        const { data: pubRows } = await supabase
+          .from('engagement_targets')
+          .select('publisher_id')
+          .eq('workspace_id', workspace_id);
+        const publisherIds = Array.from(new Set((pubRows || []).map((r: any) => r.publisher_id).filter(Boolean)));
+        for (const publisher_id of publisherIds) {
+          try {
+            await fetch(`${SUPABASE_URL}/functions/v1/fetch-comment-engagement`, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${SERVICE_KEY}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ workspace_id, publisher_id }),
+            });
+          } catch (err) {
+            console.error('comment-engagement refresh failed for publisher', publisher_id, err);
+          }
+          await sleep(800);
+        }
+      } catch (err) {
+        console.error('comment-engagement loop failed for workspace', workspace_id, err);
+      }
     }
 
     return new Response(
