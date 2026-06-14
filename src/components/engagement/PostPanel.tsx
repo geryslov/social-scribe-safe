@@ -418,6 +418,7 @@ export function PostPanel({ target, publisher, isAdmin }: PostPanelProps) {
         ) : (() => {
           const filtered = posts.filter((p) => {
             switch (feedFilter) {
+              case 'new': return isNewPost(p);
               case 'fresh': return !p.is_commented && !p.is_liked;
               case 'engaged': return p.is_commented;
               case 'liked': return p.is_liked;
@@ -425,7 +426,11 @@ export function PostPanel({ target, publisher, isAdmin }: PostPanelProps) {
               default: return true;
             }
           });
-          if (filtered.length === 0) {
+          // Bubble brand-new posts to the top when viewing All
+          const sorted = feedFilter === 'all'
+            ? [...filtered].sort((a, b) => Number(isNewPost(b)) - Number(isNewPost(a)))
+            : filtered;
+          if (sorted.length === 0) {
             return (
               <div className="flex items-center justify-center py-20">
                 <p className="text-sm text-muted-foreground">No posts match this filter.</p>
