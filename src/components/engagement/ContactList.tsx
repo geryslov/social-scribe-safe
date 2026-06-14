@@ -285,6 +285,50 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
     window.dispatchEvent(new Event('focus'));
   };
 
+  const [resyncing, setResyncing] = useState(false);
+  const [resyncProgress, setResyncProgress] = useState({ done: 0, total: 0 });
+  const handleResyncMissingPosts = async () => {
+    if (resyncing || !currentWorkspace) return;
+    const missing = targets.filter(
+      (t) => t.is_active && !freshCounts[t.id] && !doneCounts[t.id],
+    );
+    if (missing.length === 0) {
+      toast.info('All profiles already have posts');
+      return;
+    }
+    setResyncing(true);
+    setResyncProgress({ done: 0, total: missing.length });
+    toast.info(`Fetching posts for ${missing.length} profile${missing.length === 1 ? '' : 's'}…`);
+
+    const CONCURRENCY = 2;
+    let idx = 0;
+    let done = 0;
+    let failed = 0;
+    let totalFound = 0;
+    const worker = async () => {
+      while (idx < missing.length) {
+        const i = idx++;
+        const t = missing[i];
+        try {
+          const res = await fetchPosts.mutateAsync({ workspace_id: currentWorkspace.id, target_id: t.id });
+          totalFound += res?.posts_found || 0;
+        } catch {
+          failed++;
+        }
+        done++;
+        setResyncProgress({ done, total: missing.length });
+      }
+    };
+    await Promise.all(Array.from({ length: CONCURRENCY }, worker));
+
+    setResyncing(false);
+    if (failed > 0) {
+      toast.warning(`Synced ${done - failed}/${missing.length} · ${totalFound} posts · ${failed} failed`);
+    } else {
+      toast.success(`Synced ${done} profile${done === 1 ? '' : 's'} · ${totalFound} posts`);
+    }
+  };
+
   const activeTargets = targets.filter((t) => t.is_active);
   const allAutoLike = activeTargets.length > 0 && activeTargets.every((t) => t.auto_like);
   const [bulkAutoLiking, setBulkAutoLiking] = useState(false);
