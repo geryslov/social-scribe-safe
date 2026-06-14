@@ -16,7 +16,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { Plus, Search, Loader2, Linkedin, RefreshCw, Building2, Upload, CheckCircle2, Sparkles, Zap, CheckSquare, Trash2, ArrowRightLeft, X, Wand2 } from 'lucide-react';
+import { Plus, Search, Loader2, Linkedin, RefreshCw, Building2, Upload, CheckCircle2, Sparkles, Zap, CheckSquare, Trash2, ArrowRightLeft, X, Wand2, DownloadCloud } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
@@ -285,6 +285,50 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
     window.dispatchEvent(new Event('focus'));
   };
 
+  const [resyncing, setResyncing] = useState(false);
+  const [resyncProgress, setResyncProgress] = useState({ done: 0, total: 0 });
+  const handleResyncMissingPosts = async () => {
+    if (resyncing || !currentWorkspace) return;
+    const missing = targets.filter(
+      (t) => t.is_active && !freshCounts[t.id] && !doneCounts[t.id],
+    );
+    if (missing.length === 0) {
+      toast.info('All profiles already have posts');
+      return;
+    }
+    setResyncing(true);
+    setResyncProgress({ done: 0, total: missing.length });
+    toast.info(`Fetching posts for ${missing.length} profile${missing.length === 1 ? '' : 's'}…`);
+
+    const CONCURRENCY = 2;
+    let idx = 0;
+    let done = 0;
+    let failed = 0;
+    let totalFound = 0;
+    const worker = async () => {
+      while (idx < missing.length) {
+        const i = idx++;
+        const t = missing[i];
+        try {
+          const res = await fetchPosts.mutateAsync({ workspace_id: currentWorkspace.id, target_id: t.id });
+          totalFound += res?.posts_found || 0;
+        } catch {
+          failed++;
+        }
+        done++;
+        setResyncProgress({ done, total: missing.length });
+      }
+    };
+    await Promise.all(Array.from({ length: CONCURRENCY }, worker));
+
+    setResyncing(false);
+    if (failed > 0) {
+      toast.warning(`Synced ${done - failed}/${missing.length} · ${totalFound} posts · ${failed} failed`);
+    } else {
+      toast.success(`Synced ${done} profile${done === 1 ? '' : 's'} · ${totalFound} posts`);
+    }
+  };
+
   const activeTargets = targets.filter((t) => t.is_active);
   const allAutoLike = activeTargets.length > 0 && activeTargets.every((t) => t.auto_like);
   const [bulkAutoLiking, setBulkAutoLiking] = useState(false);
@@ -363,6 +407,34 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
                     <>
                       <Wand2 className="h-3.5 w-3.5 mr-1" />
                       Auto-fill {missingCount}
+                    </>
+                  )}
+                </Button>
+              );
+            })()}
+            {isAdmin && targets.length > 0 && !selectionMode && (() => {
+              const missingPosts = targets.filter(
+                (t) => t.is_active && !freshCounts[t.id] && !doneCounts[t.id],
+              ).length;
+              if (missingPosts === 0 && !resyncing) return null;
+              return (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-[11px] font-medium text-cyan-600 hover:text-cyan-700 hover:bg-cyan-500/10"
+                  onClick={handleResyncMissingPosts}
+                  disabled={resyncing}
+                  title="Fetch posts for profiles with no posts yet"
+                >
+                  {resyncing ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
+                      {resyncProgress.done}/{resyncProgress.total}
+                    </>
+                  ) : (
+                    <>
+                      <DownloadCloud className="h-3.5 w-3.5 mr-1" />
+                      Sync posts {missingPosts}
                     </>
                   )}
                 </Button>
