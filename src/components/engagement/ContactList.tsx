@@ -16,7 +16,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { Plus, Search, Loader2, Linkedin, RefreshCw, Building2, Upload, CheckCircle2, Sparkles, Zap, CheckSquare, Trash2, ArrowRightLeft, X } from 'lucide-react';
+import { Plus, Search, Loader2, Linkedin, RefreshCw, Building2, Upload, CheckCircle2, Sparkles, Zap, CheckSquare, Trash2, ArrowRightLeft, X, Wand2 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
@@ -244,6 +244,47 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
     setFetchingAll(false);
   };
 
+  const [reEnriching, setReEnriching] = useState(false);
+  const [reEnrichProgress, setReEnrichProgress] = useState({ done: 0, total: 0 });
+  const handleReEnrichMissing = async () => {
+    if (reEnriching) return;
+    const missing = targets.filter((t) => t.enrichment_status !== 'succeeded');
+    if (missing.length === 0) {
+      toast.info('All profiles already enriched');
+      return;
+    }
+    setReEnriching(true);
+    setReEnrichProgress({ done: 0, total: missing.length });
+    toast.info(`Re-enriching ${missing.length} profile${missing.length === 1 ? '' : 's'}…`);
+
+    const CONCURRENCY = 2;
+    let idx = 0;
+    let done = 0;
+    let failed = 0;
+    const worker = async () => {
+      while (idx < missing.length) {
+        const i = idx++;
+        const t = missing[i];
+        try {
+          await enrichTarget.mutateAsync(t.id);
+        } catch {
+          failed++;
+        }
+        done++;
+        setReEnrichProgress({ done, total: missing.length });
+      }
+    };
+    await Promise.all(Array.from({ length: CONCURRENCY }, worker));
+
+    setReEnriching(false);
+    if (failed > 0) {
+      toast.warning(`Re-enriched ${done - failed}/${missing.length}. ${failed} failed.`);
+    } else {
+      toast.success(`Re-enriched ${done} profile${done === 1 ? '' : 's'}`);
+    }
+    window.dispatchEvent(new Event('focus'));
+  };
+
   const activeTargets = targets.filter((t) => t.is_active);
   const allAutoLike = activeTargets.length > 0 && activeTargets.every((t) => t.auto_like);
   const [bulkAutoLiking, setBulkAutoLiking] = useState(false);
@@ -301,6 +342,32 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
                 )}
               </Button>
             )}
+            {isAdmin && targets.length > 0 && !selectionMode && (() => {
+              const missingCount = targets.filter((t) => t.enrichment_status !== 'succeeded').length;
+              if (missingCount === 0 && !reEnriching) return null;
+              return (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-[11px] font-medium text-amber-600 hover:text-amber-700 hover:bg-amber-500/10"
+                  onClick={handleReEnrichMissing}
+                  disabled={reEnriching}
+                  title="Re-fetch profiles that failed enrichment"
+                >
+                  {reEnriching ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
+                      {reEnrichProgress.done}/{reEnrichProgress.total}
+                    </>
+                  ) : (
+                    <>
+                      <Wand2 className="h-3.5 w-3.5 mr-1" />
+                      Auto-fill {missingCount}
+                    </>
+                  )}
+                </Button>
+              );
+            })()}
             {isAdmin && !selectionMode && (
               <Button
                 variant="ghost"
