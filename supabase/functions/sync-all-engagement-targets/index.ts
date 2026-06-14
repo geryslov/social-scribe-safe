@@ -1,12 +1,9 @@
 // =============================================================================
 // sync-all-engagement-targets
 //
-// Daily cron job: iterate all engagement_targets across all workspaces and
-// invoke fetch-target-posts for each so new LinkedIn posts are pulled in
-// automatically.
-//
-// Skips targets synced within the last 18 hours to avoid hammering Apify.
-// Returns a summary of which targets were synced / skipped / failed.
+// Daily cron job: iterate engagement_targets across workspaces where auto-sync
+// is enabled and invoke fetch-target-posts for each. Records a summary row per
+// workspace in engagement_sync_runs.
 // =============================================================================
 
 const corsHeaders = {
@@ -15,7 +12,7 @@ const corsHeaders = {
 };
 
 const COOLDOWN_HOURS = 18;
-const BETWEEN_TARGETS_MS = 1500; // small spacing between Apify run starts
+const BETWEEN_TARGETS_MS = 1500;
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -30,10 +27,31 @@ Deno.serve(async (req) => {
     const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
 
-    const { data: targets, error } = await supabase
+    // Optional: trigger a single workspace on demand
+    let onlyWorkspaceId: string | null = null;
+    let trigger = 'cron';
+    if (req.method === 'POST') {
+      try {
+        const body = await req.json();
+        onlyWorkspaceId = body?.workspace_id ?? null;
+        trigger = body?.trigger ?? (onlyWorkspaceId ? 'manual' : 'cron');
+      } catch (_) { /* no body */ }
+    }
+
+    // Find workspaces with auto-sync enabled (default: enabled if no row)
+    const { data: settings } = await supabase
+      .from('workspace_engagement_settings')
+      .select('workspace_id, auto_sync_enabled');
+    const disabled = new Set(
+      (settings || []).filter((s: any) => s.auto_sync_enabled === false).map((s: any) => s.workspace_id),
+    );
+
+    let targetsQuery = supabase
       .from('engagement_targets')
       .select('id, workspace_id, name, last_fetched_at');
+    if (onlyWorkspaceId) targetsQuery = targetsQuery.eq('workspace_id', onlyWorkspaceId);
 
+    const { data: targets, error } = await targetsQuery;
     if (error) {
       console.error('Failed to load engagement_targets:', error);
       return new Response(
@@ -43,53 +61,85 @@ Deno.serve(async (req) => {
     }
 
     const cutoff = Date.now() - COOLDOWN_HOURS * 60 * 60 * 1000;
-    const results: Array<{ target_id: string; name: string; status: string; detail?: string }> = [];
-
+    const byWs = new Map<string, any[]>();
     for (const t of targets || []) {
-      if (t.last_fetched_at && new Date(t.last_fetched_at).getTime() > cutoff) {
-        results.push({ target_id: t.id, name: t.name, status: 'skipped_cooldown' });
-        continue;
-      }
-
-      try {
-        const res = await fetch(`${SUPABASE_URL}/functions/v1/fetch-target-posts`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${SERVICE_KEY}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ workspace_id: t.workspace_id, target_id: t.id }),
-        });
-        const body = await res.json().catch(() => ({}));
-        results.push({
-          target_id: t.id,
-          name: t.name,
-          status: res.ok && body.success ? 'synced' : 'failed',
-          detail: body.error || body.message || `HTTP ${res.status}`,
-        });
-      } catch (err) {
-        results.push({
-          target_id: t.id,
-          name: t.name,
-          status: 'failed',
-          detail: err instanceof Error ? err.message : String(err),
-        });
-      }
-
-      await sleep(BETWEEN_TARGETS_MS);
+      if (trigger === 'cron' && disabled.has(t.workspace_id)) continue;
+      const arr = byWs.get(t.workspace_id) || [];
+      arr.push(t);
+      byWs.set(t.workspace_id, arr);
     }
 
-    const summary = {
-      total: targets?.length || 0,
-      synced: results.filter((r) => r.status === 'synced').length,
-      skipped: results.filter((r) => r.status === 'skipped_cooldown').length,
-      failed: results.filter((r) => r.status === 'failed').length,
-    };
+    const startedAt = new Date().toISOString();
+    const overall: any[] = [];
 
-    console.log('sync-all-engagement-targets done:', summary);
+    for (const [workspace_id, wsTargets] of byWs.entries()) {
+      const results: any[] = [];
+      let newPosts = 0;
+
+      for (const t of wsTargets) {
+        if (trigger === 'cron' && t.last_fetched_at && new Date(t.last_fetched_at).getTime() > cutoff) {
+          results.push({ target_id: t.id, name: t.name, status: 'skipped_cooldown', posts_found: 0 });
+          continue;
+        }
+        try {
+          const res = await fetch(`${SUPABASE_URL}/functions/v1/fetch-target-posts`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${SERVICE_KEY}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ workspace_id: t.workspace_id, target_id: t.id }),
+          });
+          const body = await res.json().catch(() => ({}));
+          const ok = res.ok && body.success;
+          const found = Number(body?.posts_found || 0);
+          if (ok) newPosts += found;
+          results.push({
+            target_id: t.id,
+            name: t.name,
+            status: ok ? 'synced' : 'failed',
+            posts_found: found,
+            detail: body?.error || body?.message || (ok ? undefined : `HTTP ${res.status}`),
+          });
+        } catch (err) {
+          results.push({
+            target_id: t.id,
+            name: t.name,
+            status: 'failed',
+            posts_found: 0,
+            detail: err instanceof Error ? err.message : String(err),
+          });
+        }
+        await sleep(BETWEEN_TARGETS_MS);
+      }
+
+      const summary = {
+        total: wsTargets.length,
+        synced: results.filter((r) => r.status === 'synced').length,
+        skipped: results.filter((r) => r.status === 'skipped_cooldown').length,
+        failed: results.filter((r) => r.status === 'failed').length,
+        new_posts: newPosts,
+      };
+
+      await supabase.from('engagement_sync_runs').insert({
+        workspace_id,
+        started_at: startedAt,
+        finished_at: new Date().toISOString(),
+        total_targets: summary.total,
+        synced: summary.synced,
+        skipped: summary.skipped,
+        failed: summary.failed,
+        new_posts: summary.new_posts,
+        trigger,
+        details: results,
+      });
+
+      overall.push({ workspace_id, summary });
+      console.log('sync workspace done:', workspace_id, summary);
+    }
 
     return new Response(
-      JSON.stringify({ success: true, summary, results }),
+      JSON.stringify({ success: true, workspaces: overall }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     );
   } catch (error: unknown) {
