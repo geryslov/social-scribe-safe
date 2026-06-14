@@ -340,13 +340,13 @@ export function PostPanel({ target, publisher, isAdmin }: PostPanelProps) {
             liked: posts.filter((p) => p.is_liked).length,
             'not-liked': posts.filter((p) => !p.is_liked).length,
           } as const;
-          const tabs: Array<{ id: typeof feedFilter; label: string }> = [
-            { id: 'all', label: 'All' },
-            { id: 'new', label: 'New' },
-            { id: 'fresh', label: 'Fresh' },
-            { id: 'engaged', label: 'Engaged' },
-            { id: 'liked', label: 'Liked' },
-            { id: 'not-liked', label: 'Not liked' },
+          const tabs: Array<{ id: typeof feedFilter; label: string; activeClass: string }> = [
+            { id: 'all', label: 'All', activeClass: 'bg-primary text-primary-foreground' },
+            { id: 'new', label: 'New', activeClass: 'bg-sky-500 text-white' },
+            { id: 'fresh', label: 'New Posts', activeClass: 'bg-cyan-500 text-white' },
+            { id: 'engaged', label: 'Done', activeClass: 'bg-emerald-500 text-white' },
+            { id: 'liked', label: 'Liked', activeClass: 'bg-primary text-primary-foreground' },
+            { id: 'not-liked', label: 'Not liked', activeClass: 'bg-primary text-primary-foreground' },
           ];
           return (
             <div className="sticky top-0 z-10 px-5 py-2.5 bg-background/80 backdrop-blur border-b flex items-center gap-1.5 overflow-x-auto">
@@ -361,9 +361,7 @@ export function PostPanel({ target, publisher, isAdmin }: PostPanelProps) {
                     className={cn(
                       'inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full text-[11px] font-semibold transition-colors whitespace-nowrap',
                       active
-                        ? isNewTab
-                          ? 'bg-sky-500 text-white shadow-sm'
-                          : 'bg-primary text-primary-foreground shadow-sm'
+                        ? t.activeClass + ' shadow-sm'
                         : hasNew
                           ? 'bg-sky-100 text-sky-700 hover:bg-sky-200 ring-1 ring-sky-200'
                           : 'bg-muted/60 text-muted-foreground hover:text-foreground hover:bg-muted',
