@@ -275,6 +275,20 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
               <Button
                 variant="ghost"
                 size="sm"
+                className={cn(
+                  'h-7 w-7 p-0 hover:text-primary',
+                  selectionMode ? 'text-primary bg-primary/10' : 'text-muted-foreground',
+                )}
+                onClick={() => (selectionMode ? exitSelectionMode() : setSelectionMode(true))}
+                title={selectionMode ? 'Exit selection' : 'Select multiple'}
+              >
+                <CheckSquare className="h-3.5 w-3.5" />
+              </Button>
+            )}
+            {isAdmin && targets.length > 0 && !selectionMode && (
+              <Button
+                variant="ghost"
+                size="sm"
                 className="h-7 w-7 p-0 text-muted-foreground hover:text-primary"
                 onClick={handleFetchAll}
                 disabled={fetchingAll}
@@ -287,7 +301,7 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
                 )}
               </Button>
             )}
-            {isAdmin && (
+            {isAdmin && !selectionMode && (
               <Button
                 variant="ghost"
                 size="sm"
@@ -300,6 +314,75 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
             )}
           </div>
         </div>
+
+        {/* Bulk action bar */}
+        {selectionMode && (
+          <div className="flex items-center gap-2 rounded-md bg-primary/5 border border-primary/30 px-2 py-1.5">
+            <span className="text-[11px] font-semibold text-primary">
+              {selectedIds.size} selected
+            </span>
+            <div className="flex-1" />
+            <button
+              type="button"
+              onClick={() => {
+                if (selectedIds.size === filtered.length) setSelectedIds(new Set());
+                else setSelectedIds(new Set(filtered.map((t) => t.id)));
+              }}
+              className="text-[10px] text-primary hover:underline font-medium"
+            >
+              {selectedIds.size === filtered.length && filtered.length > 0 ? 'Clear' : 'All'}
+            </button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-6 text-[11px] gap-1 px-2"
+              disabled={selectedIds.size === 0 || bulkReassignTargets.isPending}
+              onClick={() => {
+                setReassignPublisherId('');
+                setShowReassignDialog(true);
+              }}
+            >
+              <ArrowRightLeft className="h-3 w-3" />
+              Move
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className={cn(
+                'h-6 text-[11px] gap-1 px-2',
+                confirmDelete
+                  ? 'border-destructive text-destructive bg-destructive/10'
+                  : 'text-destructive border-destructive/40',
+              )}
+              disabled={selectedIds.size === 0 || bulkDeleteTargets.isPending}
+              onClick={() => {
+                if (confirmDelete) {
+                  bulkDeleteTargets.mutate(Array.from(selectedIds), {
+                    onSuccess: () => exitSelectionMode(),
+                  });
+                } else {
+                  setConfirmDelete(true);
+                  setTimeout(() => setConfirmDelete(false), 3000);
+                }
+              }}
+            >
+              {bulkDeleteTargets.isPending ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                <Trash2 className="h-3 w-3" />
+              )}
+              {confirmDelete ? 'Confirm?' : 'Delete'}
+            </Button>
+            <button
+              type="button"
+              onClick={exitSelectionMode}
+              className="text-muted-foreground hover:text-foreground p-1 rounded"
+              title="Exit selection"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          </div>
+        )}
 
         <div className="relative">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/50" />
