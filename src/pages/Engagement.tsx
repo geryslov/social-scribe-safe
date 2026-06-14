@@ -7,6 +7,7 @@ import { Navigate } from 'react-router-dom';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ContactList } from '@/components/engagement/ContactList';
 import { PostPanel } from '@/components/engagement/PostPanel';
+import { SyncStatusBar } from '@/components/engagement/SyncStatusBar';
 import { EngagementTarget, useEngagementTargets } from '@/hooks/useEngagement';
 import { MessageCircle } from 'lucide-react';
 
@@ -61,6 +62,8 @@ export default function Engagement() {
             </SelectContent>
           </Select>
         </div>
+
+        <SyncStatusBar />
 
         {/* Master-detail layout */}
         {!selectedPublisher ? (
