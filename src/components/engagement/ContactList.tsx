@@ -14,9 +14,10 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { Plus, Search, Loader2, Linkedin, RefreshCw, Building2, Upload, CheckCircle2, Sparkles } from 'lucide-react';
+import { Plus, Search, Loader2, Linkedin, RefreshCw, Building2, Upload, CheckCircle2, Sparkles, Zap } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 
 interface ContactListProps {
@@ -39,7 +40,7 @@ function timeAgoShort(dateStr: string | null): string {
 
 export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarget }: ContactListProps) {
   const { currentWorkspace } = useWorkspace();
-  const { targets, isLoading, createTarget, enrichTarget } = useEngagementTargets(publisher.id);
+  const { targets, isLoading, createTarget, enrichTarget, updateTarget } = useEngagementTargets(publisher.id);
   const fetchPosts = useFetchTargetPosts();
 
   const [search, setSearch] = useState('');
@@ -191,6 +192,24 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
     setFetchingAll(false);
   };
 
+  const activeTargets = targets.filter((t) => t.is_active);
+  const allAutoLike = activeTargets.length > 0 && activeTargets.every((t) => t.auto_like);
+  const [bulkAutoLiking, setBulkAutoLiking] = useState(false);
+  const handleToggleAllAutoLike = async (checked: boolean) => {
+    if (activeTargets.length === 0) return;
+    setBulkAutoLiking(true);
+    try {
+      await Promise.all(
+        activeTargets
+          .filter((t) => t.auto_like !== checked)
+          .map((t) => updateTarget.mutateAsync({ id: t.id, updates: { auto_like: checked } })),
+      );
+      toast.success(checked ? `Auto-like enabled for ${activeTargets.length} profiles` : `Auto-like disabled for ${activeTargets.length} profiles`);
+    } finally {
+      setBulkAutoLiking(false);
+    }
+  };
+
   return (
     <>
       {/* Header */}
@@ -239,6 +258,36 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
             className="h-8 pl-8 text-sm bg-background focus-visible:ring-primary/30"
           />
         </div>
+
+        {/* Bulk auto-like toggle for all profiles */}
+        {isAdmin && activeTargets.length > 0 && (
+          <div
+            className={cn(
+              'flex items-center justify-between gap-2 rounded-md px-2.5 py-1.5 border transition-colors',
+              allAutoLike
+                ? 'bg-amber-50 border-amber-200/70'
+                : 'bg-muted/40 border-border',
+            )}
+            title="Auto-like every new post from all profiles in this list"
+          >
+            <span className="flex items-center gap-1.5 min-w-0">
+              <Zap className={cn('h-3.5 w-3.5 flex-shrink-0', allAutoLike ? 'fill-amber-500 text-amber-500' : 'text-muted-foreground')} />
+              <span className="text-[11px] font-semibold truncate">
+                Auto-like all ({activeTargets.length})
+              </span>
+            </span>
+            {bulkAutoLiking ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+            ) : (
+              <Switch
+                checked={allAutoLike}
+                onCheckedChange={handleToggleAllAutoLike}
+                className="data-[state=checked]:bg-amber-500"
+              />
+            )}
+          </div>
+        )}
+
 
         {/* Engagement status summary */}
         <div className="grid grid-cols-2 gap-1.5">
