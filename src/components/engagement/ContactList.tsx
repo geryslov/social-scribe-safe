@@ -3,9 +3,11 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useEngagementTargets, useFetchTargetPosts, EngagementTarget } from '@/hooks/useEngagement';
 import { useWorkspace } from '@/hooks/useWorkspace';
-import { Publisher } from '@/hooks/usePublishers';
+import { usePublishers, Publisher } from '@/hooks/usePublishers';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Dialog,
   DialogContent,
@@ -14,7 +16,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { Plus, Search, Loader2, Linkedin, RefreshCw, Building2, Upload, CheckCircle2, Sparkles, Zap } from 'lucide-react';
+import { Plus, Search, Loader2, Linkedin, RefreshCw, Building2, Upload, CheckCircle2, Sparkles, Zap, CheckSquare, Trash2, ArrowRightLeft, X } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
@@ -40,8 +42,31 @@ function timeAgoShort(dateStr: string | null): string {
 
 export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarget }: ContactListProps) {
   const { currentWorkspace } = useWorkspace();
-  const { targets, isLoading, createTarget, enrichTarget, updateTarget } = useEngagementTargets(publisher.id);
+  const { targets, isLoading, createTarget, enrichTarget, updateTarget, bulkDeleteTargets, bulkReassignTargets } = useEngagementTargets(publisher.id);
+  const { publishers } = usePublishers();
   const fetchPosts = useFetchTargetPosts();
+
+  // Multi-select state
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [showReassignDialog, setShowReassignDialog] = useState(false);
+  const [reassignPublisherId, setReassignPublisherId] = useState<string>('');
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
+  const exitSelectionMode = () => {
+    setSelectionMode(false);
+    setSelectedIds(new Set());
+    setConfirmDelete(false);
+  };
+
+  const toggleSelected = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   const [search, setSearch] = useState('');
   const [showAddDialog, setShowAddDialog] = useState(false);
