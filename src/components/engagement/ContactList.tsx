@@ -647,11 +647,21 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
                         initials
                       )}
                     </div>
-                    {/* Unseen badge */}
-                    {unseen > 0 && (
-                      <span className="absolute -top-1 -right-1 h-[18px] min-w-[18px] px-1 rounded-full bg-primary text-primary-foreground text-[9px] font-bold flex items-center justify-center ring-2 ring-background">
-                        {unseen}
+                    {/* New-posts badge on avatar */}
+                    {fresh > 0 && (
+                      <span
+                        className="absolute -top-1 -right-1 h-[18px] min-w-[18px] px-1 rounded-full bg-sky-500 text-white text-[9px] font-bold flex items-center justify-center ring-2 ring-background shadow-sm"
+                        title={`${fresh} new post${fresh === 1 ? '' : 's'} to engage with`}
+                      >
+                        {fresh}
                       </span>
+                    )}
+                    {/* Sync failed indicator dot */}
+                    {target.enrichment_status === 'failed' && fresh === 0 && (
+                      <span
+                        className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-destructive ring-2 ring-background"
+                        title="Sync failed"
+                      />
                     )}
                   </div>
 
@@ -662,32 +672,15 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
                       {target.enrichment_status === 'pending' && (
                         <Loader2 className="h-3 w-3 animate-spin text-primary/60" />
                       )}
-                    </div>
-                    <div className="mt-1 flex items-center gap-1.5 flex-wrap">
-                      <span
-                        className={cn(
-                          'inline-flex items-center gap-1 h-4 px-1.5 rounded-full text-[9px] font-bold uppercase tracking-wide',
-                          fresh > 0
-                            ? 'bg-amber-100 text-amber-700'
-                            : 'bg-muted text-muted-foreground/60',
-                        )}
-                        title={`${fresh} post${fresh === 1 ? '' : 's'} to engage with`}
-                      >
-                        <Sparkles className="h-2.5 w-2.5" />
-                        {fresh} fresh
-                      </span>
-                      <span
-                        className={cn(
-                          'inline-flex items-center gap-1 h-4 px-1.5 rounded-full text-[9px] font-bold uppercase tracking-wide',
-                          done > 0
-                            ? 'bg-emerald-100 text-emerald-700'
-                            : 'bg-muted text-muted-foreground/60',
-                        )}
-                        title={`${done} post${done === 1 ? '' : 's'} already liked or replied to`}
-                      >
-                        <CheckCircle2 className="h-2.5 w-2.5" />
-                        {done} done
-                      </span>
+                      {done > 0 && (
+                        <span
+                          className="inline-flex items-center gap-0.5 text-[9px] font-bold text-emerald-600"
+                          title={`${done} post${done === 1 ? '' : 's'} engaged`}
+                        >
+                          <CheckCircle2 className="h-2.5 w-2.5" />
+                          {done}
+                        </span>
+                      )}
                     </div>
                     {target.title && (
                       <p className="text-[11px] text-muted-foreground truncate mt-0.5 leading-tight">
@@ -700,7 +693,6 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
                         {target.company_name}
                       </p>
                     )}
-                    {/* Fallback to headline if no separate title/company */}
                     {!target.title && !target.company_name && target.headline && (
                       <p className="text-[11px] text-muted-foreground truncate mt-0.5 leading-tight">
                         {target.headline}
@@ -715,7 +707,7 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
                         }}
                         className="text-[10px] text-destructive hover:underline mt-0.5"
                       >
-                        Auto-fill failed · Retry
+                        Sync failed · Retry
                       </button>
                     )}
                   </div>
@@ -734,6 +726,7 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
           </div>
         )}
       </div>
+
 
       {/* Add Dialog */}
       <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
