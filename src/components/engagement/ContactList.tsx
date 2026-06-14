@@ -192,6 +192,24 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
     setFetchingAll(false);
   };
 
+  const activeTargets = targets.filter((t) => t.is_active);
+  const allAutoLike = activeTargets.length > 0 && activeTargets.every((t) => t.auto_like);
+  const [bulkAutoLiking, setBulkAutoLiking] = useState(false);
+  const handleToggleAllAutoLike = async (checked: boolean) => {
+    if (activeTargets.length === 0) return;
+    setBulkAutoLiking(true);
+    try {
+      await Promise.all(
+        activeTargets
+          .filter((t) => t.auto_like !== checked)
+          .map((t) => updateTarget.mutateAsync({ id: t.id, updates: { auto_like: checked } })),
+      );
+      toast.success(checked ? `Auto-like enabled for ${activeTargets.length} profiles` : `Auto-like disabled for ${activeTargets.length} profiles`);
+    } finally {
+      setBulkAutoLiking(false);
+    }
+  };
+
   return (
     <>
       {/* Header */}
