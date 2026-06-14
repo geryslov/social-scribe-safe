@@ -412,6 +412,34 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
                 </Button>
               );
             })()}
+            {isAdmin && targets.length > 0 && !selectionMode && (() => {
+              const missingPosts = targets.filter(
+                (t) => t.is_active && !freshCounts[t.id] && !doneCounts[t.id],
+              ).length;
+              if (missingPosts === 0 && !resyncing) return null;
+              return (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-[11px] font-medium text-cyan-600 hover:text-cyan-700 hover:bg-cyan-500/10"
+                  onClick={handleResyncMissingPosts}
+                  disabled={resyncing}
+                  title="Fetch posts for profiles with no posts yet"
+                >
+                  {resyncing ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
+                      {resyncProgress.done}/{resyncProgress.total}
+                    </>
+                  ) : (
+                    <>
+                      <DownloadCloud className="h-3.5 w-3.5 mr-1" />
+                      Sync posts {missingPosts}
+                    </>
+                  )}
+                </Button>
+              );
+            })()}
             {isAdmin && !selectionMode && (
               <Button
                 variant="ghost"
