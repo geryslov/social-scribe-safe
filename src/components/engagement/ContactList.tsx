@@ -760,6 +760,69 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
           </Tabs>
         </DialogContent>
       </Dialog>
+
+      {/* Reassign Dialog */}
+      <Dialog open={showReassignDialog} onOpenChange={setShowReassignDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-display">Move {selectedIds.size} profile{selectedIds.size === 1 ? '' : 's'}</DialogTitle>
+            <DialogDescription>
+              Reassign the selected profile{selectedIds.size === 1 ? '' : 's'} from <b>{publisher.name}</b> to another engager.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-2">
+            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Engager</label>
+            <Select value={reassignPublisherId} onValueChange={setReassignPublisherId}>
+              <SelectTrigger className="focus:ring-primary/30">
+                <SelectValue placeholder="Choose an engager..." />
+              </SelectTrigger>
+              <SelectContent>
+                {publishers
+                  .filter((p) => p.id !== publisher.id)
+                  .map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.name}
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+            {publishers.filter((p) => p.id !== publisher.id).length === 0 && (
+              <p className="text-[11px] text-muted-foreground mt-2">
+                No other engagers in this workspace.
+              </p>
+            )}
+          </div>
+
+          <div className="flex justify-end gap-2 pt-1">
+            <Button variant="ghost" size="sm" onClick={() => setShowReassignDialog(false)}>Cancel</Button>
+            <Button
+              size="sm"
+              onClick={() => {
+                if (!reassignPublisherId) return;
+                bulkReassignTargets.mutate(
+                  { ids: Array.from(selectedIds), publisher_id: reassignPublisherId },
+                  {
+                    onSuccess: () => {
+                      setShowReassignDialog(false);
+                      exitSelectionMode();
+                    },
+                  },
+                );
+              }}
+              disabled={!reassignPublisherId || bulkReassignTargets.isPending}
+              className="gap-1.5"
+            >
+              {bulkReassignTargets.isPending ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <ArrowRightLeft className="h-3.5 w-3.5" />
+              )}
+              Move
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
