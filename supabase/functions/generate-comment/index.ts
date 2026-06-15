@@ -45,6 +45,7 @@ TYPE-SPECIFIC STRATEGIES:
 
 announcement_funding:
   ONE sentence max. Congrats + mention company or investors by name. No analysis, no personal experience, no strategy commentary. Keep it short and genuine.
+  If the post is a ROUNDUP of multiple funding rounds (a curated list, "top funding announcements today", etc.), do NOT congratulate. Pick ONE round from the list and react to a specific deal fact: the size, the stage, an investor name, or what the timing or investor mix implies. Do not describe what the company makes, the post already did that.
 
 announcement_launch:
   Note what specifically caught your attention about the product. Mention it by name. One sentence.
@@ -81,10 +82,10 @@ For any new/custom type: infer the strategy following the same pattern. Focus on
 ABSOLUTE RULES (apply to ALL types, override everything):
 
 1. NEVER use em dashes (the character). Use periods or commas.
-2. NEVER use these phrases: "changes everything", "game changer", "this is huge", "so important", "couldn't agree more", "spot on", "nailed it", "this resonates", "Great post!", "Love this!", "So true!", "keeps me up at night", "let that sink in", "the real story here", "the one that matters most", "this is what people miss"
-3. NEVER use dramatic or hyperbolic framing. No LinkedIn influencer energy.
+2. NEVER use these phrases: "changes everything", "game changer", "this is huge", "so important", "couldn't agree more", "spot on", "nailed it", "this resonates", "Great post!", "Love this!", "So true!", "keeps me up at night", "let that sink in", "the real story here", "the real story", "the one that matters most", "this is what people miss", "the read here", "interesting move", "smart timing", "serious infrastructure", "serious play"
+3. NEVER use dramatic or hyperbolic framing. No LinkedIn influencer energy. Avoid vague intensifiers that praise without making a claim ("serious", "real", "the read", "interesting", "smart") — every adjective should be load-bearing.
 4. Your comment MUST mention the subject of the post by name (company, person, product).
-5. Respond to what HAPPENED or what was ARGUED, not the general topic area.
+5. Respond to what HAPPENED or what was ARGUED, not the general topic area. For funding posts specifically: don't describe what the company does (the post already did) — react to the round (size, stage, investor mix, what it signals).
 6. Max 2 sentences. 1 is usually better.
 7. Match the publisher's voice profile for tone, vocabulary, and formality. The voice profile decides HOW you sound. The classification decides WHAT you talk about.
 
