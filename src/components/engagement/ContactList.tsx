@@ -1,7 +1,8 @@
-import { useState, useMemo, useCallback, useRef } from 'react';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useEngagementTargets, useFetchTargetPosts, EngagementTarget } from '@/hooks/useEngagement';
+import { useEngagementFolders, EngagementFolder } from '@/hooks/useEngagementFolders';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { usePublishers, Publisher } from '@/hooks/usePublishers';
 import { Button } from '@/components/ui/button';
@@ -28,17 +29,21 @@ import { toast } from 'sonner';
 import {
   Plus, Search, Loader2, Linkedin, Upload, CheckSquare, Trash2,
   ArrowRightLeft, X, Wand2, MoreHorizontal, Zap, ChevronDown,
+  FolderPlus, Pencil, Check, FolderOpen, Folder,
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { ActivityRing } from './ActivityRing';
+import type { FolderScope } from '@/pages/Engagement';
 
 interface ContactListProps {
   publisher: Publisher;
   isAdmin: boolean;
   selectedTargetId: string | null;
   onSelectTarget: (target: EngagementTarget) => void;
+  folderScope: FolderScope;
+  onChangeFolderScope: (scope: FolderScope) => void;
 }
 
 function timeAgoShort(dateStr: string | null): string {
@@ -54,12 +59,16 @@ function timeAgoShort(dateStr: string | null): string {
 
 const QUEUE_MAX = 5;
 
-export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarget }: ContactListProps) {
+export function ContactList({
+  publisher, isAdmin, selectedTargetId, onSelectTarget,
+  folderScope, onChangeFolderScope,
+}: ContactListProps) {
   const { currentWorkspace } = useWorkspace();
   const {
     targets, isLoading, createTarget, enrichTarget, updateTarget,
     bulkDeleteTargets, bulkReassignTargets,
   } = useEngagementTargets(publisher.id);
+  const { folders, createFolder, renameFolder, deleteFolder, moveTargetsToFolder } = useEngagementFolders(publisher.id);
   const { publishers } = usePublishers();
   const fetchPosts = useFetchTargetPosts();
 
@@ -132,11 +141,17 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
   const totalFresh = Object.values(freshCounts).reduce((s, n) => s + n, 0);
   const totalDone = Object.values(doneCounts).reduce((s, n) => s + n, 0);
 
-  // Search filter
+  // Folder scope filter first, then search
+  const folderFiltered = useMemo(() => {
+    if (folderScope === 'all') return targets;
+    if (folderScope === 'unfiled') return targets.filter((t) => !t.folder_id);
+    return targets.filter((t) => t.folder_id === folderScope);
+  }, [targets, folderScope]);
+
   const searchFiltered = useMemo(() => {
-    if (!search.trim()) return targets;
+    if (!search.trim()) return folderFiltered;
     const q = search.toLowerCase();
-    return targets.filter(
+    return folderFiltered.filter(
       (t) =>
         t.name.toLowerCase().includes(q) ||
         (t.headline || '').toLowerCase().includes(q) ||
@@ -144,7 +159,25 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
         (t.title || '').toLowerCase().includes(q) ||
         (t.linkedin_username || '').toLowerCase().includes(q),
     );
-  }, [targets, search]);
+  }, [folderFiltered, search]);
+
+  // Counts per folder for the strip (computed from full target list, ignores search)
+  const folderCounts = useMemo(() => {
+    const map: Record<string, number> = { all: targets.length, unfiled: 0 };
+    for (const f of folders) map[f.id] = 0;
+    for (const t of targets) {
+      if (!t.folder_id) map.unfiled++;
+      else if (map[t.folder_id] !== undefined) map[t.folder_id]++;
+    }
+    return map;
+  }, [targets, folders]);
+
+  // If the active folder scope no longer exists (e.g. folder deleted),
+  // fall back to "all".
+  useEffect(() => {
+    if (folderScope === 'all' || folderScope === 'unfiled') return;
+    if (!folders.some((f) => f.id === folderScope)) onChangeFolderScope('all');
+  }, [folderScope, folders, onChangeFolderScope]);
 
   // Split into Queue (fresh > 0) and Watching (the rest)
   const queueList = useMemo(() => {
@@ -161,12 +194,19 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [searchFiltered, queueList]);
 
+  // Resolve the default folder for new targets based on current scope.
+  // "all" or "unfiled" -> NULL (unfiled). A specific folder -> that folder.
+  const defaultFolderId = useMemo(() => {
+    if (folderScope === 'all' || folderScope === 'unfiled') return null;
+    return folderScope;
+  }, [folderScope]);
+
   // Auto-fetch after adding a target
   const handleAdd = useCallback(() => {
     if (!newUrl.trim() || !currentWorkspace) return;
     const name = newName.trim() || newUrl.match(/linkedin\.com\/in\/([^/?#]+)/)?.[1]?.replace(/-/g, ' ')?.replace(/\b\w/g, (c) => c.toUpperCase()) || 'Unknown';
     createTarget.mutate(
-      { publisher_id: publisher.id, name, linkedin_url: newUrl.trim() },
+      { publisher_id: publisher.id, name, linkedin_url: newUrl.trim(), folder_id: defaultFolderId },
       {
         onSuccess: (data: any) => {
           setNewName('');
@@ -182,7 +222,7 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
         },
       },
     );
-  }, [newName, newUrl, currentWorkspace, publisher.id, createTarget, fetchPosts]);
+  }, [newName, newUrl, currentWorkspace, publisher.id, createTarget, fetchPosts, defaultFolderId]);
 
   // Bulk import
   const handleBulkImport = useCallback(async () => {
@@ -214,6 +254,7 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
           publisher_id: publisher.id,
           name,
           linkedin_url: url,
+          folder_id: defaultFolderId,
           skipEnrich: true,
         });
         if (row?.id) createdIds.push(row.id);
@@ -337,6 +378,18 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
 
   return (
     <>
+      {/* Folder strip — sits above search, scopes everything below */}
+      <FolderStrip
+        folders={folders}
+        folderCounts={folderCounts}
+        activeScope={folderScope}
+        onSelectScope={onChangeFolderScope}
+        isAdmin={isAdmin}
+        onCreate={(name) => createFolder.mutate(name)}
+        onRename={(id, name) => renameFolder.mutate({ id, name })}
+        onDelete={(id) => deleteFolder.mutate(id)}
+      />
+
       {/* Header — search + actions */}
       <div className="px-3 pt-3 pb-2 space-y-2.5 border-b">
         {/* Search + +Add + List menu */}
@@ -453,19 +506,65 @@ export function ContactList({ publisher, isAdmin, selectedTargetId, onSelectTarg
                 return selectedIds.size === all.length && all.length > 0 ? 'Clear' : 'All';
               })()}
             </button>
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-6 text-[11px] gap-1 px-2"
-              disabled={selectedIds.size === 0 || bulkReassignTargets.isPending}
-              onClick={() => {
-                setReassignPublisherId('');
-                setShowReassignDialog(true);
-              }}
-            >
-              <ArrowRightLeft className="h-3 w-3" />
-              Move
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-6 text-[11px] gap-1 px-2"
+                  disabled={selectedIds.size === 0 || bulkReassignTargets.isPending || moveTargetsToFolder.isPending}
+                >
+                  <ArrowRightLeft className="h-3 w-3" />
+                  Move
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-52">
+                <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground/70">
+                  Move to folder
+                </DropdownMenuLabel>
+                {folders.length === 0 ? (
+                  <div className="px-2 py-1.5 text-[11px] text-muted-foreground italic">
+                    No folders yet
+                  </div>
+                ) : (
+                  folders.map((f) => (
+                    <DropdownMenuItem
+                      key={f.id}
+                      onClick={() => {
+                        moveTargetsToFolder.mutate(
+                          { targetIds: Array.from(selectedIds), folderId: f.id },
+                          { onSuccess: () => exitSelectionMode() },
+                        );
+                      }}
+                    >
+                      <Folder className="h-3 w-3 mr-2" />
+                      {f.name}
+                    </DropdownMenuItem>
+                  ))
+                )}
+                <DropdownMenuItem
+                  onClick={() => {
+                    moveTargetsToFolder.mutate(
+                      { targetIds: Array.from(selectedIds), folderId: null },
+                      { onSuccess: () => exitSelectionMode() },
+                    );
+                  }}
+                >
+                  <FolderOpen className="h-3 w-3 mr-2 opacity-60" />
+                  Unfiled
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => {
+                    setReassignPublisherId('');
+                    setShowReassignDialog(true);
+                  }}
+                >
+                  <ArrowRightLeft className="h-3 w-3 mr-2" />
+                  Move to engager…
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <Button
               size="sm"
               variant="outline"
@@ -924,4 +1023,209 @@ function AvatarInner({ target, initials, isFetching }: { target: EngagementTarge
     return <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />;
   }
   return <span className="text-foreground/60">{initials}</span>;
+}
+
+// -----------------------------------------------------------------------------
+// FolderStrip — horizontal pills for All / each folder / Unfiled / + New
+// -----------------------------------------------------------------------------
+
+interface FolderStripProps {
+  folders: EngagementFolder[];
+  folderCounts: Record<string, number>;
+  activeScope: FolderScope;
+  isAdmin: boolean;
+  onSelectScope: (scope: FolderScope) => void;
+  onCreate: (name: string) => void;
+  onRename: (id: string, name: string) => void;
+  onDelete: (id: string) => void;
+}
+
+function FolderStrip({
+  folders, folderCounts, activeScope, isAdmin,
+  onSelectScope, onCreate, onRename, onDelete,
+}: FolderStripProps) {
+  const [creating, setCreating] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState('');
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+
+  const startCreate = () => { setCreating(true); setNewName(''); };
+  const submitCreate = () => {
+    const n = newName.trim();
+    if (!n) { setCreating(false); return; }
+    onCreate(n);
+    setCreating(false);
+    setNewName('');
+  };
+
+  const startRename = (id: string, current: string) => {
+    setEditingId(id);
+    setEditingName(current);
+  };
+  const submitRename = () => {
+    if (editingId && editingName.trim()) {
+      onRename(editingId, editingName.trim());
+    }
+    setEditingId(null);
+    setEditingName('');
+  };
+
+  const hasUnfiled = (folderCounts.unfiled || 0) > 0;
+
+  return (
+    <div className="px-3 pt-3 pb-1.5 border-b bg-background flex items-center gap-1.5 overflow-x-auto">
+      {/* All */}
+      <FolderPill
+        label="All"
+        count={folderCounts.all || 0}
+        active={activeScope === 'all'}
+        onClick={() => onSelectScope('all')}
+      />
+
+      {/* Custom folders */}
+      {folders.map((f) => {
+        const isActive = activeScope === f.id;
+        const isEditing = editingId === f.id;
+        const isConfirming = confirmDeleteId === f.id;
+        return (
+          <div key={f.id} className="relative inline-flex items-center group">
+            {isEditing ? (
+              <input
+                type="text"
+                value={editingName}
+                onChange={(e) => setEditingName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') submitRename();
+                  if (e.key === 'Escape') { setEditingId(null); setEditingName(''); }
+                }}
+                onBlur={submitRename}
+                autoFocus
+                className="h-7 px-2 rounded-full text-[11px] font-semibold bg-amber-50 border border-amber-300 text-amber-800 focus:outline-none focus:ring-2 focus:ring-amber-300 w-28"
+              />
+            ) : (
+              <FolderPill
+                label={f.name}
+                count={folderCounts[f.id] || 0}
+                active={isActive}
+                onClick={() => onSelectScope(f.id)}
+                icon={isActive ? <FolderOpen className="h-3 w-3" /> : <Folder className="h-3 w-3" />}
+              />
+            )}
+            {isAdmin && !isEditing && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    className={cn(
+                      'ml-0.5 h-5 w-5 inline-flex items-center justify-center rounded text-muted-foreground/50 hover:text-foreground hover:bg-muted',
+                      isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100',
+                    )}
+                    title="Folder actions"
+                  >
+                    <MoreHorizontal className="h-3 w-3" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-40">
+                  <DropdownMenuItem onClick={() => startRename(f.id, f.name)}>
+                    <Pencil className="h-3 w-3 mr-2" />
+                    Rename
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    className={cn('text-destructive focus:text-destructive', isConfirming && 'bg-destructive/10')}
+                    onSelect={(e) => {
+                      e.preventDefault();
+                      if (confirmDeleteId === f.id) {
+                        onDelete(f.id);
+                        setConfirmDeleteId(null);
+                      } else {
+                        setConfirmDeleteId(f.id);
+                        setTimeout(() => setConfirmDeleteId((prev) => (prev === f.id ? null : prev)), 3000);
+                      }
+                    }}
+                  >
+                    <Trash2 className="h-3 w-3 mr-2" />
+                    {isConfirming ? 'Click again to confirm' : 'Delete'}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+          </div>
+        );
+      })}
+
+      {/* Unfiled — only when relevant */}
+      {hasUnfiled && (
+        <FolderPill
+          label="Unfiled"
+          count={folderCounts.unfiled || 0}
+          active={activeScope === 'unfiled'}
+          onClick={() => onSelectScope('unfiled')}
+          muted
+        />
+      )}
+
+      {/* + New folder */}
+      {isAdmin && (creating ? (
+        <input
+          type="text"
+          value={newName}
+          onChange={(e) => setNewName(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') submitCreate();
+            if (e.key === 'Escape') { setCreating(false); setNewName(''); }
+          }}
+          onBlur={submitCreate}
+          autoFocus
+          placeholder="Folder name"
+          className="h-7 px-2 rounded-full text-[11px] font-semibold bg-amber-50 border border-amber-300 text-amber-800 focus:outline-none focus:ring-2 focus:ring-amber-300 w-28"
+        />
+      ) : (
+        <button
+          type="button"
+          onClick={startCreate}
+          className="inline-flex items-center justify-center h-7 w-7 rounded-full text-muted-foreground/70 hover:text-primary hover:bg-primary/10 flex-shrink-0"
+          title="New folder"
+        >
+          <FolderPlus className="h-3.5 w-3.5" />
+        </button>
+      ))}
+    </div>
+  );
+}
+
+interface FolderPillProps {
+  label: string;
+  count: number;
+  active: boolean;
+  onClick: () => void;
+  icon?: React.ReactNode;
+  muted?: boolean;
+}
+
+function FolderPill({ label, count, active, onClick, icon, muted }: FolderPillProps) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full text-[11px] font-semibold transition-colors whitespace-nowrap flex-shrink-0',
+        active
+          ? 'bg-amber-500 text-white shadow-sm'
+          : muted
+            ? 'bg-muted/40 text-muted-foreground/70 hover:bg-muted'
+            : 'bg-muted/60 text-muted-foreground hover:text-foreground hover:bg-muted',
+      )}
+    >
+      {icon}
+      {label}
+      <span className={cn(
+        'tabular-nums text-[10px] font-mono',
+        active ? 'text-white/85' : 'text-muted-foreground/60',
+      )}>
+        {count}
+      </span>
+    </button>
+  );
 }

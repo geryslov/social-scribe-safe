@@ -19,12 +19,17 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
+// Folder scope sentinel: 'all' = no filter, 'unfiled' = folder_id IS NULL,
+// any other string is a folder UUID.
+export type FolderScope = 'all' | 'unfiled' | string;
+
 export default function Engagement() {
   const { user, isAdmin } = useAuth();
   const { currentWorkspace } = useWorkspace();
   const { publishers, isLoading: pubsLoading } = usePublishers();
   const [selectedPublisherId, setSelectedPublisherId] = useState<string | null>(null);
   const [selectedTarget, setSelectedTarget] = useState<EngagementTarget | null>(null);
+  const [folderScope, setFolderScope] = useState<FolderScope>('all');
   const { markSeen } = useEngagementTargets(selectedPublisherId);
 
   const handleSelectTarget = (target: EngagementTarget) => {
@@ -48,9 +53,11 @@ export default function Engagement() {
         <CommandBar
           selectedPublisher={selectedPublisher}
           publishers={publishers}
+          folderScope={folderScope}
           onSelectPublisher={(id) => {
             setSelectedPublisherId(id);
             setSelectedTarget(null);
+            setFolderScope('all');
           }}
         />
 
@@ -67,6 +74,8 @@ export default function Engagement() {
                 isAdmin={isAdmin}
                 selectedTargetId={selectedTarget?.id || null}
                 onSelectTarget={handleSelectTarget}
+                folderScope={folderScope}
+                onChangeFolderScope={setFolderScope}
               />
             </div>
             <div className="flex-1 flex flex-col overflow-hidden">
@@ -90,10 +99,11 @@ export default function Engagement() {
 interface CommandBarProps {
   selectedPublisher: Publisher | null;
   publishers: Publisher[];
+  folderScope: FolderScope;
   onSelectPublisher: (id: string) => void;
 }
 
-function CommandBar({ selectedPublisher, publishers, onSelectPublisher }: CommandBarProps) {
+function CommandBar({ selectedPublisher, publishers, folderScope, onSelectPublisher }: CommandBarProps) {
   const { runNow, lastRun, settings } = useEngagementSync();
   const isSyncing = runNow.isPending;
   const autoEnabled = settings?.auto_sync_enabled ?? true;
@@ -125,7 +135,7 @@ function CommandBar({ selectedPublisher, publishers, onSelectPublisher }: Comman
         {selectedPublisher && (
           <>
             <span className="text-border hidden md:inline">·</span>
-            <DayCounter publisherId={selectedPublisher.id} />
+            <DayCounter publisherId={selectedPublisher.id} folderScope={folderScope} />
           </>
         )}
 
@@ -275,21 +285,28 @@ function PublisherSwitcher({ selected, publishers, onSelect }: PublisherSwitcher
 
 interface DayCounterProps {
   publisherId: string;
+  folderScope: FolderScope;
 }
 
-function DayCounter({ publisherId }: DayCounterProps) {
+function DayCounter({ publisherId, folderScope }: DayCounterProps) {
   const { currentWorkspace } = useWorkspace();
 
   const { data } = useQuery({
-    queryKey: ['day-counter', currentWorkspace?.id, publisherId],
+    queryKey: ['day-counter', currentWorkspace?.id, publisherId, folderScope],
     queryFn: async () => {
       if (!currentWorkspace) return { fresh: 0, done: 0 };
-      // Fetch the publisher's targets
-      const { data: targets, error: tErr } = await (supabase as any)
+      // Fetch the publisher's targets, scoped by folder
+      let q = (supabase as any)
         .from('engagement_targets')
         .select('id')
         .eq('workspace_id', currentWorkspace.id)
         .eq('publisher_id', publisherId);
+      if (folderScope === 'unfiled') {
+        q = q.is('folder_id', null);
+      } else if (folderScope !== 'all') {
+        q = q.eq('folder_id', folderScope);
+      }
+      const { data: targets, error: tErr } = await q;
       if (tErr || !targets || targets.length === 0) return { fresh: 0, done: 0 };
       const ids = targets.map((t: any) => t.id);
       const { data: rows } = await (supabase as any)

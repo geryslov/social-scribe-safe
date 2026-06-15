@@ -63,7 +63,8 @@ Multi-tenant LinkedIn thought leadership platform. Agency operators manage publi
 - `workspace_api_keys` — Per-workspace API keys (Brave, Apify, etc.)
 
 ### Engagement Layer Tables
-- `engagement_targets` — People to monitor. Fields: name, linkedin_url, linkedin_username, headline, title, company_name, avatar_url, first_name, last_name, enrichment_status, enriched_at, last_seen_at, last_fetched_at, auto_like, is_active
+- `engagement_folders` — Per-publisher folders for organizing targets. Fields: workspace_id, publisher_id, name, position. Targets reference via nullable `engagement_targets.folder_id` (ON DELETE SET NULL = falls back to "Unfiled" when a folder is removed).
+- `engagement_targets` — People to monitor. Fields: name, linkedin_url, linkedin_username, headline, title, company_name, avatar_url, first_name, last_name, enrichment_status, enriched_at, last_seen_at, last_fetched_at, auto_like, is_active, folder_id (nullable FK to engagement_folders)
 - `engagement_posts` — Fetched LinkedIn posts from targets. Fields: linkedin_post_urn, linkedin_post_url, content, published_at, likes/comments/shares_count, is_commented, is_liked, liked_at, post_metadata JSONB
 - `engagement_comments` — Comments drafted/posted on target posts. Fields: comment_text, status (draft/posted/failed), linkedin_comment_urn, posted_at, error_message, reaction_count, reply_count, reactions_breakdown JSONB, engagement_fetched_at
 
@@ -90,7 +91,7 @@ Voice profile structure: Professional Identity, Writing Voice, Content Themes, V
 - `/documents` — Document library + AI generation
 - `/documents/:id` — Document editor with sections
 - `/intelligence` — Research feed (Feed, Topics, Settings tabs)
-- `/engagement` — Master-detail CRM layout: contact list (left 340px) + post panel (right). Bulk import, unseen badges, profile auto-enrichment, post classification agent for comments.
+- `/engagement` — Master-detail CRM layout: contact list (left 320px) + post panel (right). Per-publisher folder strip scopes the entire view (queue, watching list, day counter). Bulk import, unseen badges, profile auto-enrichment, post classification agent for comments. Auto-like has jittered spacing (first like 400-800ms for responsiveness, subsequent 6-12s) and a hard 30/day server-side cap per publisher.
 - `/admin` — Admin dashboard
 
 ## Conventions

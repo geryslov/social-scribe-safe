@@ -12,6 +12,7 @@ export interface EngagementTarget {
   id: string;
   workspace_id: string;
   publisher_id: string;
+  folder_id: string | null;
   name: string;
   linkedin_url: string;
   linkedin_username: string | null;
@@ -174,7 +175,7 @@ export function useEngagementTargets(publisherId: string | null) {
   });
 
   const createTarget = useMutation({
-    mutationFn: async (data: { publisher_id: string; name?: string; linkedin_url: string; headline?: string; notes?: string; skipEnrich?: boolean }) => {
+    mutationFn: async (data: { publisher_id: string; name?: string; linkedin_url: string; headline?: string; notes?: string; folder_id?: string | null; skipEnrich?: boolean }) => {
       if (!currentWorkspace) throw new Error('No workspace selected');
       const match = data.linkedin_url.match(/linkedin\.com\/in\/([^/?#]+)/);
       const username = match ? match[1] : null;
@@ -185,6 +186,7 @@ export function useEngagementTargets(publisherId: string | null) {
         .insert({
           workspace_id: currentWorkspace.id,
           publisher_id: data.publisher_id,
+          folder_id: data.folder_id ?? null,
           name: fallbackName,
           linkedin_url: data.linkedin_url,
           linkedin_username: username,
@@ -314,7 +316,7 @@ export function useEngagementTargets(publisherId: string | null) {
   });
 
   const updateTarget = useMutation({
-    mutationFn: async ({ id, updates }: { id: string; updates: Partial<Pick<EngagementTarget, 'auto_like' | 'notes' | 'name'>> }) => {
+    mutationFn: async ({ id, updates }: { id: string; updates: Partial<Pick<EngagementTarget, 'auto_like' | 'notes' | 'name' | 'folder_id'>> }) => {
       const { error } = await (supabase as any)
         .from('engagement_targets')
         .update(updates)
