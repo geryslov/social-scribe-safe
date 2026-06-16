@@ -410,6 +410,51 @@ export type Database = {
           },
         ]
       }
+      engagement_folders: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          position: number
+          publisher_id: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          position?: number
+          publisher_id: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          position?: number
+          publisher_id?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "engagement_folders_publisher_id_fkey"
+            columns: ["publisher_id"]
+            isOneToOne: false
+            referencedRelation: "publishers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "engagement_folders_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       engagement_posts: {
         Row: {
           comments_count: number
@@ -542,6 +587,7 @@ export type Database = {
           enriched_at: string | null
           enrichment_status: string | null
           first_name: string | null
+          folder_id: string | null
           headline: string | null
           id: string
           is_active: boolean
@@ -565,6 +611,7 @@ export type Database = {
           enriched_at?: string | null
           enrichment_status?: string | null
           first_name?: string | null
+          folder_id?: string | null
           headline?: string | null
           id?: string
           is_active?: boolean
@@ -588,6 +635,7 @@ export type Database = {
           enriched_at?: string | null
           enrichment_status?: string | null
           first_name?: string | null
+          folder_id?: string | null
           headline?: string | null
           id?: string
           is_active?: boolean
@@ -603,6 +651,13 @@ export type Database = {
           workspace_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "engagement_targets_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "engagement_folders"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "engagement_targets_publisher_id_fkey"
             columns: ["publisher_id"]
