@@ -1,0 +1,1 @@
+ALTER TABLE public.engagement_folders ADD COLUMN IF NOT EXISTS created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL;

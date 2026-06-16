@@ -413,6 +413,7 @@ export type Database = {
       engagement_folders: {
         Row: {
           created_at: string
+          created_by: string | null
           id: string
           name: string
           position: number
@@ -422,6 +423,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          created_by?: string | null
           id?: string
           name: string
           position?: number
@@ -431,6 +433,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          created_by?: string | null
           id?: string
           name?: string
           position?: number
