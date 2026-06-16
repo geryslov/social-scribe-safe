@@ -15,7 +15,7 @@ import { PostPanel } from '@/components/engagement/PostPanel';
 import { EngagementTarget, useEngagementTargets } from '@/hooks/useEngagement';
 import { useEngagementSync, getNextScheduledSync } from '@/hooks/useEngagementSync';
 import {
-  RefreshCw, Loader2, ChevronDown, Check, Play, Clock,
+  RefreshCw, Loader2, ChevronDown, Check, Play, Clock, Heart,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
