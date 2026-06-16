@@ -15,7 +15,7 @@ import { PostPanel } from '@/components/engagement/PostPanel';
 import { EngagementTarget, useEngagementTargets } from '@/hooks/useEngagement';
 import { useEngagementSync, getNextScheduledSync } from '@/hooks/useEngagementSync';
 import {
-  RefreshCw, Loader2, ChevronDown, Check, Play, Clock,
+  RefreshCw, Loader2, ChevronDown, Check, Play, Clock, Heart,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -294,7 +294,7 @@ function DayCounter({ publisherId, folderScope }: DayCounterProps) {
   const { data } = useQuery({
     queryKey: ['day-counter', currentWorkspace?.id, publisherId, folderScope],
     queryFn: async () => {
-      if (!currentWorkspace) return { fresh: 0, done: 0 };
+      if (!currentWorkspace) return { fresh: 0, done: 0, likedToday: 0 };
       // Fetch the publisher's targets, scoped by folder
       let q = (supabase as any)
         .from('engagement_targets')
@@ -307,16 +307,21 @@ function DayCounter({ publisherId, folderScope }: DayCounterProps) {
         q = q.eq('folder_id', folderScope);
       }
       const { data: targets, error: tErr } = await q;
-      if (tErr || !targets || targets.length === 0) return { fresh: 0, done: 0 };
+      if (tErr || !targets || targets.length === 0) return { fresh: 0, done: 0, likedToday: 0 };
       const ids = targets.map((t: any) => t.id);
       const { data: rows } = await (supabase as any)
         .from('engagement_posts')
-        .select('is_commented, is_liked')
+        .select('is_commented, is_liked, liked_at')
         .in('target_id', ids);
-      const r = (rows || []) as Array<{ is_commented: boolean; is_liked: boolean }>;
+      const r = (rows || []) as Array<{ is_commented: boolean; is_liked: boolean; liked_at: string | null }>;
       const fresh = r.filter((p) => !p.is_commented && !p.is_liked).length;
       const done = r.filter((p) => p.is_commented || p.is_liked).length;
-      return { fresh, done };
+      const startOfDay = new Date();
+      startOfDay.setHours(0, 0, 0, 0);
+      const likedToday = r.filter(
+        (p) => p.liked_at && new Date(p.liked_at).getTime() >= startOfDay.getTime(),
+      ).length;
+      return { fresh, done, likedToday };
     },
     enabled: !!currentWorkspace,
     refetchInterval: 30_000,
@@ -324,6 +329,7 @@ function DayCounter({ publisherId, folderScope }: DayCounterProps) {
 
   const fresh = data?.fresh ?? 0;
   const done = data?.done ?? 0;
+  const likedToday = data?.likedToday ?? 0;
   const total = fresh + done;
   const dotCount = useMemo(() => Math.min(Math.max(total, 1), 12), [total]);
 
@@ -351,6 +357,15 @@ function DayCounter({ publisherId, folderScope }: DayCounterProps) {
           />
         ))}
       </div>
+      {likedToday > 0 && (
+        <span
+          className="inline-flex items-center gap-1 text-[11px] font-medium text-rose-600 tabular-nums"
+          title={`${likedToday} post${likedToday === 1 ? '' : 's'} liked today (auto + manual). Open the Liked tab to see them.`}
+        >
+          <Heart className="h-3 w-3 fill-current" />
+          {likedToday}
+        </span>
+      )}
     </div>
   );
 }

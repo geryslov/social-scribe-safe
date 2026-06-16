@@ -221,6 +221,15 @@ export function PostPanel({ target, publisher, isAdmin }: PostPanelProps) {
     }
   });
 
+  // Liked tab: most recently liked first, so today's auto-likes surface at the top
+  if (feedFilter === 'liked') {
+    filtered.sort((a, b) => {
+      const ta = a.liked_at ? new Date(a.liked_at).getTime() : 0;
+      const tb = b.liked_at ? new Date(b.liked_at).getTime() : 0;
+      return tb - ta;
+    });
+  }
+
   // Spotlight = top engagement score among Live posts
   const spotlightId = feedFilter === 'live' && filtered.length > 0
     ? filtered.slice().sort((a, b) => engagementScore(b) - engagementScore(a))[0].id
@@ -594,6 +603,18 @@ function PostCard({
             </span>
           )}
           {post.is_commented && <span className="text-border">·</span>}
+          {post.is_liked && post.liked_at && (
+            <>
+              <span
+                className="inline-flex items-center gap-1 text-rose-600"
+                title={`Liked ${new Date(post.liked_at).toLocaleString()}`}
+              >
+                <Heart className="h-3 w-3 fill-current" />
+                liked {timeAgo(post.liked_at)}
+              </span>
+              <span className="text-border">·</span>
+            </>
+          )}
           {post.published_at && (
             <span title={new Date(post.published_at).toLocaleString()}>
               {timeAgo(post.published_at)}
