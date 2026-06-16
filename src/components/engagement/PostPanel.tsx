@@ -603,6 +603,18 @@ function PostCard({
             </span>
           )}
           {post.is_commented && <span className="text-border">·</span>}
+          {post.is_liked && post.liked_at && (
+            <>
+              <span
+                className="inline-flex items-center gap-1 text-rose-600"
+                title={`Liked ${new Date(post.liked_at).toLocaleString()}`}
+              >
+                <Heart className="h-3 w-3 fill-current" />
+                liked {timeAgo(post.liked_at)}
+              </span>
+              <span className="text-border">·</span>
+            </>
+          )}
           {post.published_at && (
             <span title={new Date(post.published_at).toLocaleString()}>
               {timeAgo(post.published_at)}
