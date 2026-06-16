@@ -221,6 +221,15 @@ export function PostPanel({ target, publisher, isAdmin }: PostPanelProps) {
     }
   });
 
+  // Liked tab: most recently liked first, so today's auto-likes surface at the top
+  if (feedFilter === 'liked') {
+    filtered.sort((a, b) => {
+      const ta = a.liked_at ? new Date(a.liked_at).getTime() : 0;
+      const tb = b.liked_at ? new Date(b.liked_at).getTime() : 0;
+      return tb - ta;
+    });
+  }
+
   // Spotlight = top engagement score among Live posts
   const spotlightId = feedFilter === 'live' && filtered.length > 0
     ? filtered.slice().sort((a, b) => engagementScore(b) - engagementScore(a))[0].id
