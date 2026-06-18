@@ -810,12 +810,13 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate, 
               {/* Generate Button */}
               <Button
                 onClick={handleGenerate}
-                disabled={isParsingRef || !aiTopic.trim()}
+                disabled={isParsingRef || !aiTopic.trim() || !can.generateAi}
                 variant="glow"
                 className="w-full h-12 text-accent font-semibold text-base"
+                title={!can.generateAi ? 'Your role cannot use AI generation' : undefined}
               >
                 <Sparkles className="h-5 w-5 mr-2" />
-                Generate Posts
+                {can.generateAi ? 'Generate Posts' : 'No permission to generate'}
               </Button>
             </div>
           )}
