@@ -178,6 +178,7 @@ export function WorkspaceEditModal({ workspace, open, onOpenChange }: WorkspaceE
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="My Workspace"
+                disabled={!canManage}
               />
             </div>
 
@@ -189,6 +190,7 @@ export function WorkspaceEditModal({ workspace, open, onOpenChange }: WorkspaceE
                 value={companyName}
                 onChange={(e) => setCompanyName(e.target.value)}
                 placeholder="Acme Inc."
+                disabled={!canManage}
               />
             </div>
 
@@ -201,6 +203,7 @@ export function WorkspaceEditModal({ workspace, open, onOpenChange }: WorkspaceE
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Brief description of this workspace..."
                 rows={3}
+                disabled={!canManage}
               />
             </div>
 
@@ -215,6 +218,7 @@ export function WorkspaceEditModal({ workspace, open, onOpenChange }: WorkspaceE
               <Switch
                 checked={inviteEnabled}
                 onCheckedChange={setInviteEnabled}
+                disabled={!canManage}
               />
             </div>
 
@@ -227,6 +231,7 @@ export function WorkspaceEditModal({ workspace, open, onOpenChange }: WorkspaceE
                 value={slackWebhookUrl}
                 onChange={(e) => setSlackWebhookUrl(e.target.value)}
                 placeholder="https://hooks.slack.com/services/..."
+                disabled={!canManage}
               />
               <p className="text-xs text-muted-foreground">
                 Reaction & publish notifications for this workspace will be sent to this Slack channel. Create an Incoming Webhook in Slack pointing to the channel you want, then paste the URL here.
@@ -234,6 +239,15 @@ export function WorkspaceEditModal({ workspace, open, onOpenChange }: WorkspaceE
               {slackWebhookUrl.trim() && <NextSyncTimer />}
             </div>
           </TabsContent>
+
+          <TabsContent value="members" className="mt-4">
+            <WorkspaceMembersTab
+              workspaceId={workspace.id}
+              inviteToken={workspace.inviteToken}
+              inviteEnabled={inviteEnabled}
+            />
+          </TabsContent>
+
 
           <TabsContent value="branding" className="space-y-4 mt-4">
             {/* Logo */}
