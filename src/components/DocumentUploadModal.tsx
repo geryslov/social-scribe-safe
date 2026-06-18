@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { Publisher } from '@/hooks/usePublishers';
 import { PublisherAvatar } from '@/components/PublisherAvatar';
+import { useWorkspacePermissions } from '@/hooks/useWorkspacePermissions';
 
 interface DocumentUploadModalProps {
   open: boolean;
@@ -49,6 +50,7 @@ const TONE_OPTIONS = [
 ] as const;
 
 export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate, publishers = [] }: DocumentUploadModalProps) {
+  const { can } = useWorkspacePermissions();
   const [mode, setMode] = useState<'upload' | 'create' | 'ai'>('upload');
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
@@ -218,6 +220,10 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate, 
   };
 
   const handleGenerate = async () => {
+    if (!can.generateAi) {
+      toast.error('Your role does not allow AI generation in this workspace');
+      return;
+    }
     if (!aiTopic.trim()) {
       toast.error('Please enter a topic');
       return;

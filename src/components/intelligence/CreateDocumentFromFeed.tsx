@@ -16,9 +16,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Lock } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
+import { useWorkspacePermissions } from '@/hooks/useWorkspacePermissions';
 
 interface CreateDocumentFromFeedProps {
   items: IntelligenceItem[];
@@ -30,6 +31,7 @@ interface CreateDocumentFromFeedProps {
 export function CreateDocumentFromFeed({ items, publisher, onClose, onCreated }: CreateDocumentFromFeedProps) {
   const { createDocument } = useDocuments();
   const navigate = useNavigate();
+  const { can } = useWorkspacePermissions();
   const [topic, setTopic] = useState('');
   const [guidance, setGuidance] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
@@ -49,6 +51,10 @@ export function CreateDocumentFromFeed({ items, publisher, onClose, onCreated }:
     .join('\n\n---\n\n');
 
   const handleGenerate = async () => {
+    if (!can.generateAi) {
+      toast.error('Your role does not allow AI generation in this workspace');
+      return;
+    }
     if (!topic.trim()) {
       toast.error('Enter a topic');
       return;
@@ -157,11 +163,16 @@ export function CreateDocumentFromFeed({ items, publisher, onClose, onCreated }:
           <Button variant="ghost" onClick={handleSaveRaw} disabled={isGenerating}>
             Save Raw
           </Button>
-          <Button onClick={handleGenerate} disabled={isGenerating}>
+          <Button onClick={handleGenerate} disabled={isGenerating || !can.generateAi} title={!can.generateAi ? 'Your role cannot use AI generation' : undefined}>
             {isGenerating ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 Generating...
+              </>
+            ) : !can.generateAi ? (
+              <>
+                <Lock className="h-4 w-4 mr-2" />
+                No permission
               </>
             ) : (
               'Generate with AI'
