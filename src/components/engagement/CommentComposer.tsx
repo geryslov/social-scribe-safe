@@ -4,9 +4,10 @@ import { Publisher } from '@/hooks/usePublishers';
 import { supabase } from '@/integrations/supabase/client';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
-import { Loader2, Sparkles, Send, Save, CheckCircle2, Mic } from 'lucide-react';
+import { Loader2, Sparkles, Send, Save, CheckCircle2, Mic, Lock } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { useWorkspacePermissions } from '@/hooks/useWorkspacePermissions';
 
 interface CommentComposerProps {
   post: EngagementPost;
@@ -44,6 +45,7 @@ export function CommentComposer({ post, publisher, onClose }: CommentComposerPro
   const [classification, setClassification] = useState<Classification | null>(null);
   const { saveDraft, postComment } = usePostComment();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const { can } = useWorkspacePermissions();
 
   const voiceSummary = useMemo(
     () => extractVoiceSummary((publisher as any).voice_profile),
@@ -60,6 +62,10 @@ export function CommentComposer({ post, publisher, onClose }: CommentComposerPro
   }, [onClose]);
 
   const handleGenerate = async () => {
+    if (!can.generateAi) {
+      toast.error('Your role does not allow AI generation in this workspace');
+      return;
+    }
     if (!post.content) {
       toast.error('Post has no text content to base a comment on');
       return;
@@ -99,6 +105,10 @@ export function CommentComposer({ post, publisher, onClose }: CommentComposerPro
   };
 
   const handlePost = async () => {
+    if (!can.publishLinkedIn) {
+      toast.error('Your role does not allow publishing to LinkedIn');
+      return;
+    }
     if (!commentText.trim()) return;
     try {
       const draft = await saveDraft.mutateAsync({
@@ -264,11 +274,14 @@ export function CommentComposer({ post, publisher, onClose }: CommentComposerPro
               'bg-amber-500 hover:bg-amber-600 text-white shadow-sm shadow-amber-500/30',
               isGenerating && 'animate-pulse',
             )}
-            disabled={isGenerating || !post.content}
+            disabled={isGenerating || !post.content || !can.generateAi}
             onClick={handleGenerate}
+            title={!can.generateAi ? 'Your role cannot use AI generation' : undefined}
           >
             {isGenerating ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : !can.generateAi ? (
+              <Lock className="h-3.5 w-3.5" />
             ) : (
               <Sparkles className="h-3.5 w-3.5" />
             )}
@@ -279,15 +292,18 @@ export function CommentComposer({ post, publisher, onClose }: CommentComposerPro
             size="sm"
             className={cn(
               'h-8 text-xs gap-1.5 font-semibold transition-all',
-              hasText
+              hasText && can.publishLinkedIn
                 ? 'bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm shadow-primary/20'
                 : 'bg-muted text-muted-foreground/60',
             )}
             onClick={handlePost}
-            disabled={!hasText || postComment.isPending}
+            disabled={!hasText || postComment.isPending || !can.publishLinkedIn}
+            title={!can.publishLinkedIn ? 'Your role cannot publish to LinkedIn' : undefined}
           >
             {postComment.isPending ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : !can.publishLinkedIn ? (
+              <Lock className="h-3.5 w-3.5" />
             ) : (
               <Send className="h-3.5 w-3.5" />
             )}
