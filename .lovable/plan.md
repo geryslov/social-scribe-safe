@@ -1,60 +1,59 @@
-## Goal
+# Role-based workspace permissions
 
-When a new engagement target (person to engage with) is added, automatically fetch their LinkedIn profile via Apify and populate first name, last name, job title, company name, and profile picture so the user doesn't have to type them in.
+Add preset permissions tied to existing workspace roles. Owner/admin manage member roles; the UI hides or disables gated actions; the backend enforces them via RLS and edge functions.
 
-## What changes for the user
+## Roles → allowed actions
 
-- The "Add Person" dialog only needs the LinkedIn profile URL. Name becomes optional (auto-filled if blank).
-- After saving, the target row updates within a few seconds with the real name, headline (title @ company), avatar, and company name pulled from LinkedIn.
-- If enrichment fails (bad URL, Apify down, no Apify key on workspace), the target is still created with whatever the user typed, and a small "Enrichment failed" badge is shown so they can retry.
+| Action | owner | admin | creator | member |
+|---|---|---|---|---|
+| AI post generation (create-document, rewrite-section, generate-comment) | ✓ | ✓ | ✓ | – |
+| Assign posts/documents/sections to a publisher | ✓ | ✓ | ✓ | – |
+| Publish to LinkedIn (linkedin-post, post-linkedin-comment, like-linkedin-post) | ✓ | ✓ | ✓ | – |
+| Invite/share workspace (create invite link, add member) | ✓ | ✓ | – | – |
+| Edit workspace settings, change roles, remove members | ✓ | ✓ | – | – |
+| View posts, documents, analytics, engagement feed | ✓ | ✓ | ✓ | ✓ |
 
-## Implementation
+`member` = read-only viewer. Global platform `admin` (in `user_roles`) keeps full access everywhere.
 
-### 1. Database (migration)
+## Backend
 
-Add columns to `engagement_targets`:
-- `first_name text`
-- `last_name text`
-- `title text` (job title)
-- `company_name text`
-- `enrichment_status text` — one of `pending`, `succeeded`, `failed`, nullable
-- `enriched_at timestamptz`
+1. **SQL helpers** in a new migration:
+   - `public.user_workspace_role(_workspace_id uuid) returns text` — security definer, returns the caller's role (or `'admin'` if global admin).
+   - `public.user_can_generate_ai(_workspace_id uuid)` → role in (`owner`,`admin`,`creator`).
+   - `public.user_can_assign(_workspace_id uuid)` → same set.
+   - `public.user_can_publish_linkedin(_workspace_id uuid)` → same set.
+   - `public.user_can_manage_workspace(_workspace_id uuid)` → role in (`owner`,`admin`).
 
-Existing `name`, `headline`, `avatar_url`, `linkedin_username` stay and get populated by enrichment too.
+2. **RLS tightening** (UPDATE/INSERT only — SELECT stays open to all members):
+   - `documents`, `document_sections`, `posts`: writes require `user_can_assign` for assignment columns; AI-generated inserts require `user_can_generate_ai`. Simplest: gate all writes on these tables to `user_can_assign`.
+   - `workspace_members`, `workspaces` (updates), invite tables: require `user_can_manage_workspace`.
 
-### 2. New edge function: `enrich-engagement-target`
+3. **Edge functions** read the caller's JWT, look up their workspace role, and return `403` if not allowed:
+   - `create-document`, `rewrite-section`, `generate-comment` → require `can_generate_ai`.
+   - `linkedin-post`, `post-linkedin-comment`, `like-linkedin-post` → require `can_publish_linkedin`.
+   - Any invite-creation function → require `can_manage_workspace`.
 
-- Input: `{ target_id }`
-- Loads the target + the workspace's Apify token from `workspace_api_keys` (service `apify`), matching the pattern already used by `fetch-target-posts`.
-- Calls Apify actor `harvestapi/linkedin-profile-scraper` (synchronous run-sync-get-dataset-items endpoint, max 60s) with the target's `linkedin_url`.
-- Maps the returned profile fields:
-  - `firstName` → `first_name`
-  - `lastName` → `last_name`
-  - `firstName + " " + lastName` → `name` (always overwrite if user left blank, otherwise keep user value)
-  - `headline` → `headline`
-  - `jobTitle` / current position title → `title`
-  - current position `companyName` → `company_name`
-  - profile picture URL → `avatar_url` (uploaded to the existing `publisher-avatars` bucket so LinkedIn CDN expiry doesn't break it, mirroring the snapshotting pattern already used for publishers)
-- Updates the row with `enrichment_status = 'succeeded'` and `enriched_at = now()`. On any failure sets `failed` and logs the reason.
+## Frontend
 
-### 3. Client wiring
+1. Extend `useWorkspace` to expose `{ role, can: { generateAi, assign, publishLinkedIn, manageWorkspace } }` derived from `workspace_members.role` for the active workspace (global admin overrides to all true).
 
-In `src/hooks/useEngagement.tsx` `createTarget`:
-- After the insert succeeds, fire-and-await `supabase.functions.invoke('enrich-engagement-target', { body: { target_id: result.id } })`.
-- Invalidate `engagement-targets` query again on completion so the enriched fields render.
+2. Gate UI:
+   - Hide "Generate" / "Rewrite" / "Draft comment" buttons when `!can.generateAi`.
+   - Disable publisher select + "Assign" controls in `DocumentPublisherSelect`, `DocumentSectionCard`, `PostModal` when `!can.assign`.
+   - Hide "Publish to LinkedIn" in `LinkedInPublishModal`, post panel, and engagement comment "Post"/"Like" buttons when `!can.publishLinkedIn`.
+   - Hide Share / invite buttons and member-role editor in `WorkspaceEditModal` when `!can.manageWorkspace`.
+   - Show a small "Read-only" badge in the workspace switcher for `member`.
 
-In `TargetList.tsx` and `ContactList.tsx` add-person dialogs:
-- Make Name optional (URL is the only required field).
-- Show a "Auto-filling from LinkedIn…" spinner on the new row while `enrichment_status = 'pending'`.
-- If `enrichment_status = 'failed'`, show a small inline "Retry" button that re-invokes the edge function.
+3. **Member management UI** (owner/admin only): in workspace settings, a role dropdown per member (owner / admin / creator / member) using the existing `updateMemberRole` mutation, plus a legend describing what each role can do.
 
-### 4. Display
+## Technical details
 
-- `ContactList.tsx` / `TargetList.tsx` row: show `title @ company_name` under the name when present, falling back to `headline`.
-- Use `avatar_url` if set (already wired with `referrerPolicy="no-referrer"`).
+- No new tables; reuse `workspace_members.role` which already supports `owner|admin|creator|member`.
+- Keep `user_can_create_in_workspace` as-is; add the new helpers alongside it so existing policies don't churn.
+- Edge functions fetch role via a service-role query: `select role from workspace_members where workspace_id=$1 and user_id=$2` plus a global-admin fallback through `has_role(user_id,'admin')`.
+- Client checks are UX only; the RLS + edge-function checks are the source of truth.
 
-## Technical notes
+## Out of scope
 
-- The Apify actor slug above (`harvestapi/linkedin-profile-scraper`) is the profile-scraping companion to the posts actor already in use. If the workspace's Apify account doesn't have it enabled, the function falls back to deriving name from `linkedin_username` and marks enrichment as failed.
-- All Apify calls go through the edge function — the token never leaves the backend.
-- No changes to RLS — existing `Creators update targets` policy already lets the enrichment run (called via service role inside the edge function anyway).
+- Per-publisher permissions (e.g. "creator A can only assign to publisher X").
+- Custom roles or per-action toggles — can be added later by swapping the role check for a permissions table without breaking the helper API.
