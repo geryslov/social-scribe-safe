@@ -95,7 +95,7 @@ export function WorkspaceMembersTab({ workspaceId, inviteToken, inviteEnabled }:
               <div key={m.id} className="flex items-center justify-between gap-3 px-3 py-2.5">
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium truncate">
-                    {emails[m.userId] || `${m.userId.slice(0, 8)}…`}
+                    {m.email || `${m.userId.slice(0, 8)}…`}
                   </p>
                   <p className="text-[11px] text-muted-foreground">
                     Joined {new Date(m.createdAt).toLocaleDateString()} · via {m.joinedVia}
