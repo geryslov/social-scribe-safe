@@ -463,6 +463,7 @@ Deno.serve(async (req) => {
               user_id: userId,
               role: 'member',
               joined_via: 'invite_link',
+              email: email,
             }, { onConflict: 'workspace_id,user_id' });
         }
       } else {
@@ -514,6 +515,7 @@ Deno.serve(async (req) => {
               user_id: userId,
               role: 'member',
               joined_via: 'invite_link',
+              email: email,
             }, { onConflict: 'workspace_id,user_id' });
         }
       }

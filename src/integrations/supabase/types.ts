@@ -1412,6 +1412,7 @@ export type Database = {
       workspace_members: {
         Row: {
           created_at: string | null
+          email: string | null
           id: string
           joined_via: string | null
           role: string
@@ -1420,6 +1421,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
+          email?: string | null
           id?: string
           joined_via?: string | null
           role?: string
@@ -1428,6 +1430,7 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
+          email?: string | null
           id?: string
           joined_via?: string | null
           role?: string
@@ -1509,6 +1512,10 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      sync_workspace_member_email: {
+        Args: { _email: string; _user_id: string }
+        Returns: undefined
       }
       user_can_assign: { Args: { _workspace_id: string }; Returns: boolean }
       user_can_create_document_section: {

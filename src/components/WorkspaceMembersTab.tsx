@@ -1,5 +1,4 @@
-import { useEffect, useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { useState } from 'react';
 import { useWorkspaceMembers } from '@/hooks/useWorkspaces';
 import { useWorkspacePermissions } from '@/hooks/useWorkspacePermissions';
 import { Button } from '@/components/ui/button';
@@ -36,28 +35,7 @@ interface Props {
 export function WorkspaceMembersTab({ workspaceId, inviteToken, inviteEnabled }: Props) {
   const { can } = useWorkspacePermissions();
   const { members, isLoading, updateMemberRole, removeMember } = useWorkspaceMembers(workspaceId);
-  const [emails, setEmails] = useState<Record<string, string>>({});
   const [copied, setCopied] = useState(false);
-
-  // Best-effort email lookup; quietly skip if not available
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const map: Record<string, string> = {};
-      for (const m of members) {
-        try {
-          const { data } = await (supabase as any)
-            .from('profiles')
-            .select('email')
-            .eq('id', m.userId)
-            .maybeSingle();
-          if (data?.email) map[m.userId] = data.email as string;
-        } catch { /* no profiles table */ }
-      }
-      if (!cancelled) setEmails(map);
-    })();
-    return () => { cancelled = true; };
-  }, [members]);
 
   const inviteUrl = inviteToken ? `${window.location.origin}/join/${inviteToken}` : '';
 
@@ -117,7 +95,7 @@ export function WorkspaceMembersTab({ workspaceId, inviteToken, inviteEnabled }:
               <div key={m.id} className="flex items-center justify-between gap-3 px-3 py-2.5">
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium truncate">
-                    {emails[m.userId] || `${m.userId.slice(0, 8)}…`}
+                    {m.email || `${m.userId.slice(0, 8)}…`}
                   </p>
                   <p className="text-[11px] text-muted-foreground">
                     Joined {new Date(m.createdAt).toLocaleDateString()} · via {m.joinedVia}

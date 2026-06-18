@@ -22,6 +22,7 @@ export interface WorkspaceMember {
   userId: string;
   role: 'owner' | 'admin' | 'creator' | 'member';
   joinedVia: 'invite_link' | 'manual' | 'owner';
+  email: string | null;
   createdAt: string;
 }
 
@@ -49,6 +50,7 @@ export interface DbWorkspaceMember {
   user_id: string;
   role: string;
   joined_via: string;
+  email: string | null;
   created_at: string;
 }
 
@@ -76,5 +78,6 @@ export const mapDbToWorkspaceMember = (db: DbWorkspaceMember): WorkspaceMember =
   userId: db.user_id,
   role: db.role as WorkspaceMember['role'],
   joinedVia: db.joined_via as WorkspaceMember['joinedVia'],
+  email: db.email,
   createdAt: db.created_at,
 });
