@@ -1510,6 +1510,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      user_can_assign: { Args: { _workspace_id: string }; Returns: boolean }
       user_can_create_document_section: {
         Args: { _document_id: string }
         Returns: boolean
@@ -1518,10 +1519,23 @@ export type Database = {
         Args: { _workspace_id: string }
         Returns: boolean
       }
+      user_can_generate_ai: {
+        Args: { _workspace_id: string }
+        Returns: boolean
+      }
+      user_can_manage_workspace: {
+        Args: { _workspace_id: string }
+        Returns: boolean
+      }
+      user_can_publish_linkedin: {
+        Args: { _workspace_id: string }
+        Returns: boolean
+      }
       user_has_workspace_access: {
         Args: { _workspace_id: string }
         Returns: boolean
       }
+      user_workspace_role: { Args: { _workspace_id: string }; Returns: string }
     }
     Enums: {
       app_role: "admin" | "user"
