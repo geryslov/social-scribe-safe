@@ -81,6 +81,7 @@ export function useWorkspaces() {
         user_id: user.id,
         role: 'owner',
         joined_via: 'owner',
+        email: user.email,
       });
       
       return mapDbToWorkspace(result as DbWorkspace);
