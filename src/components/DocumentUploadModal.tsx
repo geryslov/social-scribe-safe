@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { Publisher } from '@/hooks/usePublishers';
 import { PublisherAvatar } from '@/components/PublisherAvatar';
+import { useWorkspacePermissions } from '@/hooks/useWorkspacePermissions';
 
 interface DocumentUploadModalProps {
   open: boolean;
@@ -49,6 +50,7 @@ const TONE_OPTIONS = [
 ] as const;
 
 export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate, publishers = [] }: DocumentUploadModalProps) {
+  const { can } = useWorkspacePermissions();
   const [mode, setMode] = useState<'upload' | 'create' | 'ai'>('upload');
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
@@ -218,6 +220,10 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate, 
   };
 
   const handleGenerate = async () => {
+    if (!can.generateAi) {
+      toast.error('Your role does not allow AI generation in this workspace');
+      return;
+    }
     if (!aiTopic.trim()) {
       toast.error('Please enter a topic');
       return;
@@ -804,12 +810,13 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate, 
               {/* Generate Button */}
               <Button
                 onClick={handleGenerate}
-                disabled={isParsingRef || !aiTopic.trim()}
+                disabled={isParsingRef || !aiTopic.trim() || !can.generateAi}
                 variant="glow"
                 className="w-full h-12 text-accent font-semibold text-base"
+                title={!can.generateAi ? 'Your role cannot use AI generation' : undefined}
               >
                 <Sparkles className="h-5 w-5 mr-2" />
-                Generate Posts
+                {can.generateAi ? 'Generate Posts' : 'No permission to generate'}
               </Button>
             </div>
           )}

@@ -8,9 +8,11 @@ import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useWorkspaces } from '@/hooks/useWorkspaces';
+import { useWorkspacePermissions } from '@/hooks/useWorkspacePermissions';
 import { Workspace } from '@/types/workspace';
 import { supabase } from '@/integrations/supabase/client';
-import { Building2, Upload, Trash2, Loader2, Sparkles, Clock } from 'lucide-react';
+import { Building2, Upload, Trash2, Loader2, Sparkles, Clock, Users, Lock } from 'lucide-react';
+import { WorkspaceMembersTab } from './WorkspaceMembersTab';
 
 function NextSyncTimer() {
   const [now, setNow] = useState(() => new Date());
@@ -47,6 +49,8 @@ interface WorkspaceEditModalProps {
 
 export function WorkspaceEditModal({ workspace, open, onOpenChange }: WorkspaceEditModalProps) {
   const { updateWorkspace, deleteWorkspace } = useWorkspaces();
+  const { can, role } = useWorkspacePermissions();
+  const canManage = can.manageWorkspace;
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [name, setName] = useState(workspace.name);
@@ -147,11 +151,23 @@ export function WorkspaceEditModal({ workspace, open, onOpenChange }: WorkspaceE
         </DialogHeader>
 
         <Tabs defaultValue="general" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="general">General</TabsTrigger>
+            <TabsTrigger value="members" className="gap-1.5">
+              <Users className="h-3.5 w-3.5" /> Members
+            </TabsTrigger>
             <TabsTrigger value="branding">Branding</TabsTrigger>
             <TabsTrigger value="ai-prompt">AI Prompt</TabsTrigger>
           </TabsList>
+
+          {!canManage && (
+            <div className="mt-3 flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-700">
+              <Lock className="h-3.5 w-3.5 mt-0.5" />
+              <span>
+                You are a <strong className="capitalize">{role || 'member'}</strong> in this workspace — fields below are read-only. Only owners and admins can edit settings or change member roles.
+              </span>
+            </div>
+          )}
 
           <TabsContent value="general" className="space-y-4 mt-4">
             {/* Name */}
@@ -162,6 +178,7 @@ export function WorkspaceEditModal({ workspace, open, onOpenChange }: WorkspaceE
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="My Workspace"
+                disabled={!canManage}
               />
             </div>
 
@@ -173,6 +190,7 @@ export function WorkspaceEditModal({ workspace, open, onOpenChange }: WorkspaceE
                 value={companyName}
                 onChange={(e) => setCompanyName(e.target.value)}
                 placeholder="Acme Inc."
+                disabled={!canManage}
               />
             </div>
 
@@ -185,6 +203,7 @@ export function WorkspaceEditModal({ workspace, open, onOpenChange }: WorkspaceE
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Brief description of this workspace..."
                 rows={3}
+                disabled={!canManage}
               />
             </div>
 
@@ -199,6 +218,7 @@ export function WorkspaceEditModal({ workspace, open, onOpenChange }: WorkspaceE
               <Switch
                 checked={inviteEnabled}
                 onCheckedChange={setInviteEnabled}
+                disabled={!canManage}
               />
             </div>
 
@@ -211,6 +231,7 @@ export function WorkspaceEditModal({ workspace, open, onOpenChange }: WorkspaceE
                 value={slackWebhookUrl}
                 onChange={(e) => setSlackWebhookUrl(e.target.value)}
                 placeholder="https://hooks.slack.com/services/..."
+                disabled={!canManage}
               />
               <p className="text-xs text-muted-foreground">
                 Reaction & publish notifications for this workspace will be sent to this Slack channel. Create an Incoming Webhook in Slack pointing to the channel you want, then paste the URL here.
@@ -218,6 +239,15 @@ export function WorkspaceEditModal({ workspace, open, onOpenChange }: WorkspaceE
               {slackWebhookUrl.trim() && <NextSyncTimer />}
             </div>
           </TabsContent>
+
+          <TabsContent value="members" className="mt-4">
+            <WorkspaceMembersTab
+              workspaceId={workspace.id}
+              inviteToken={workspace.inviteToken}
+              inviteEnabled={inviteEnabled}
+            />
+          </TabsContent>
+
 
           <TabsContent value="branding" className="space-y-4 mt-4">
             {/* Logo */}
@@ -300,46 +330,50 @@ export function WorkspaceEditModal({ workspace, open, onOpenChange }: WorkspaceE
 
         {/* Actions */}
         <div className="flex items-center justify-between pt-4 border-t">
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="destructive" size="sm" className="gap-2">
-                <Trash2 className="h-4 w-4" />
-                Delete
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Delete Workspace?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  This will permanently delete "{workspace.name}" and all its data including posts, documents, and member associations. This action cannot be undone.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={handleDelete}
-                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  disabled={isDeleting}
-                >
-                  {isDeleting ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  ) : null}
-                  Delete Workspace
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+          {canManage ? (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" size="sm" className="gap-2">
+                  <Trash2 className="h-4 w-4" />
+                  Delete
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete Workspace?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will permanently delete "{workspace.name}" and all its data including posts, documents, and member associations. This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleDelete}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    disabled={isDeleting}
+                  >
+                    {isDeleting ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : null}
+                    Delete Workspace
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          ) : <span />}
 
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
+              {canManage ? 'Cancel' : 'Close'}
             </Button>
-            <Button onClick={handleSave} disabled={!name.trim() || isSaving} className="gradient-bg text-white hover:opacity-90">
-              {isSaving ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              ) : null}
-              Save Changes
-            </Button>
+            {canManage && (
+              <Button onClick={handleSave} disabled={!name.trim() || isSaving} className="gradient-bg text-white hover:opacity-90">
+                {isSaving ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : null}
+                Save Changes
+              </Button>
+            )}
           </div>
         </div>
       </DialogContent>

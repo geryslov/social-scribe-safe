@@ -8,11 +8,12 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Post } from '@/types/post';
-import { Linkedin, Loader2, ExternalLink, AlertCircle, Copy } from 'lucide-react';
+import { Linkedin, Loader2, ExternalLink, AlertCircle, Copy, Lock } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { PublisherAvatar } from './PublisherAvatar';
 import { cn } from '@/lib/utils';
+import { useWorkspacePermissions } from '@/hooks/useWorkspacePermissions';
 
 interface LinkedInPublishModalProps {
   isOpen: boolean;
@@ -34,12 +35,17 @@ export function LinkedInPublishModal({
   onConnectLinkedIn,
 }: LinkedInPublishModalProps) {
   const [isPublishing, setIsPublishing] = useState(false);
+  const { can } = useWorkspacePermissions();
 
   const characterCount = post.content.length;
   const maxCharacters = 3000; // LinkedIn's limit
   const isOverLimit = characterCount > maxCharacters;
 
   const handlePublishViaAPI = async () => {
+    if (!can.publishLinkedIn) {
+      toast.error('Your role does not allow publishing to LinkedIn');
+      return;
+    }
     if (!publisherId) {
       toast.error('Publisher not found');
       return;
@@ -191,23 +197,27 @@ export function LinkedInPublishModal({
             <Button
               className="gap-2 bg-[#0077b5] hover:bg-[#005885]"
               onClick={handlePublishViaAPI}
-              disabled={isPublishing || isOverLimit}
+              disabled={isPublishing || isOverLimit || !can.publishLinkedIn}
+              title={!can.publishLinkedIn ? 'Your role cannot publish to LinkedIn' : undefined}
             >
               {isPublishing ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
+              ) : !can.publishLinkedIn ? (
+                <Lock className="h-4 w-4" />
               ) : (
                 <Linkedin className="h-4 w-4" />
               )}
-              {isPublishing ? 'Publishing...' : 'Publish to LinkedIn'}
+              {isPublishing ? 'Publishing...' : !can.publishLinkedIn ? 'No permission' : 'Publish to LinkedIn'}
             </Button>
           ) : (
             <Button
               variant="secondary"
               className="gap-2"
               onClick={handleCopyAndOpen}
-              disabled={isOverLimit}
+              disabled={isOverLimit || !can.publishLinkedIn}
+              title={!can.publishLinkedIn ? 'Your role cannot publish to LinkedIn' : undefined}
             >
-              <Copy className="h-4 w-4" />
+              {can.publishLinkedIn ? <Copy className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
               Copy & Open LinkedIn
             </Button>
           )}
