@@ -8,9 +8,11 @@ import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useWorkspaces } from '@/hooks/useWorkspaces';
+import { useWorkspacePermissions } from '@/hooks/useWorkspacePermissions';
 import { Workspace } from '@/types/workspace';
 import { supabase } from '@/integrations/supabase/client';
-import { Building2, Upload, Trash2, Loader2, Sparkles, Clock } from 'lucide-react';
+import { Building2, Upload, Trash2, Loader2, Sparkles, Clock, Users, Lock } from 'lucide-react';
+import { WorkspaceMembersTab } from './WorkspaceMembersTab';
 
 function NextSyncTimer() {
   const [now, setNow] = useState(() => new Date());
@@ -47,6 +49,8 @@ interface WorkspaceEditModalProps {
 
 export function WorkspaceEditModal({ workspace, open, onOpenChange }: WorkspaceEditModalProps) {
   const { updateWorkspace, deleteWorkspace } = useWorkspaces();
+  const { can, role } = useWorkspacePermissions();
+  const canManage = can.manageWorkspace;
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [name, setName] = useState(workspace.name);
@@ -147,11 +151,23 @@ export function WorkspaceEditModal({ workspace, open, onOpenChange }: WorkspaceE
         </DialogHeader>
 
         <Tabs defaultValue="general" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="general">General</TabsTrigger>
+            <TabsTrigger value="members" className="gap-1.5">
+              <Users className="h-3.5 w-3.5" /> Members
+            </TabsTrigger>
             <TabsTrigger value="branding">Branding</TabsTrigger>
             <TabsTrigger value="ai-prompt">AI Prompt</TabsTrigger>
           </TabsList>
+
+          {!canManage && (
+            <div className="mt-3 flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-700">
+              <Lock className="h-3.5 w-3.5 mt-0.5" />
+              <span>
+                You are a <strong className="capitalize">{role || 'member'}</strong> in this workspace — fields below are read-only. Only owners and admins can edit settings or change member roles.
+              </span>
+            </div>
+          )}
 
           <TabsContent value="general" className="space-y-4 mt-4">
             {/* Name */}
