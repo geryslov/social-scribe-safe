@@ -39,18 +39,20 @@ export function WorkspaceMembersTab({ workspaceId, inviteToken, inviteEnabled }:
   const [emails, setEmails] = useState<Record<string, string>>({});
   const [copied, setCopied] = useState(false);
 
-  // Lookup emails for each member (best-effort via auth.users not allowed → fall back to truncated user id)
+  // Best-effort email lookup; quietly skip if not available
   useEffect(() => {
     let cancelled = false;
     (async () => {
       const map: Record<string, string> = {};
       for (const m of members) {
-        const { data } = await (supabase as any)
-          .from('profiles')
-          .select('email')
-          .eq('id', m.userId)
-          .maybeSingle();
-        if (data?.email) map[m.userId] = data.email as string;
+        try {
+          const { data } = await (supabase as any)
+            .from('profiles')
+            .select('email')
+            .eq('id', m.userId)
+            .maybeSingle();
+          if (data?.email) map[m.userId] = data.email as string;
+        } catch { /* no profiles table */ }
       }
       if (!cancelled) setEmails(map);
     })();
