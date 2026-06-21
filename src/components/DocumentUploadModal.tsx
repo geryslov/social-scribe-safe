@@ -771,15 +771,22 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate, 
               </div>
 
               {/* Tone */}
+              {(() => {
+                const voiceProfileActive = selectedPublisherIds.some(id => {
+                  const pub = publishers.find(p => p.id === id) as any;
+                  return pub && pub.voice_profile;
+                });
+                return (
               <div>
                 <label className="text-sm font-medium mb-2 block text-foreground">Tone & Style</label>
-                <div className="grid grid-cols-3 gap-2">
+                <div className={cn("grid grid-cols-3 gap-2", voiceProfileActive && "opacity-50 pointer-events-none")}>
                   {TONE_OPTIONS.map(opt => {
                     const Icon = opt.icon;
                     return (
                       <button
                         key={opt.value}
                         onClick={() => setAiTone(opt.value)}
+                        disabled={voiceProfileActive}
                         className={cn(
                           "flex items-center gap-2 px-3 py-2 rounded-lg border transition-all duration-200 cursor-pointer text-left",
                           aiTone === opt.value
@@ -802,10 +809,14 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate, 
                 </div>
                 <div className="mt-2.5 px-3 py-2 rounded-lg bg-muted/50 border border-border/50">
                   <p className="text-xs text-muted-foreground italic leading-relaxed">
-                    {selectedTone.example}
+                    {voiceProfileActive
+                      ? "Voice profile active — tone is set by the writer's voice profile and overrides this selection."
+                      : selectedTone.example}
                   </p>
                 </div>
               </div>
+                );
+              })()}
 
               {/* Generate Button */}
               <Button
