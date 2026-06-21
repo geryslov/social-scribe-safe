@@ -822,7 +822,15 @@ Deno.serve(async (req) => {
     if (guidance) userMessage += `\n\nAdditional guidance: ${guidance}`;
     if (lengthInstruction) userMessage += `\n\n${lengthInstruction}`;
     if (postCountInstruction) userMessage += `\n\n${postCountInstruction}`;
-    if (toneInstruction) userMessage += `\n\n${toneInstruction}`;
+    // Option A: voice profile always wins. If any selected publisher has a voice profile,
+    // skip the tone instruction so it doesn't override the writer's voice.
+    const anyVoiceProfile = Array.isArray(publisherProfiles) && publisherProfiles.some((p: any) => p?.voiceProfile);
+    if (toneInstruction && !anyVoiceProfile) {
+      userMessage += `\n\n${toneInstruction}`;
+      console.log('Tone applied:', tone);
+    } else if (toneInstruction && anyVoiceProfile) {
+      console.log('Tone skipped: voice profile active for at least one publisher');
+    }
 
     // Inject website content based on strategy
     if (fetchedSites.length === 1) {
