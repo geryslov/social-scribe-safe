@@ -13,6 +13,7 @@ import { usePosts } from '@/hooks/usePosts';
 import { usePublishers } from '@/hooks/usePublishers';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { useAuth } from '@/hooks/useAuth';
+import { useWorkspacePermissions } from '@/hooks/useWorkspacePermissions';
 import { Document, DocumentStatus } from '@/types/document';
 import { toast } from 'sonner';
 
@@ -38,12 +39,13 @@ export default function DocumentLibrary() {
   const { publishers } = usePublishers();
   const { currentWorkspace } = useWorkspace();
   const { user } = useAuth();
+  const { can } = useWorkspacePermissions();
   const mineOsCreatorUrls = MINEOS_CREATOR_LINKEDIN_URLS.map(normalizeLinkedInUrl);
   const isMineOsLinkedInCreator = !!user && currentWorkspace?.slug === 'mineos' && publishers.some(p =>
     p.user_id === user.id && mineOsCreatorUrls.includes(normalizeLinkedInUrl(p.linkedin_url))
   );
-  const canCreateContent = isAdmin || isMineOsLinkedInCreator;
-  const canUseAiCreate = canCreateContent;
+  const canCreateContent = isAdmin || isMineOsLinkedInCreator || can.assign;
+  const canUseAiCreate = isAdmin || isMineOsLinkedInCreator || can.generateAi;
 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<DocumentStatus | 'all'>('all');
