@@ -273,6 +273,7 @@ export type Database = {
           notes: string | null
           original_content: string
           publisher_id: string | null
+          publisher_ids: string[]
           status: string
           title: string
           updated_at: string
@@ -291,6 +292,7 @@ export type Database = {
           notes?: string | null
           original_content: string
           publisher_id?: string | null
+          publisher_ids?: string[]
           status?: string
           title: string
           updated_at?: string
@@ -309,6 +311,7 @@ export type Database = {
           notes?: string | null
           original_content?: string
           publisher_id?: string | null
+          publisher_ids?: string[]
           status?: string
           title?: string
           updated_at?: string
