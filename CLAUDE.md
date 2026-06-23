@@ -26,7 +26,11 @@ Multi-tenant LinkedIn thought leadership platform. Agency operators manage publi
 - `workspaces` table with `workspace_id` FK on all data tables
 - RLS via `user_has_workspace_access()` (SELECT) and `user_can_create_in_workspace()` (INSERT/UPDATE)
 - Legacy data has `workspace_id = NULL`
-- Roles: owner/admin/creator/member
+- Roles: **owner** (full access) / **admin** (manage members + workspace, generate, publish) / **creator** (generate AI, assign posts, publish to LinkedIn) / **member** (read-only)
+- Per-role SQL helpers: `user_workspace_role()`, `user_can_generate_ai()`, `user_can_assign()`, `user_can_publish_linkedin()`, `user_can_manage_workspace()` — use these in new RLS policies instead of hardcoding role checks
+- Client-side: `useWorkspacePermissions()` returns `{role, can: {generateAi, assign, publishLinkedIn, manageWorkspace, invite}}`. Global admin (`isAdmin` from `useAuth`) gets every permission
+- `workspace_members.email` is denormalized for display (backfilled from `auth.users`); `sync_workspace_member_email()` keeps it fresh
+- Workspace UPDATE and member writes are restricted to owner/admin only — creators cannot change roles or edit workspace settings
 
 ### Edge Functions (supabase/functions/)
 | Function | Purpose |
@@ -93,12 +97,14 @@ Voice profile structure: Professional Identity, Writing Voice, Content Themes, V
 - `/intelligence` — Research feed (Feed, Topics, Settings tabs)
 - `/engagement` — Master-detail CRM layout: contact list (left 320px) + post panel (right). Per-publisher folder strip scopes the entire view (queue, watching list, day counter). Bulk import, unseen badges, profile auto-enrichment, post classification agent for comments. Auto-like has jittered spacing (first like 400-800ms for responsiveness, subsequent 6-12s) and a hard 30/day server-side cap per publisher.
 - `/admin` — Admin dashboard
+- `WorkspaceEditModal` → **Members tab** (`WorkspaceMembersTab.tsx`) — invite link copy, per-member role select (owner/admin/creator/member), remove member. Gated by `can.manageWorkspace` / `can.invite`. Includes a role legend explaining each role's permissions.
 
 ## Conventions
 - Edge Functions: self-contained, no shared utils, CORS headers, `Deno.serve()`, service role client
 - Hooks: React Query with workspace-scoped query keys, `(supabase as any)` for new tables not in generated types
 - Components: shadcn/ui patterns, `cn()` for className merging
 - New tables: always add RLS policies using existing security functions
+- For role-gated actions, prefer `useWorkspacePermissions().can.*` on the client and the `user_can_*` SQL helpers in RLS — never hardcode role lists
 - Migrations: `YYYYMMDDHHMMSS_name.sql` in `supabase/migrations/`
 - After building a major feature, update this CLAUDE.md
 

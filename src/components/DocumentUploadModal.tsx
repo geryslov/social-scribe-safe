@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { Upload, FileText, X, Plus, Sparkles, Loader2, Globe, Paperclip, Mic, PenLine, Wand2, MessageSquare, Flame, Zap, BookOpen, User, Shield, Megaphone, ChevronDown, ChevronUp, Link2, GitMerge, Layers, Check } from 'lucide-react';
+import { Upload, FileText, X, Plus, Sparkles, Loader2, Globe, Paperclip, PenLine, Wand2, ChevronDown, ChevronUp, Link2, GitMerge, Layers, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -37,18 +37,6 @@ const POST_COUNT_OPTIONS = [
   { value: '4-6', label: '4–6', description: 'Full series', icon: '5' },
 ] as const;
 
-const TONE_OPTIONS = [
-  { value: 'default', label: 'Default', description: 'Standard thought leadership', icon: PenLine, color: 'text-muted-foreground', example: '"3 things I learned scaling a team from 5 to 50. Number 2 changed everything."' },
-  { value: 'stream_of_consciousness', label: 'Stream of Thought', description: 'Raw, unfiltered', icon: Mic, color: 'text-purple-500', example: '"been thinking about this all morning and honestly... hiring is broken. like truly broken."' },
-  { value: 'typo_prone_human', label: 'Human & Raw', description: 'Casual real-person', icon: User, color: 'text-amber-500', example: '"so i just realized somethign. weve been doing standups wrong for 3 yrs. heres what changed"' },
-  { value: 'uneven_storyteller', label: 'Storyteller', description: 'Narrative pacing', icon: BookOpen, color: 'text-emerald-500', example: '"It was 2am. The server was down. And the only person who knew the fix... had just quit."' },
-  { value: 'passionate_amateur', label: 'Passionate', description: 'Energetic & excited', icon: Zap, color: 'text-yellow-500', example: '"I CANNOT stop thinking about what happened at our offsite last week!! This changes EVERYTHING 🚀"' },
-  { value: 'professional', label: 'Professional', description: 'Corporate authority', icon: Shield, color: 'text-blue-500', example: '"After analyzing Q4 data across 12 portfolio companies, one pattern became undeniable."' },
-  { value: 'conversational', label: 'Conversational', description: 'Friendly & warm', icon: MessageSquare, color: 'text-teal-500', example: '"Hey, can we talk about something? I think most people are overthinking their LinkedIn strategy."' },
-  { value: 'aggressive', label: 'Aggressive', description: 'Bold & direct', icon: Flame, color: 'text-red-500', example: '"Stop. Posting. Motivational. Quotes. Your audience deserves better and you know it."' },
-  { value: 'provocative', label: 'Provocative', description: 'Debate-starter', icon: Megaphone, color: 'text-orange-500', example: '"Unpopular opinion: your \'company culture\' is just a nicer word for peer pressure."' },
-] as const;
-
 export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate, publishers = [] }: DocumentUploadModalProps) {
   const { can } = useWorkspacePermissions();
   const [mode, setMode] = useState<'upload' | 'create' | 'ai'>('upload');
@@ -69,7 +57,6 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate, 
   const [aiReferenceContent, setAiReferenceContent] = useState('');
   const [aiLength, setAiLength] = useState('medium');
   const [aiPostCount, setAiPostCount] = useState('4-6');
-  const [aiTone, setAiTone] = useState('default');
   const [isParsingRef, setIsParsingRef] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [selectedPublisherIds, setSelectedPublisherIds] = useState<string[]>([]);
@@ -108,7 +95,6 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate, 
     setAiReferenceContent('');
     setAiLength('medium');
     setAiPostCount('4-6');
-    setAiTone('default');
     setShowAdvanced(false);
     setSelectedPublisherIds([]);
   };
@@ -257,7 +243,6 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate, 
           referenceContent: aiReferenceContent || undefined,
           length: aiLength,
           postCount: aiPostCount,
-          tone: aiTone !== 'default' ? aiTone : undefined,
           publisherProfiles: publisherLinkedInUrls.length > 0 ? publisherLinkedInUrls : undefined,
         },
       });
@@ -306,8 +291,6 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate, 
   };
 
   const showContentEditor = mode === 'create' || (mode === 'ai' && content) || fileName;
-
-  const selectedTone = TONE_OPTIONS.find(t => t.value === aiTone) || TONE_OPTIONS[0];
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -769,54 +752,6 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate, 
                   ))}
                 </div>
               </div>
-
-              {/* Tone */}
-              {(() => {
-                const voiceProfileActive = selectedPublisherIds.some(id => {
-                  const pub = publishers.find(p => p.id === id) as any;
-                  return pub && pub.voice_profile;
-                });
-                return (
-              <div>
-                <label className="text-sm font-medium mb-2 block text-foreground">Tone & Style</label>
-                <div className={cn("grid grid-cols-3 gap-2", voiceProfileActive && "opacity-50 pointer-events-none")}>
-                  {TONE_OPTIONS.map(opt => {
-                    const Icon = opt.icon;
-                    return (
-                      <button
-                        key={opt.value}
-                        onClick={() => setAiTone(opt.value)}
-                        disabled={voiceProfileActive}
-                        className={cn(
-                          "flex items-center gap-2 px-3 py-2 rounded-lg border transition-all duration-200 cursor-pointer text-left",
-                          aiTone === opt.value
-                            ? "border-primary bg-primary/10 shadow-sm"
-                            : "border-border hover:border-primary/30 hover:bg-muted/50"
-                        )}
-                      >
-                        <Icon className={cn("h-4 w-4 shrink-0", aiTone === opt.value ? "text-primary" : opt.color)} />
-                        <div className="min-w-0">
-                          <span className={cn(
-                            "text-xs font-medium block truncate",
-                            aiTone === opt.value ? "text-primary" : "text-foreground"
-                          )}>
-                            {opt.label}
-                          </span>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-                <div className="mt-2.5 px-3 py-2 rounded-lg bg-muted/50 border border-border/50">
-                  <p className="text-xs text-muted-foreground italic leading-relaxed">
-                    {voiceProfileActive
-                      ? "Voice profile active — tone is set by the writer's voice profile and overrides this selection."
-                      : selectedTone.example}
-                  </p>
-                </div>
-              </div>
-                );
-              })()}
 
               {/* Generate Button */}
               <Button
