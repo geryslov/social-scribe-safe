@@ -21,6 +21,7 @@ interface DbDocument {
   notes: string | null;
   workspace_id: string | null;
   publisher_id: string | null;
+  publisher_ids: string[] | null;
   appendix: string | null;
 }
 
@@ -48,6 +49,7 @@ const mapDbToDocument = (db: DbDocument): Document => ({
   approvedAt: db.approved_at,
   notes: db.notes,
   publisherId: db.publisher_id,
+  publisherIds: db.publisher_ids ?? [],
   appendix: db.appendix,
 });
 
@@ -90,15 +92,19 @@ export function useDocuments() {
   });
 
   const createDocument = useMutation({
-    mutationFn: async (data: { 
-      title: string; 
-      content: string; 
+    mutationFn: async (data: {
+      title: string;
+      content: string;
       fileName?: string;
       fileUrl?: string;
+      publisherIds?: string[];
+      publishers?: Array<{ id: string; name: string }>;
     }) => {
       if (!user) throw new Error('Not authenticated');
       if (!currentWorkspace) throw new Error('No workspace selected');
-      
+
+      const targetPublisherIds = data.publisherIds ?? [];
+
       const { data: result, error } = await supabase
         .from('documents')
         .insert({
@@ -110,17 +116,18 @@ export function useDocuments() {
           created_by: user.id,
           status: 'draft',
           workspace_id: currentWorkspace.id,
-        })
+          publisher_ids: targetPublisherIds,
+        } as never)
         .select()
         .single();
-      
+
       if (error) throw error;
-      
+
       const document = mapDbToDocument(result as DbDocument);
-      
+
       // Parse and create sections for each "Post" in the content
       const { sections: parsedSections, appendix: fullAppendix } = parsePostSections(data.content);
-      
+
       // Store document-level appendix
       if (fullAppendix) {
         await supabase
@@ -128,25 +135,35 @@ export function useDocuments() {
           .update({ appendix: fullAppendix })
           .eq('id', document.id);
       }
-      
+
       if (parsedSections.length > 0) {
-        const sectionsToInsert = parsedSections.map((content, index) => ({
-          document_id: document.id,
-          section_number: index + 1,
-          content,
-          status: 'pending',
-          appendix: fullAppendix ? extractPostAppendix(fullAppendix, index + 1) : null,
-        }));
-        
+        const sectionsToInsert = parsedSections.map((rawContent, index) => {
+          const { writerName, cleanContent } = parseWriterLine(rawContent);
+          const publisherId = resolvePublisherId(
+            writerName,
+            targetPublisherIds,
+            data.publishers ?? [],
+            index,
+          );
+          return {
+            document_id: document.id,
+            section_number: index + 1,
+            content: cleanContent,
+            status: 'pending',
+            appendix: fullAppendix ? extractPostAppendix(fullAppendix, index + 1) : null,
+            publisher_id: publisherId,
+          };
+        });
+
         const { error: sectionsError } = await supabase
           .from('document_sections')
           .insert(sectionsToInsert);
-        
+
         if (sectionsError) {
           console.error('Error creating sections:', sectionsError);
         }
       }
-      
+
       return document;
     },
     onSuccess: () => {
@@ -248,6 +265,41 @@ function parsePostSections(content: string): { sections: string[]; appendix: str
   }
 
   return { sections: result, appendix };
+}
+
+// Strip a leading "Writer: [Name]" line from a generated section so it
+// can be matched to a publisher without polluting the post body.
+function parseWriterLine(content: string): { writerName: string | null; cleanContent: string } {
+  const match = content.match(/^\s*(?:#+\s*)?Writer\s*[:\-—]\s*([^\n]+)\n?/i);
+  if (match) {
+    return {
+      writerName: match[1].trim(),
+      cleanContent: content.substring(match[0].length).trimStart(),
+    };
+  }
+  return { writerName: null, cleanContent: content };
+}
+
+// Resolve a section's publisher_id from (in priority order):
+// 1. The Writer: label, fuzzy-matched against the doc's target publishers
+// 2. The single target publisher if only one was chosen at generation time
+// 3. Round-robin across all target publishers
+function resolvePublisherId(
+  writerName: string | null,
+  publisherIds: string[],
+  publishers: Array<{ id: string; name: string }>,
+  idx: number,
+): string | null {
+  if (publisherIds.length === 0) return null;
+  if (publisherIds.length === 1) return publisherIds[0];
+  if (writerName) {
+    const norm = writerName.toLowerCase();
+    const match = publishers.find((p) =>
+      publisherIds.includes(p.id) && p.name.toLowerCase().includes(norm),
+    );
+    if (match) return match.id;
+  }
+  return publisherIds[idx % publisherIds.length] ?? null;
 }
 
   const updateDocument = useMutation({

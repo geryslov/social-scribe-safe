@@ -107,18 +107,36 @@ export function DocumentSplitModal({ open, onOpenChange, document, sections, onS
     toast.success(`Assigned all posts to ${publisher?.name}`);
   };
 
+  const targetPublisherIds = document?.publisherIds ?? [];
+  const targetPublishers = publishers.filter((p) => targetPublisherIds.includes(p.id));
+
+  const resolvePublisherId = (writerName: string | null, idx: number): string | undefined => {
+    if (targetPublisherIds.length === 0) return undefined;
+    if (targetPublisherIds.length === 1) return targetPublisherIds[0];
+    if (writerName) {
+      const norm = writerName.toLowerCase();
+      const match = targetPublishers.find((p) => p.name.toLowerCase().includes(norm));
+      if (match) return match.id;
+    }
+    return targetPublisherIds[idx % targetPublisherIds.length];
+  };
+
   const handleAISplit = async () => {
     if (!document) return;
-    
+
     // Use sections content for AI splitting if available
-    const contentToSplit = sections.length > 0 
+    const contentToSplit = sections.length > 0
       ? sections.map(s => s.content).join('\n\n---\n\n')
       : document.content;
-    
+
     setIsSplitting(true);
     try {
       const { data, error } = await supabase.functions.invoke('split-document', {
-        body: { content: contentToSplit, title: document.title }
+        body: {
+          content: contentToSplit,
+          title: document.title,
+          publisherNames: targetPublishers.map((p) => p.name),
+        }
       });
 
       if (error) {
@@ -128,8 +146,11 @@ export function DocumentSplitModal({ open, onOpenChange, document, sections, onS
       }
 
       if (data?.success && data.posts?.length > 0) {
-        setParsedPosts(data.posts.map((content: string) => ({
-          content,
+        type SplitPost = { content: string; writer_name: string | null };
+        const incoming: SplitPost[] = data.posts;
+        setParsedPosts(incoming.map((post, idx) => ({
+          content: post.content,
+          publisherId: resolvePublisherId(post.writer_name, idx),
           scheduledDate: documentUploadDate,
         })));
         toast.success(`Split into ${data.posts.length} posts`);

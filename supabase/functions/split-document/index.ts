@@ -9,7 +9,10 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { content, title } = await req.json();
+    const { content, title, publisherNames } = await req.json();
+    const knownWriters: string[] = Array.isArray(publisherNames)
+      ? publisherNames.filter((n: unknown): n is string => typeof n === 'string' && n.trim().length > 0)
+      : [];
 
     if (!content) {
       return new Response(
@@ -54,7 +57,13 @@ Guidelines for splitting:
 - Skip sections like "Data Sources", "Appendix", "References" - don't create posts from those
 - Create 3-10 posts depending on content length
 
-Return the posts as a JSON array of strings, where each string is a complete LinkedIn post.`
+If the source content prefixes posts with a "Writer: <Name>" line, capture that
+name in the writer_name field for that post and DROP the "Writer:" line from
+the returned content. If a post has no such label, return writer_name as null.
+${knownWriters.length > 0 ? `Known writers for this document: ${knownWriters.join(', ')}. Prefer matching writer_name to one of those names exactly when possible.` : ''}
+
+Return each post as { content, writer_name } where content is the body of the
+post (without the Writer label) and writer_name is the writer's name or null.`
           },
           {
             role: 'user',
@@ -72,7 +81,15 @@ Return the posts as a JSON array of strings, where each string is a complete Lin
                 properties: {
                   posts: {
                     type: 'array',
-                    items: { type: 'string' },
+                    items: {
+                      type: 'object',
+                      properties: {
+                        content: { type: 'string', description: 'The LinkedIn post body, without any "Writer:" prefix line' },
+                        writer_name: { type: ['string', 'null'], description: 'The writer this post should be attributed to, or null if no Writer: label was present' },
+                      },
+                      required: ['content', 'writer_name'],
+                      additionalProperties: false
+                    },
                     description: 'Array of LinkedIn posts extracted from the document'
                   }
                 },
@@ -111,33 +128,57 @@ Return the posts as a JSON array of strings, where each string is a complete Lin
     console.log('AI response received');
 
     // Extract posts from tool call response
-    let posts: string[] = [];
+    type RawPost = { content?: string; writer_name?: string | null } | string;
+    let rawPosts: RawPost[] = [];
     const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
-    
+
     if (toolCall?.function?.arguments) {
       try {
         const args = JSON.parse(toolCall.function.arguments);
-        posts = args.posts || [];
+        rawPosts = Array.isArray(args.posts) ? args.posts : [];
       } catch (e) {
         console.error('Failed to parse tool call arguments:', e);
       }
     }
 
     // Fallback: try to parse from content if tool call fails
-    if (posts.length === 0 && data.choices?.[0]?.message?.content) {
+    if (rawPosts.length === 0 && data.choices?.[0]?.message?.content) {
       try {
         const content = data.choices[0].message.content;
         const match = content.match(/\[.*\]/s);
         if (match) {
-          posts = JSON.parse(match[0]);
+          const parsed = JSON.parse(match[0]);
+          if (Array.isArray(parsed)) rawPosts = parsed;
         }
       } catch (e) {
         console.error('Failed to parse posts from content:', e);
       }
     }
 
-    // Validate posts
-    posts = posts.filter((p: any) => typeof p === 'string' && p.trim().length > 0);
+    // Normalize to { content, writer_name } objects. Tolerate the legacy
+    // string-only shape so older clients keep working.
+    const stripWriterPrefix = (text: string): { body: string; writer: string | null } => {
+      const m = text.match(/^\s*(?:#+\s*)?Writer\s*[:\-—]\s*([^\n]+)\n?/i);
+      if (m) {
+        return { body: text.substring(m[0].length).trimStart(), writer: m[1].trim() };
+      }
+      return { body: text, writer: null };
+    };
+
+    const posts = rawPosts
+      .map((p): { content: string; writer_name: string | null } | null => {
+        if (typeof p === 'string') {
+          const { body, writer } = stripWriterPrefix(p);
+          return body.trim() ? { content: body, writer_name: writer } : null;
+        }
+        if (p && typeof p === 'object' && typeof p.content === 'string') {
+          const { body, writer } = stripWriterPrefix(p.content);
+          const writer_name = p.writer_name?.trim?.() || writer || null;
+          return body.trim() ? { content: body, writer_name } : null;
+        }
+        return null;
+      })
+      .filter((p): p is { content: string; writer_name: string | null } => p !== null);
 
     console.log(`Split document into ${posts.length} posts`);
 

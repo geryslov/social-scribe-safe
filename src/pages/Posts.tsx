@@ -203,9 +203,13 @@ const Posts = () => {
     title: string;
     content: string;
     fileName?: string;
-    fileUrl?: string
+    fileUrl?: string;
+    publisherIds?: string[];
   }) => {
-    const doc = await createDocument.mutateAsync(data);
+    const doc = await createDocument.mutateAsync({
+      ...data,
+      publishers: dbPublishers.map((p) => ({ id: p.id, name: p.name })),
+    });
     // Navigate to the document editor where sections are shown with editing & history
     navigate(`/documents/${doc.id}`);
   };

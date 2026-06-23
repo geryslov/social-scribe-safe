@@ -19,7 +19,7 @@ import { useWorkspacePermissions } from '@/hooks/useWorkspacePermissions';
 interface DocumentUploadModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSave: (data: { title: string; content: string; fileName?: string; fileUrl?: string }) => void;
+  onSave: (data: { title: string; content: string; fileName?: string; fileUrl?: string; publisherIds?: string[] }) => void;
   showAiCreate?: boolean;
   publishers?: Publisher[];
 }
@@ -286,6 +286,7 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate, 
       content: content.trim(),
       fileName: fileName || undefined,
       fileUrl: fileUrl || undefined,
+      publisherIds: selectedPublisherIds.length > 0 ? selectedPublisherIds : undefined,
     });
     handleClose();
   };

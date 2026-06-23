@@ -77,10 +77,12 @@ export function CreateDocumentFromFeed({ items, publisher, onClose, onCreated }:
       if (error) throw error;
       if (!data?.success) throw new Error(data?.error || 'Generation failed');
 
-      // Save as document
+      // Save as document — pre-assign sections to the single source publisher
       const doc = await createDocument.mutateAsync({
         title: data.title || topic.trim(),
         content: data.content,
+        publisherIds: [publisher.id],
+        publishers: [{ id: publisher.id, name: publisher.name }],
       });
 
       onCreated(doc.id);
@@ -103,6 +105,8 @@ export function CreateDocumentFromFeed({ items, publisher, onClose, onCreated }:
       const doc = await createDocument.mutateAsync({
         title: topic.trim() || `Research: ${publisher.name}`,
         content,
+        publisherIds: [publisher.id],
+        publishers: [{ id: publisher.id, name: publisher.name }],
       });
 
       onCreated(doc.id);
