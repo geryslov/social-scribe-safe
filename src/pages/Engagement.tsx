@@ -74,7 +74,7 @@ export default function Engagement() {
             <div className="w-[320px] flex-shrink-0 border-r flex flex-col bg-muted/10">
               <ContactList
                 publisher={selectedPublisher}
-                isAdmin={isAdmin}
+                isAdmin={canManage}
                 selectedTargetId={selectedTarget?.id || null}
                 onSelectTarget={handleSelectTarget}
                 folderScope={folderScope}
