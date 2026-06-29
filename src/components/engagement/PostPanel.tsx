@@ -276,6 +276,7 @@ export function PostPanel({ target, publisher, isAdmin }: PostPanelProps) {
         onToggleAutoLike={(checked) => {
           if (!checked) {
             autoLikedRef.current.clear();
+            autoLikeBusyRef.current = false;
             if (autoLikeTimerRef.current) {
               window.clearTimeout(autoLikeTimerRef.current);
               autoLikeTimerRef.current = null;
