@@ -387,6 +387,21 @@ export function ContactList({
   ).length;
   const totalErrored = missingCount + (missingPosts > missingCount ? missingPosts - missingCount : 0);
 
+  // Listen for the "Sync all" trigger dispatched from the Engagement command bar.
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { publisherId?: string } | undefined;
+      if (detail?.publisherId && detail.publisherId !== publisher.id) return;
+      (async () => {
+        await handleReEnrichMissing();
+        await handleResyncMissingPosts();
+      })();
+    };
+    window.addEventListener('engagement:sync-all', handler);
+    return () => window.removeEventListener('engagement:sync-all', handler);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [publisher.id, targets, freshCounts, doneCounts, currentWorkspace?.id]);
+
   return (
     <>
       {/* Folder strip — sits above search, scopes everything below */}

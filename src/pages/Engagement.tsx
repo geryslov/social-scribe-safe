@@ -16,8 +16,9 @@ import { PostPanel } from '@/components/engagement/PostPanel';
 import { EngagementTarget, useEngagementTargets } from '@/hooks/useEngagement';
 import { useEngagementSync, getNextScheduledSync } from '@/hooks/useEngagementSync';
 import {
-  RefreshCw, Loader2, ChevronDown, Check, Play, Clock, Heart,
+  RefreshCw, Loader2, ChevronDown, Check, Play, Clock, Heart, Wand2,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
 // Folder scope sentinel: 'all' = no filter, 'unfiled' = folder_id IS NULL,
@@ -57,6 +58,7 @@ export default function Engagement() {
           selectedPublisher={selectedPublisher}
           publishers={publishers}
           folderScope={folderScope}
+          canManage={canManage}
           onSelectPublisher={(id) => {
             setSelectedPublisherId(id);
             setSelectedTarget(null);
@@ -103,10 +105,11 @@ interface CommandBarProps {
   selectedPublisher: Publisher | null;
   publishers: Publisher[];
   folderScope: FolderScope;
+  canManage: boolean;
   onSelectPublisher: (id: string) => void;
 }
 
-function CommandBar({ selectedPublisher, publishers, folderScope, onSelectPublisher }: CommandBarProps) {
+function CommandBar({ selectedPublisher, publishers, folderScope, canManage, onSelectPublisher }: CommandBarProps) {
   const { runNow, lastRun, settings } = useEngagementSync();
   const isSyncing = runNow.isPending;
   const autoEnabled = settings?.auto_sync_enabled ?? true;
@@ -158,6 +161,27 @@ function CommandBar({ selectedPublisher, publishers, folderScope, onSelectPublis
           <Clock className="h-3 w-3" />
           next {nextLabel}
         </span>
+
+        {/* Sync profiles & posts (per-publisher backfill) */}
+        {canManage && selectedPublisher && (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              window.dispatchEvent(
+                new CustomEvent('engagement:sync-all', {
+                  detail: { publisherId: selectedPublisher.id },
+                }),
+              );
+              toast.info('Syncing profiles & posts…');
+            }}
+            className="h-8 gap-1.5 text-xs font-semibold px-3"
+            title="Re-enrich profiles and fetch posts for everyone in this list"
+          >
+            <Wand2 className="h-3.5 w-3.5" />
+            Sync profiles & posts
+          </Button>
+        )}
 
         {/* Run queue / sync */}
         <Button
