@@ -461,6 +461,21 @@ export function ContactList({
                       />
                     )}
                   </div>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={async () => {
+                      await handleReEnrichMissing();
+                      await handleResyncMissingPosts();
+                    }}
+                    disabled={reEnriching || resyncing}
+                  >
+                    {reEnriching || resyncing ? (
+                      <Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" />
+                    ) : (
+                      <Wand2 className="h-3.5 w-3.5 mr-2" />
+                    )}
+                    Sync all profiles & posts
+                  </DropdownMenuItem>
                   {totalErrored > 0 && (
                     <>
                       <DropdownMenuSeparator />
