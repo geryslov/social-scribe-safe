@@ -590,7 +590,7 @@ function EnterpriseFeed({
           <span>Post</span>
           <span className="tabular-nums">Likes · Comments · Shares</span>
         </div>
-        <ul className="divide-y divide-border">
+        <ul className="divide-y-[6px] divide-[#eef0f3]">
           {posts.map((post) => (
             <PostRow
               key={post.id}
@@ -634,7 +634,7 @@ function PostRow({
   return (
     <li
       className={cn(
-        'relative px-3 py-2.5 hover:bg-[#fafbfc] transition-colors',
+        'relative px-4 py-4 hover:bg-[#fafbfc] transition-colors',
         isSpotlight && 'bg-[#fbfaff]',
       )}
     >
