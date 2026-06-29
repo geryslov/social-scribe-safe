@@ -90,7 +90,7 @@ export default function Engagement() {
             </div>
             <div className="flex-1 flex flex-col overflow-hidden">
               <PostPanel
-                target={selectedTarget}
+                target={liveSelectedTarget}
                 publisher={selectedPublisher}
                 isAdmin={canManage}
               />
