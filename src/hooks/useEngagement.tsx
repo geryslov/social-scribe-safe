@@ -323,13 +323,26 @@ export function useEngagementTargets(publisherId: string | null) {
         .eq('id', id);
       if (error) throw error;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['engagement-targets'] });
+    onMutate: async ({ id, updates }) => {
+      await queryClient.cancelQueries({ queryKey: ['engagement-targets'] });
+      const snapshots: Array<[readonly unknown[], unknown]> = [];
+      queryClient.getQueriesData({ queryKey: ['engagement-targets'] }).forEach(([key, data]) => {
+        snapshots.push([key, data]);
+        if (Array.isArray(data)) {
+          queryClient.setQueryData(key, (data as any[]).map((t) => (t.id === id ? { ...t, ...updates } : t)));
+        }
+      });
+      return { snapshots };
     },
-    onError: (error: Error) => {
+    onError: (error: Error, _vars, ctx) => {
+      ctx?.snapshots?.forEach(([key, data]) => queryClient.setQueryData(key, data));
       toast.error('Update failed: ' + error.message);
     },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['engagement-targets'] });
+    },
   });
+
 
   return { targets, isLoading, createTarget, deleteTarget, bulkDeleteTargets, bulkReassignTargets, markSeen, enrichTarget, updateTarget };
 }
