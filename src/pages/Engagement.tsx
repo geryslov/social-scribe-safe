@@ -34,7 +34,7 @@ export default function Engagement() {
   const [selectedPublisherId, setSelectedPublisherId] = useState<string | null>(null);
   const [selectedTarget, setSelectedTarget] = useState<EngagementTarget | null>(null);
   const [folderScope, setFolderScope] = useState<FolderScope>('all');
-  const { markSeen } = useEngagementTargets(selectedPublisherId);
+  const { targets, markSeen } = useEngagementTargets(selectedPublisherId);
 
   const handleSelectTarget = (target: EngagementTarget) => {
     setSelectedTarget(target);
@@ -48,6 +48,11 @@ export default function Engagement() {
   }
 
   const selectedPublisher = publishers.find((p) => p.id === selectedPublisherId) || null;
+  // Keep selectedTarget in sync with the live query (so toggles like auto_like are reflected immediately).
+  const liveSelectedTarget = selectedTarget
+    ? (targets.find((t) => t.id === selectedTarget.id) ?? selectedTarget)
+    : null;
+
 
   return (
     <div className="min-h-screen bg-background">
