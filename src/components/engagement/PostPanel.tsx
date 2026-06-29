@@ -295,62 +295,43 @@ export function PostPanel({ target, publisher, isAdmin }: PostPanelProps) {
         </div>
       )}
 
-      {/* ── Reader (Midnight Indigo magazine) ─────────────────────────── */}
-      <div
-        className="flex-1 overflow-y-auto relative"
-        style={{
-          background:
-            'radial-gradient(ellipse 80% 50% at 50% -10%, rgba(79,70,229,0.18), transparent 60%), linear-gradient(180deg, #0a0a1a 0%, #0d0d22 100%)',
-        }}
-      >
-        {/* subtle grid texture */}
-        <div
-          className="pointer-events-none absolute inset-0 opacity-[0.04]"
-          style={{
-            backgroundImage:
-              'linear-gradient(rgba(255,255,255,.6) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.6) 1px, transparent 1px)',
-            backgroundSize: '32px 32px',
-          }}
-        />
-
-        <div className="relative">
-          {isLoading ? (
-            <div className="max-w-[1100px] mx-auto px-8 py-8 space-y-4">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="rounded-2xl border border-white/5 bg-white/[0.03] p-6 space-y-3">
-                  <Skeleton className="h-3 w-1/4 bg-white/10" />
-                  <Skeleton className="h-4 w-full bg-white/10" />
-                  <Skeleton className="h-4 w-11/12 bg-white/10" />
-                  <Skeleton className="h-4 w-3/4 bg-white/10" />
-                </div>
-              ))}
-            </div>
-          ) : posts.length === 0 ? (
-            <EmptyState targetName={target.name} isAdmin={isAdmin} isFetching={isFetching} onFetch={handleFetch} />
-          ) : filtered.length === 0 ? (
-            <div className="flex items-center justify-center py-24">
-              <p className="text-sm text-white/40 font-mono uppercase tracking-wider">No posts in this view</p>
-            </div>
-          ) : (
-            <MagazineFeed
-              posts={filtered}
-              spotlightId={spotlightId}
-              feedFilter={feedFilter}
-              commentsByPostId={commentsByPostId}
-              likingPostId={likingPostId}
-              isAdmin={isAdmin}
-              onLike={(post) => {
-                setLikingPostId(post.id);
-                likePost.mutate(
-                  { publisher_id: publisher.id, post_id: post.id },
-                  { onSettled: () => setLikingPostId(null) },
-                );
-              }}
-              onEngage={(post) => setComposerPost(post)}
-            />
-          )}
-        </div>
+      {/* ── Reader (enterprise / compact) ──────────────────────────────── */}
+      <div className="flex-1 overflow-y-auto bg-[#fafafa]">
+        {isLoading ? (
+          <div className="max-w-[820px] mx-auto px-4 py-3 divide-y divide-border border border-border bg-white mt-3 rounded-sm">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="py-3 space-y-1.5">
+                <Skeleton className="h-2.5 w-1/4" />
+                <Skeleton className="h-3 w-full" />
+                <Skeleton className="h-3 w-11/12" />
+              </div>
+            ))}
+          </div>
+        ) : posts.length === 0 ? (
+          <EmptyState targetName={target.name} isAdmin={isAdmin} isFetching={isFetching} onFetch={handleFetch} />
+        ) : filtered.length === 0 ? (
+          <div className="flex items-center justify-center py-16">
+            <p className="text-[11px] text-muted-foreground font-mono uppercase tracking-wider">No posts in this view</p>
+          </div>
+        ) : (
+          <EnterpriseFeed
+            posts={filtered}
+            spotlightId={spotlightId}
+            commentsByPostId={commentsByPostId}
+            likingPostId={likingPostId}
+            isAdmin={isAdmin}
+            onLike={(post) => {
+              setLikingPostId(post.id);
+              likePost.mutate(
+                { publisher_id: publisher.id, post_id: post.id },
+                { onSettled: () => setLikingPostId(null) },
+              );
+            }}
+            onEngage={(post) => setComposerPost(post)}
+          />
+        )}
       </div>
+
 
 
       {/* ── Composer sheet ─────────────────────────────────────────────── */}
