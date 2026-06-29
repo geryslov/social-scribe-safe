@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Header } from '@/components/Header';
 import { useAuth } from '@/hooks/useAuth';
 import { useWorkspace } from '@/hooks/useWorkspace';
+import { useWorkspacePermissions } from '@/hooks/useWorkspacePermissions';
 import { usePublishers, Publisher } from '@/hooks/usePublishers';
 import { Navigate } from 'react-router-dom';
 import {
@@ -26,6 +27,8 @@ export type FolderScope = 'all' | 'unfiled' | string;
 export default function Engagement() {
   const { user, isAdmin } = useAuth();
   const { currentWorkspace } = useWorkspace();
+  const { can } = useWorkspacePermissions();
+  const canManage = isAdmin || can.manageWorkspace || can.assign;
   const { publishers, isLoading: pubsLoading } = usePublishers();
   const [selectedPublisherId, setSelectedPublisherId] = useState<string | null>(null);
   const [selectedTarget, setSelectedTarget] = useState<EngagementTarget | null>(null);
@@ -71,7 +74,7 @@ export default function Engagement() {
             <div className="w-[320px] flex-shrink-0 border-r flex flex-col bg-muted/10">
               <ContactList
                 publisher={selectedPublisher}
-                isAdmin={isAdmin}
+                isAdmin={canManage}
                 selectedTargetId={selectedTarget?.id || null}
                 onSelectTarget={handleSelectTarget}
                 folderScope={folderScope}
@@ -82,7 +85,7 @@ export default function Engagement() {
               <PostPanel
                 target={selectedTarget}
                 publisher={selectedPublisher}
-                isAdmin={isAdmin}
+                isAdmin={canManage}
               />
             </div>
           </div>
