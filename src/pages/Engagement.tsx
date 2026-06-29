@@ -27,6 +27,8 @@ export type FolderScope = 'all' | 'unfiled' | string;
 export default function Engagement() {
   const { user, isAdmin } = useAuth();
   const { currentWorkspace } = useWorkspace();
+  const { can } = useWorkspacePermissions();
+  const canManage = isAdmin || can.manageWorkspace || can.assign;
   const { publishers, isLoading: pubsLoading } = usePublishers();
   const [selectedPublisherId, setSelectedPublisherId] = useState<string | null>(null);
   const [selectedTarget, setSelectedTarget] = useState<EngagementTarget | null>(null);
