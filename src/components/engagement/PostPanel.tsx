@@ -749,8 +749,8 @@ function PostCard({
             className={cn(
               'whitespace-pre-wrap text-white/90',
               isHero
-                ? 'text-[20px] sm:text-[22px] leading-[1.5] font-medium'
-                : 'text-[14.5px] leading-[1.6] line-clamp-6',
+                ? 'text-[15px] sm:text-[16px] leading-[1.55] font-medium line-clamp-[10]'
+                : 'text-[13px] leading-[1.55] line-clamp-5',
             )}
             style={isHero ? display : undefined}
           >
