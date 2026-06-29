@@ -566,13 +566,12 @@ function SegmentedFilter({ value, onChange, counts }: SegmentedFilterProps) {
 }
 
 // -----------------------------------------------------------------------------
-// MagazineFeed — featured spotlight + dense grid of supporting posts
+// EnterpriseFeed — dense single-column list, table-like
 // -----------------------------------------------------------------------------
 
-interface MagazineFeedProps {
+interface EnterpriseFeedProps {
   posts: EngagementPost[];
   spotlightId: string | null;
-  feedFilter: FeedFilter;
   commentsByPostId: Record<string, EngagementComment[]>;
   likingPostId: string | null;
   isAdmin: boolean;
@@ -580,66 +579,43 @@ interface MagazineFeedProps {
   onEngage: (post: EngagementPost) => void;
 }
 
-function MagazineFeed({
+function EnterpriseFeed({
   posts, spotlightId, commentsByPostId, likingPostId, isAdmin, onLike, onEngage,
-}: MagazineFeedProps) {
-  const spotlight = spotlightId ? posts.find((p) => p.id === spotlightId) : null;
-  const rest = spotlight ? posts.filter((p) => p.id !== spotlight.id) : posts;
-
+}: EnterpriseFeedProps) {
   return (
-    <div className="max-w-[860px] mx-auto px-4 sm:px-6 py-5 space-y-4">
-      {spotlight && (
-        <PostCard
-          post={spotlight}
-          variant="hero"
-          isLiking={likingPostId === spotlight.id}
-          commentsForPost={commentsByPostId[spotlight.id] || []}
-          isAdmin={isAdmin}
-          onLike={() => onLike(spotlight)}
-          onEngage={() => onEngage(spotlight)}
-        />
-      )}
-
-      {rest.length > 0 && (
-        <>
-          {spotlight && (
-            <div className="flex items-center gap-3 pt-2">
-              <span
-                className="text-[10px] font-mono uppercase tracking-[0.22em] text-white/40"
-                style={{ fontFamily: "'Space Grotesk', system-ui, sans-serif" }}
-              >
-                More from this feed
-              </span>
-              <div className="flex-1 h-px bg-gradient-to-r from-white/10 to-transparent" />
-            </div>
-          )}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {rest.map((post) => (
-              <PostCard
-                key={post.id}
-                post={post}
-                variant="grid"
-                isLiking={likingPostId === post.id}
-                commentsForPost={commentsByPostId[post.id] || []}
-                isAdmin={isAdmin}
-                onLike={() => onLike(post)}
-                onEngage={() => onEngage(post)}
-              />
-            ))}
-          </div>
-        </>
-      )}
+    <div className="max-w-[820px] mx-auto px-4 py-3">
+      <div className="border border-border bg-white rounded-sm">
+        {/* column header strip */}
+        <div className="grid grid-cols-[1fr_auto] items-center gap-3 px-3 h-7 border-b border-border bg-[#f6f7f9] text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
+          <span>Post</span>
+          <span className="tabular-nums">Likes · Comments · Shares</span>
+        </div>
+        <ul className="divide-y divide-border">
+          {posts.map((post) => (
+            <PostRow
+              key={post.id}
+              post={post}
+              isSpotlight={post.id === spotlightId}
+              isLiking={likingPostId === post.id}
+              commentsForPost={commentsByPostId[post.id] || []}
+              isAdmin={isAdmin}
+              onLike={() => onLike(post)}
+              onEngage={() => onEngage(post)}
+            />
+          ))}
+        </ul>
+      </div>
     </div>
   );
 }
 
 // -----------------------------------------------------------------------------
-// PostCard — Midnight Indigo editorial / magazine treatment
+// PostRow — compact enterprise row
 // -----------------------------------------------------------------------------
 
-interface PostCardProps {
+interface PostRowProps {
   post: EngagementPost;
-  variant: 'hero' | 'grid';
+  isSpotlight: boolean;
   isLiking: boolean;
   isAdmin: boolean;
   commentsForPost: EngagementComment[];
@@ -647,185 +623,150 @@ interface PostCardProps {
   onEngage: () => void;
 }
 
-function PostCard({
-  post, variant, isLiking, isAdmin, commentsForPost, onLike, onEngage,
-}: PostCardProps) {
-  const isHero = variant === 'hero';
+function PostRow({
+  post, isSpotlight, isLiking, isAdmin, commentsForPost, onLike, onEngage,
+}: PostRowProps) {
+  const [expanded, setExpanded] = useState(false);
   const topComment = commentsForPost[0];
   const reactions = topComment?.reaction_count || 0;
   const replies = topComment?.reply_count || 0;
 
-  const display = { fontFamily: "'Space Grotesk', system-ui, sans-serif" } as const;
-
   return (
-    <article
+    <li
       className={cn(
-        'group relative rounded-2xl border backdrop-blur-sm transition-all duration-300',
-        'border-white/[0.07] bg-white/[0.025] hover:bg-white/[0.045] hover:border-white/[0.12]',
-        isHero && 'border-[#4f46e5]/40 bg-gradient-to-br from-[#1e1e5a]/30 via-white/[0.03] to-transparent hover:border-[#4f46e5]/60',
-        post.is_commented && !isHero && 'border-emerald-400/20',
+        'relative px-3 py-2.5 hover:bg-[#fafbfc] transition-colors',
+        isSpotlight && 'bg-[#fbfaff]',
       )}
-      style={
-        isHero
-          ? { boxShadow: '0 24px 60px -20px rgba(79,70,229,0.45), inset 0 1px 0 rgba(255,255,255,0.04)' }
-          : { boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.03)' }
-      }
     >
-      {/* indigo accent rail on hero */}
-      {isHero && (
-        <div className="absolute left-0 top-8 bottom-8 w-[3px] rounded-r-full bg-gradient-to-b from-[#4f46e5] via-[#6366f1] to-transparent" />
+      {isSpotlight && (
+        <span className="absolute left-0 top-2 bottom-2 w-[2px] bg-[#4f46e5]" />
       )}
 
-      <div className={cn('relative', isHero ? 'p-5 sm:p-6' : 'p-4')}>
-        {/* Eyebrow */}
-        <div className="flex items-center gap-2 mb-3">
-          {isHero && (
-            <span
-              className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-[#4f46e5]/20 border border-[#4f46e5]/30 text-[9.5px] font-semibold uppercase tracking-[0.18em] text-indigo-200"
-              style={display}
-            >
-              <span className="h-1 w-1 rounded-full bg-indigo-300 animate-pulse" />
-              Spotlight
-            </span>
-          )}
-          {post.is_commented && (
-            <span className="inline-flex items-center gap-1 text-[10px] font-mono uppercase tracking-wider text-emerald-300/90">
-              <CheckCircle2 className="h-3 w-3" />
-              replied
-            </span>
-          )}
-          {post.is_liked && post.liked_at && (
-            <span
-              className="inline-flex items-center gap-1 text-[10px] font-mono uppercase tracking-wider text-rose-300/90"
-              title={`Liked ${new Date(post.liked_at).toLocaleString()}`}
-            >
-              <Heart className="h-3 w-3 fill-current" />
-              liked · {timeAgo(post.liked_at)}
-            </span>
-          )}
-          <div className="ml-auto flex items-center gap-2">
-            {post.published_at && (
-              <span
-                className="text-[10px] font-mono uppercase tracking-wider text-white/35"
-                title={new Date(post.published_at).toLocaleString()}
-              >
-                {timeAgo(post.published_at)}
-              </span>
-            )}
-            <a
-              href={post.linkedin_post_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center justify-center h-6 w-6 rounded-md text-white/40 hover:text-indigo-200 hover:bg-white/5 transition-colors"
-              title="Open on LinkedIn"
-            >
-              <ExternalLink className="h-3 w-3" />
-            </a>
-          </div>
-        </div>
+      {/* meta row */}
+      <div className="flex items-center gap-2 text-[10.5px] font-mono uppercase tracking-wider text-muted-foreground mb-1">
+        {isSpotlight && (
+          <span className="text-[#4f46e5] font-semibold">◆ Top</span>
+        )}
+        {post.is_commented && (
+          <span className="inline-flex items-center gap-1 text-emerald-700">
+            <CheckCircle2 className="h-2.5 w-2.5" />
+            replied
+          </span>
+        )}
+        {post.is_liked && (
+          <span
+            className="inline-flex items-center gap-1 text-rose-600"
+            title={post.liked_at ? `Liked ${new Date(post.liked_at).toLocaleString()}` : undefined}
+          >
+            <Heart className="h-2.5 w-2.5 fill-current" />
+            liked
+          </span>
+        )}
+        {post.published_at && (
+          <span title={new Date(post.published_at).toLocaleString()}>
+            {timeAgo(post.published_at)}
+          </span>
+        )}
+        <span className="ml-auto inline-flex items-center gap-3 tabular-nums text-foreground/70 normal-case tracking-normal font-sans text-[11px]">
+          <span title="Likes" className="inline-flex items-center gap-1">
+            <ThumbsUp className="h-3 w-3 text-muted-foreground" />
+            {post.likes_count.toLocaleString()}
+          </span>
+          <span title="Comments" className="inline-flex items-center gap-1">
+            <MessageSquare className="h-3 w-3 text-muted-foreground" />
+            {post.comments_count.toLocaleString()}
+          </span>
+          <span title="Shares" className="inline-flex items-center gap-1">
+            <Share2 className="h-3 w-3 text-muted-foreground" />
+            {post.shares_count.toLocaleString()}
+          </span>
+          <a
+            href={post.linkedin_post_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center justify-center h-5 w-5 rounded text-muted-foreground hover:text-[#0A66C2] hover:bg-[#0A66C2]/10 transition-colors"
+            title="Open on LinkedIn"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <ExternalLink className="h-3 w-3" />
+          </a>
+        </span>
+      </div>
 
-        {/* Post content */}
-        {post.content ? (
+      {/* content */}
+      {post.content ? (
+        <div>
           <p
             className={cn(
-              'whitespace-pre-wrap text-white/90',
-              isHero
-                ? 'text-[15px] sm:text-[16px] leading-[1.55] font-medium line-clamp-[10]'
-                : 'text-[13px] leading-[1.55] line-clamp-5',
+              'text-[13px] leading-[1.5] text-foreground/90 whitespace-pre-wrap',
+              !expanded && 'line-clamp-3',
             )}
-            style={isHero ? display : undefined}
           >
             {post.content}
           </p>
-        ) : (
-          <p className="text-sm text-white/40 italic">Media post (image / video / document)</p>
-        )}
-
-        {/* Metric row */}
-        <div
-          className={cn(
-            'flex items-center flex-wrap gap-x-4 gap-y-1 text-[11px] text-white/50',
-            isHero ? 'mt-4 pt-3 border-t border-white/[0.07]' : 'mt-3 pt-2.5 border-t border-white/[0.05]',
-          )}
-        >
-          {post.likes_count > 0 && (
-            <span className="inline-flex items-center gap-1.5 tabular-nums">
-              <ThumbsUp className="h-3 w-3 text-indigo-300/70" />
-              {post.likes_count.toLocaleString()}
-            </span>
-          )}
-          {post.comments_count > 0 && (
-            <span className="inline-flex items-center gap-1.5 tabular-nums">
-              <MessageSquare className="h-3 w-3 text-indigo-300/70" />
-              {post.comments_count.toLocaleString()}
-            </span>
-          )}
-          {post.shares_count > 0 && (
-            <span className="inline-flex items-center gap-1.5 tabular-nums">
-              <Share2 className="h-3 w-3 text-indigo-300/70" />
-              {post.shares_count.toLocaleString()}
-            </span>
-          )}
-          {engagementScore(post) === 0 && (
-            <span className="text-white/30 font-mono uppercase tracking-wider text-[10px]">No engagement yet</span>
-          )}
-
-          {post.is_commented && topComment && (
-            <span className="ml-auto inline-flex items-center gap-1.5">
-              <span className="text-emerald-300/80 font-medium text-[10.5px] uppercase tracking-wider font-mono">
-                your reply
-              </span>
-              <CommentEngagementPopover
-                engagementCommentId={topComment.id}
-                reactionCount={reactions}
-                replyCount={replies}
-                commentText={topComment.comment_text}
-                postedAt={topComment.posted_at}
-              />
-            </span>
+          {post.content.length > 220 && (
+            <button
+              type="button"
+              onClick={() => setExpanded((v) => !v)}
+              className="mt-0.5 text-[11px] text-[#4f46e5] hover:underline font-medium"
+            >
+              {expanded ? 'Show less' : 'Show more'}
+            </button>
           )}
         </div>
+      ) : (
+        <p className="text-[12px] text-muted-foreground italic">Media post (image / video / document)</p>
+      )}
 
-        {/* Actions */}
-        {isAdmin && (
-          <div className={cn('flex items-center gap-2', isHero ? 'mt-4' : 'mt-3')}>
-            <button
-              type="button"
-              disabled={isLiking || post.is_liked}
-              onClick={onLike}
-              className={cn(
-                'inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-[12px] font-semibold transition-all',
-                post.is_liked
-                  ? 'text-rose-200 bg-rose-500/15 border border-rose-400/25'
-                  : 'text-white/60 hover:text-rose-200 hover:bg-rose-500/10 border border-white/10 hover:border-rose-400/30',
-                (isLiking || post.is_liked) && 'cursor-default',
-              )}
-            >
-              {isLiking ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <Heart className={cn('h-3.5 w-3.5', post.is_liked && 'fill-current')} />
-              )}
-              {post.is_liked ? 'Liked' : 'Like'}
-            </button>
-            <button
-              type="button"
-              onClick={onEngage}
-              className={cn(
-                'inline-flex items-center gap-1.5 h-8 px-4 rounded-lg text-[12px] font-semibold transition-all',
-                isHero
-                  ? 'bg-gradient-to-r from-[#4f46e5] to-[#6366f1] text-white shadow-lg shadow-[#4f46e5]/40 hover:shadow-[#4f46e5]/60 hover:from-[#4338ca] hover:to-[#4f46e5]'
-                  : 'bg-white/10 text-white hover:bg-[#4f46e5] border border-white/10 hover:border-[#4f46e5]',
-              )}
-              style={isHero ? display : undefined}
-            >
-              <MessageCircle className="h-3.5 w-3.5" />
-              {post.is_commented ? 'Reply again' : 'Engage'}
-            </button>
-          </div>
-        )}
-      </div>
-    </article>
+      {/* reply badge */}
+      {post.is_commented && topComment && (
+        <div className="mt-1.5 inline-flex items-center gap-1.5 text-[11px]">
+          <span className="text-emerald-700 font-mono uppercase tracking-wider text-[10px]">your reply</span>
+          <CommentEngagementPopover
+            engagementCommentId={topComment.id}
+            reactionCount={reactions}
+            replyCount={replies}
+            commentText={topComment.comment_text}
+            postedAt={topComment.posted_at}
+          />
+        </div>
+      )}
+
+      {/* actions */}
+      {isAdmin && (
+        <div className="flex items-center gap-1.5 mt-2">
+          <button
+            type="button"
+            disabled={isLiking || post.is_liked}
+            onClick={onLike}
+            className={cn(
+              'inline-flex items-center gap-1 h-6 px-2 rounded-sm text-[11px] font-medium border transition-colors',
+              post.is_liked
+                ? 'text-rose-700 bg-rose-50 border-rose-200 cursor-default'
+                : 'text-foreground/70 border-border bg-white hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200',
+            )}
+          >
+            {isLiking ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : (
+              <Heart className={cn('h-3 w-3', post.is_liked && 'fill-current')} />
+            )}
+            {post.is_liked ? 'Liked' : 'Like'}
+          </button>
+          <button
+            type="button"
+            onClick={onEngage}
+            className={cn(
+              'inline-flex items-center gap-1 h-6 px-2.5 rounded-sm text-[11px] font-semibold border transition-colors',
+              'bg-[#4f46e5] text-white border-[#4f46e5] hover:bg-[#4338ca] hover:border-[#4338ca]',
+            )}
+          >
+            <MessageCircle className="h-3 w-3" />
+            {post.is_commented ? 'Reply again' : 'Engage'}
+          </button>
+        </div>
+      )}
+    </li>
   );
 }
 
@@ -842,29 +783,24 @@ function EmptyState({
   onFetch: () => void;
 }) {
   return (
-    <div className="flex items-center justify-center py-24">
+    <div className="flex items-center justify-center py-16">
       <div className="text-center max-w-sm px-6">
-        <div className="h-14 w-14 mx-auto rounded-2xl bg-[#4f46e5]/15 border border-[#4f46e5]/30 flex items-center justify-center mb-4">
-          <Sparkles className="h-6 w-6 text-indigo-300" />
+        <div className="h-10 w-10 mx-auto rounded-sm bg-muted border border-border flex items-center justify-center mb-3">
+          <Sparkles className="h-4 w-4 text-muted-foreground" />
         </div>
-        <p
-          className="font-semibold text-base text-white/90"
-          style={{ fontFamily: "'Space Grotesk', system-ui, sans-serif" }}
-        >
-          No posts yet
-        </p>
-        <p className="text-sm text-white/50 mt-1 mb-4">
+        <p className="font-semibold text-[13px] text-foreground">No posts yet</p>
+        <p className="text-[12px] text-muted-foreground mt-0.5 mb-3">
           Sync to pull the latest LinkedIn activity from{' '}
-          <span className="text-white/80 font-medium">{targetName}</span>.
+          <span className="text-foreground/80 font-medium">{targetName}</span>.
         </p>
         {isAdmin && (
           <Button
             size="sm"
             onClick={onFetch}
             disabled={isFetching}
-            className="gap-1.5 bg-[#4f46e5] hover:bg-[#4338ca] text-white border-0"
+            className="h-7 gap-1.5 bg-[#4f46e5] hover:bg-[#4338ca] text-white border-0 text-[11px] rounded-sm"
           >
-            {isFetching ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+            {isFetching ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
             Sync now
           </Button>
         )}
@@ -872,4 +808,5 @@ function EmptyState({
     </div>
   );
 }
+
 
