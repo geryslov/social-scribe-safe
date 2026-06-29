@@ -162,6 +162,27 @@ function CommandBar({ selectedPublisher, publishers, folderScope, canManage, onS
           next {nextLabel}
         </span>
 
+        {/* Sync profiles & posts (per-publisher backfill) */}
+        {canManage && selectedPublisher && (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              window.dispatchEvent(
+                new CustomEvent('engagement:sync-all', {
+                  detail: { publisherId: selectedPublisher.id },
+                }),
+              );
+              toast.info('Syncing profiles & posts…');
+            }}
+            className="h-8 gap-1.5 text-xs font-semibold px-3"
+            title="Re-enrich profiles and fetch posts for everyone in this list"
+          >
+            <Wand2 className="h-3.5 w-3.5" />
+            Sync profiles & posts
+          </Button>
+        )}
+
         {/* Run queue / sync */}
         <Button
           size="sm"
