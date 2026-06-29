@@ -85,7 +85,7 @@ export default function Engagement() {
               <PostPanel
                 target={selectedTarget}
                 publisher={selectedPublisher}
-                isAdmin={isAdmin}
+                isAdmin={canManage}
               />
             </div>
           </div>
