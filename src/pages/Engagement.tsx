@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Header } from '@/components/Header';
 import { useAuth } from '@/hooks/useAuth';
 import { useWorkspace } from '@/hooks/useWorkspace';
+import { useWorkspacePermissions } from '@/hooks/useWorkspacePermissions';
 import { usePublishers, Publisher } from '@/hooks/usePublishers';
 import { Navigate } from 'react-router-dom';
 import {
