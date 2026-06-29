@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useEngagementTargets, useFetchTargetPosts, EngagementTarget } from '@/hooks/useEngagement';
 import { useEngagementFolders, EngagementFolder } from '@/hooks/useEngagementFolders';
@@ -64,6 +64,7 @@ export function ContactList({
   folderScope, onChangeFolderScope,
 }: ContactListProps) {
   const { currentWorkspace } = useWorkspace();
+  const queryClient = useQueryClient();
   const {
     targets, isLoading, createTarget, enrichTarget, updateTarget,
     bulkDeleteTargets, bulkReassignTargets,
@@ -278,9 +279,19 @@ export function ContactList({
           } catch (err) {
             console.error('Bulk enrich failed for', id, err);
           }
+          try {
+            await supabase.functions.invoke('fetch-target-posts', {
+              body: { workspace_id: currentWorkspace.id, target_id: id },
+            });
+          } catch (err) {
+            console.error('Bulk fetch-posts failed for', id, err);
+          }
         }
       });
       await Promise.all(workers);
+      queryClient.invalidateQueries({ queryKey: ['engagement-posts'] });
+      queryClient.invalidateQueries({ queryKey: ['engagement-targets'] });
+      queryClient.invalidateQueries({ queryKey: ['target-counts'] });
       window.dispatchEvent(new Event('focus'));
     })();
   }, [bulkUrls, currentWorkspace, publisher.id, createTarget]);

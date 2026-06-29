@@ -41,11 +41,18 @@ export function TargetList({ publisher, isAdmin }: TargetListProps) {
     createTarget.mutate(
       { publisher_id: publisher.id, name: newName.trim(), linkedin_url: newUrl.trim(), headline: newHeadline.trim() || undefined },
       {
-        onSuccess: () => {
+        onSuccess: (data: any) => {
           setNewName('');
           setNewUrl('');
           setNewHeadline('');
           setShowAddDialog(false);
+          if (data?.id && currentWorkspace) {
+            setFetchingTargetId(data.id);
+            fetchPosts.mutate(
+              { workspace_id: currentWorkspace.id, target_id: data.id },
+              { onSettled: () => setFetchingTargetId(null) },
+            );
+          }
         },
       },
     );
