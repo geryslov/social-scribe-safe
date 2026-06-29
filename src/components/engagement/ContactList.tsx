@@ -64,6 +64,7 @@ export function ContactList({
   folderScope, onChangeFolderScope,
 }: ContactListProps) {
   const { currentWorkspace } = useWorkspace();
+  const queryClient = useQueryClient();
   const {
     targets, isLoading, createTarget, enrichTarget, updateTarget,
     bulkDeleteTargets, bulkReassignTargets,
