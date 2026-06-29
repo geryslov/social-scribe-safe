@@ -764,7 +764,7 @@ function PostCard({
         <div
           className={cn(
             'flex items-center flex-wrap gap-x-4 gap-y-1 text-[11px] text-white/50',
-            isHero ? 'mt-6 pt-5 border-t border-white/[0.07]' : 'mt-4 pt-3 border-t border-white/[0.05]',
+            isHero ? 'mt-4 pt-3 border-t border-white/[0.07]' : 'mt-3 pt-2.5 border-t border-white/[0.05]',
           )}
         >
           {post.likes_count > 0 && (
