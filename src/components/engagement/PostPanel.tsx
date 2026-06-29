@@ -695,7 +695,7 @@ function PostCard({
         <div className="absolute left-0 top-8 bottom-8 w-[3px] rounded-r-full bg-gradient-to-b from-[#4f46e5] via-[#6366f1] to-transparent" />
       )}
 
-      <div className={cn('relative', isHero ? 'p-7 sm:p-9' : 'p-5')}>
+      <div className={cn('relative', isHero ? 'p-5 sm:p-6' : 'p-4')}>
         {/* Eyebrow */}
         <div className="flex items-center gap-2 mb-3">
           {isHero && (
