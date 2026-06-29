@@ -123,31 +123,40 @@ export function PostPanel({ target, publisher, isAdmin }: PostPanelProps) {
   // Auto-like background loop — jittered spacing + server-enforced daily cap
   const autoLikedRef = useRef<Set<string>>(new Set());
   const autoLikeTimerRef = useRef<number | null>(null);
+  const autoLikeBusyRef = useRef(false); // ref-based lock so re-renders don't cancel the in-flight timer
+  const likePostRef = useRef(likePost);
+  likePostRef.current = likePost;
 
   // Cap state resets when the publisher changes (different account, different ledger)
   useEffect(() => {
     setAutoLikeCapReached(false);
   }, [publisher.id]);
 
-  // Reset session attempts when the target changes
+  // Reset session attempts when the target changes, and cancel any pending timer
   useEffect(() => {
     autoLikedRef.current.clear();
-  }, [target?.id]);
+    autoLikeBusyRef.current = false;
+    if (autoLikeTimerRef.current) {
+      window.clearTimeout(autoLikeTimerRef.current);
+      autoLikeTimerRef.current = null;
+    }
+    setLikingPostId(null);
+  }, [target?.id, publisher.id]);
 
   useEffect(() => {
-    if (!target?.auto_like || autoLikeCapReached || !posts.length || likingPostId) return;
+    if (!target?.auto_like || autoLikeCapReached || !posts.length) return;
+    if (autoLikeBusyRef.current) return;
 
     const next = posts.find(
       (p) => !p.is_liked && !autoLikedRef.current.has(p.id),
     );
     if (!next) return;
 
-    // First like in this session fires fast so the toggle feels responsive;
-    // subsequent likes use the slower 6-12s jitter to avoid burst patterns.
     const isFirstInSession = autoLikedRef.current.size === 0;
 
     autoLikedRef.current.add(next.id);
-    setLikingPostId(next.id); // lock immediately so the effect doesn't double-schedule
+    autoLikeBusyRef.current = true;
+    setLikingPostId(next.id);
 
     const delay = isFirstInSession
       ? AUTO_LIKE_FIRST_DELAY_MIN_MS + Math.random() * (AUTO_LIKE_FIRST_DELAY_MAX_MS - AUTO_LIKE_FIRST_DELAY_MIN_MS)
@@ -155,26 +164,31 @@ export function PostPanel({ target, publisher, isAdmin }: PostPanelProps) {
 
     autoLikeTimerRef.current = window.setTimeout(() => {
       autoLikeTimerRef.current = null;
-      likePost.mutate(
+      likePostRef.current.mutate(
         { publisher_id: publisher.id, post_id: next.id, auto: true },
         {
           onSettled: (data) => {
+            autoLikeBusyRef.current = false;
             setLikingPostId(null);
             if (data?.cap_reached) setAutoLikeCapReached(true);
           },
         },
       );
     }, delay);
+    // No cleanup: we intentionally let the scheduled like fire even if this
+    // effect re-runs from unrelated dep changes. Timer cancellation happens
+    // only on target/publisher change (above) or unmount (below).
+  }, [posts, target?.auto_like, target?.id, publisher.id, autoLikeCapReached]);
 
+  // Unmount: cancel any pending auto-like timer
+  useEffect(() => {
     return () => {
       if (autoLikeTimerRef.current) {
         window.clearTimeout(autoLikeTimerRef.current);
         autoLikeTimerRef.current = null;
-        // Free the lock so a manual re-toggle can resume immediately
-        setLikingPostId(null);
       }
     };
-  }, [posts, target?.auto_like, likingPostId, publisher.id, likePost, autoLikeCapReached]);
+  }, []);
 
   // Derive a stable progress label for the auto-like switch.
   // done = posts already attempted in this session; remaining = unliked posts left to process.
@@ -262,6 +276,7 @@ export function PostPanel({ target, publisher, isAdmin }: PostPanelProps) {
         onToggleAutoLike={(checked) => {
           if (!checked) {
             autoLikedRef.current.clear();
+            autoLikeBusyRef.current = false;
             if (autoLikeTimerRef.current) {
               window.clearTimeout(autoLikeTimerRef.current);
               autoLikeTimerRef.current = null;
