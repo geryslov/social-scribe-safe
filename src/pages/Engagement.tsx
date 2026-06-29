@@ -58,6 +58,7 @@ export default function Engagement() {
           selectedPublisher={selectedPublisher}
           publishers={publishers}
           folderScope={folderScope}
+          canManage={canManage}
           onSelectPublisher={(id) => {
             setSelectedPublisherId(id);
             setSelectedTarget(null);
