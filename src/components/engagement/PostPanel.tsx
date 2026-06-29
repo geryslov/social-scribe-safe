@@ -590,7 +590,7 @@ function EnterpriseFeed({
           <span>Post</span>
           <span className="tabular-nums">Likes · Comments · Shares</span>
         </div>
-        <ul className="divide-y divide-border">
+        <ul className="divide-y-[6px] divide-[#eef0f3]">
           {posts.map((post) => (
             <PostRow
               key={post.id}
