@@ -278,9 +278,19 @@ export function ContactList({
           } catch (err) {
             console.error('Bulk enrich failed for', id, err);
           }
+          try {
+            await supabase.functions.invoke('fetch-target-posts', {
+              body: { workspace_id: currentWorkspace.id, target_id: id },
+            });
+          } catch (err) {
+            console.error('Bulk fetch-posts failed for', id, err);
+          }
         }
       });
       await Promise.all(workers);
+      queryClient.invalidateQueries({ queryKey: ['engagement-posts'] });
+      queryClient.invalidateQueries({ queryKey: ['engagement-targets'] });
+      queryClient.invalidateQueries({ queryKey: ['target-counts'] });
       window.dispatchEvent(new Event('focus'));
     })();
   }, [bulkUrls, currentWorkspace, publisher.id, createTarget]);
