@@ -606,7 +606,7 @@ function MagazineFeed({
   const rest = spotlight ? posts.filter((p) => p.id !== spotlight.id) : posts;
 
   return (
-    <div className="max-w-[1100px] mx-auto px-6 sm:px-8 py-8 space-y-6">
+    <div className="max-w-[860px] mx-auto px-4 sm:px-6 py-5 space-y-4">
       {spotlight && (
         <PostCard
           post={spotlight}
@@ -695,7 +695,7 @@ function PostCard({
         <div className="absolute left-0 top-8 bottom-8 w-[3px] rounded-r-full bg-gradient-to-b from-[#4f46e5] via-[#6366f1] to-transparent" />
       )}
 
-      <div className={cn('relative', isHero ? 'p-7 sm:p-9' : 'p-5')}>
+      <div className={cn('relative', isHero ? 'p-5 sm:p-6' : 'p-4')}>
         {/* Eyebrow */}
         <div className="flex items-center gap-2 mb-3">
           {isHero && (
@@ -749,8 +749,8 @@ function PostCard({
             className={cn(
               'whitespace-pre-wrap text-white/90',
               isHero
-                ? 'text-[20px] sm:text-[22px] leading-[1.5] font-medium'
-                : 'text-[14.5px] leading-[1.6] line-clamp-6',
+                ? 'text-[15px] sm:text-[16px] leading-[1.55] font-medium line-clamp-[10]'
+                : 'text-[13px] leading-[1.55] line-clamp-5',
             )}
             style={isHero ? display : undefined}
           >
@@ -764,7 +764,7 @@ function PostCard({
         <div
           className={cn(
             'flex items-center flex-wrap gap-x-4 gap-y-1 text-[11px] text-white/50',
-            isHero ? 'mt-6 pt-5 border-t border-white/[0.07]' : 'mt-4 pt-3 border-t border-white/[0.05]',
+            isHero ? 'mt-4 pt-3 border-t border-white/[0.07]' : 'mt-3 pt-2.5 border-t border-white/[0.05]',
           )}
         >
           {post.likes_count > 0 && (
@@ -807,7 +807,7 @@ function PostCard({
 
         {/* Actions */}
         {isAdmin && (
-          <div className={cn('flex items-center gap-2', isHero ? 'mt-6' : 'mt-4')}>
+          <div className={cn('flex items-center gap-2', isHero ? 'mt-4' : 'mt-3')}>
             <button
               type="button"
               disabled={isLiking || post.is_liked}
