@@ -606,7 +606,7 @@ function MagazineFeed({
   const rest = spotlight ? posts.filter((p) => p.id !== spotlight.id) : posts;
 
   return (
-    <div className="max-w-[1100px] mx-auto px-6 sm:px-8 py-8 space-y-6">
+    <div className="max-w-[860px] mx-auto px-4 sm:px-6 py-5 space-y-4">
       {spotlight && (
         <PostCard
           post={spotlight}
