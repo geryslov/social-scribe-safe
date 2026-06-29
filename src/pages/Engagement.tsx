@@ -16,8 +16,9 @@ import { PostPanel } from '@/components/engagement/PostPanel';
 import { EngagementTarget, useEngagementTargets } from '@/hooks/useEngagement';
 import { useEngagementSync, getNextScheduledSync } from '@/hooks/useEngagementSync';
 import {
-  RefreshCw, Loader2, ChevronDown, Check, Play, Clock, Heart,
+  RefreshCw, Loader2, ChevronDown, Check, Play, Clock, Heart, Wand2,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
 // Folder scope sentinel: 'all' = no filter, 'unfiled' = folder_id IS NULL,
