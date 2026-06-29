@@ -807,7 +807,7 @@ function PostCard({
 
         {/* Actions */}
         {isAdmin && (
-          <div className={cn('flex items-center gap-2', isHero ? 'mt-6' : 'mt-4')}>
+          <div className={cn('flex items-center gap-2', isHero ? 'mt-4' : 'mt-3')}>
             <button
               type="button"
               disabled={isLiking || post.is_liked}
