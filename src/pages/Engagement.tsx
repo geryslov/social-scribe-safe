@@ -105,10 +105,11 @@ interface CommandBarProps {
   selectedPublisher: Publisher | null;
   publishers: Publisher[];
   folderScope: FolderScope;
+  canManage: boolean;
   onSelectPublisher: (id: string) => void;
 }
 
-function CommandBar({ selectedPublisher, publishers, folderScope, onSelectPublisher }: CommandBarProps) {
+function CommandBar({ selectedPublisher, publishers, folderScope, canManage, onSelectPublisher }: CommandBarProps) {
   const { runNow, lastRun, settings } = useEngagementSync();
   const isSyncing = runNow.isPending;
   const autoEnabled = settings?.auto_sync_enabled ?? true;
