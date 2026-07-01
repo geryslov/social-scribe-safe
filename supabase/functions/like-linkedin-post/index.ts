@@ -219,7 +219,6 @@ Deno.serve(async (req) => {
     await logAutoLike('failed', friendly);
     return new Response(JSON.stringify({ success: false, error: friendly, linkedin_status: lastStatus }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
   } catch (e) {
     console.error('like-linkedin-post error:', e);
