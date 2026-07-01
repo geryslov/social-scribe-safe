@@ -183,12 +183,21 @@ function PageHeader({
         <div className="flex items-center gap-2">
           <button
             type="button"
+            onClick={() => setAddOpen(true)}
+            disabled={!publisher}
+            className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg border border-[#E5E7ED] bg-white hover:bg-[#F7F8FB] active:bg-[#EEF0F5] text-sm font-medium text-[#171923] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED]/40 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <UserPlus className="h-3.5 w-3.5" />
+            Add profile
+          </button>
+          <button
+            type="button"
             onClick={runSync}
             disabled={runNow.isPending}
             className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg border border-[#E5E7ED] bg-white hover:bg-[#F7F8FB] active:bg-[#EEF0F5] text-sm font-medium text-[#171923] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED]/40 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {runNow.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
-            Run sync
+            Manual sync
           </button>
           <button
             type="button"
@@ -201,6 +210,15 @@ function PageHeader({
           </button>
         </div>
       </div>
+
+      {publisher && (
+        <AddProfileDialog
+          open={addOpen}
+          onOpenChange={setAddOpen}
+          publisher={publisher}
+        />
+      )}
+
 
       {/* Tabs */}
       <div className="border-b border-[#E5E7ED]" role="tablist" aria-label="Engage sections">
