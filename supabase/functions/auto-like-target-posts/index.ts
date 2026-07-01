@@ -86,33 +86,15 @@ Deno.serve(async (req) => {
         const body = await res.json().catch(() => ({}));
         if (body?.cap_reached) {
           capReached = true;
-          statusLabel = 'skipped_cap';
-          errorMsg = body?.error || 'daily cap reached';
         } else if (body?.success) {
-          statusLabel = body?.already_liked ? 'skipped_already' : 'liked';
           if (body?.already_liked) skipped_already++; else liked++;
         } else {
           failed++;
-          errorMsg = body?.error || `http ${res.status}`;
         }
       } catch (err) {
         failed++;
-        errorMsg = err instanceof Error ? err.message : String(err);
+        console.error('like invoke failed:', err);
       }
-
-      // Log every attempt
-      await supabase.from('engagement_auto_like_runs').insert({
-        workspace_id,
-        publisher_id: target.publisher_id,
-        target_id: target.id,
-        target_name: target.name,
-        post_id: p.id,
-        post_url: p.linkedin_post_url,
-        post_excerpt: (p.content || '').slice(0, 200),
-        status: statusLabel,
-        error_message: errorMsg,
-        trigger,
-      });
 
       if (i < queue.length - 1 && !capReached) {
         await sleep(jitter());
