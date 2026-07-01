@@ -14,6 +14,10 @@ import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription,
 } from '@/components/ui/sheet';
 import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
@@ -31,6 +35,7 @@ interface PostPanelProps {
   target: EngagementTarget | null;
   publisher: Publisher;
   isAdmin: boolean;
+  onCleared?: () => void;
 }
 
 // Auto-like pacing — humans don't fire likes at API speed.
@@ -60,7 +65,7 @@ function engagementScore(post: EngagementPost): number {
 
 type FeedFilter = 'live' | 'done' | 'liked';
 
-export function PostPanel({ target, publisher, isAdmin }: PostPanelProps) {
+export function PostPanel({ target, publisher, isAdmin, onCleared }: PostPanelProps) {
   const { currentWorkspace } = useWorkspace();
   const { posts, isLoading } = useEngagementPosts(target?.id || null);
   const { deleteTarget, updateTarget } = useEngagementTargets(publisher.id);
@@ -69,7 +74,7 @@ export function PostPanel({ target, publisher, isAdmin }: PostPanelProps) {
   const [composerPost, setComposerPost] = useState<EngagementPost | null>(null);
   const [likingPostId, setLikingPostId] = useState<string | null>(null);
   const [isFetching, setIsFetching] = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [feedFilter, setFeedFilter] = useState<FeedFilter>('live');
   const [autoLikeCapReached, setAutoLikeCapReached] = useState(false);
 
@@ -111,13 +116,17 @@ export function PostPanel({ target, publisher, isAdmin }: PostPanelProps) {
 
   const handleDelete = () => {
     if (!target) return;
-    if (confirmDelete) {
-      deleteTarget.mutate(target.id);
-      setConfirmDelete(false);
-    } else {
-      setConfirmDelete(true);
-      setTimeout(() => setConfirmDelete(false), 3000);
-    }
+    setConfirmDeleteOpen(true);
+  };
+
+  const confirmDeleteNow = () => {
+    if (!target) return;
+    deleteTarget.mutate(target.id, {
+      onSuccess: () => {
+        setConfirmDeleteOpen(false);
+        onCleared?.();
+      },
+    });
   };
 
   // Auto-like background loop — jittered spacing + server-enforced daily cap
@@ -263,7 +272,7 @@ export function PostPanel({ target, publisher, isAdmin }: PostPanelProps) {
         initials={initials}
         isAdmin={isAdmin}
         isFetching={isFetching}
-        confirmDelete={confirmDelete}
+        confirmDelete={false}
         fetchCommentPending={fetchCommentEngagement.isPending}
         autoLikeCapReached={autoLikeCapReached}
         autoLikeActive={autoLikeActive}
@@ -353,6 +362,27 @@ export function PostPanel({ target, publisher, isAdmin }: PostPanelProps) {
           )}
         </SheetContent>
       </Sheet>
+
+      <AlertDialog open={confirmDeleteOpen} onOpenChange={setConfirmDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove {target.name}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This removes the profile from your engagement list and deletes all fetched posts
+              and drafted comments for them. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); confirmDeleteNow(); }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteTarget.isPending ? 'Removing…' : 'Remove profile'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

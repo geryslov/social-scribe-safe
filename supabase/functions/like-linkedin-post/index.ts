@@ -48,6 +48,36 @@ Deno.serve(async (req) => {
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
+    // Fetch post + owning target now so we can log the auto-like attempt
+    const { data: postRow } = await supabase
+      .from('engagement_posts')
+      .select('id, target_id, linkedin_post_url, content')
+      .eq('id', post_id).eq('workspace_id', workspace_id).maybeSingle();
+    const { data: targetRow } = postRow?.target_id
+      ? await supabase.from('engagement_targets').select('id, name').eq('id', postRow.target_id).maybeSingle()
+      : { data: null as any };
+
+    const logAutoLike = async (status: string, errorMessage: string | null) => {
+      if (!auto) return;
+      try {
+        await supabase.from('engagement_auto_like_runs').insert({
+          workspace_id,
+          publisher_id,
+          target_id: postRow?.target_id ?? null,
+          target_name: targetRow?.name ?? null,
+          post_id: postRow?.id ?? null,
+          post_url: postRow?.linkedin_post_url ?? null,
+          post_excerpt: (postRow?.content || '').slice(0, 200),
+          status,
+          error_message: errorMessage,
+          trigger: 'auto',
+        });
+      } catch (e) {
+        console.warn('auto-like log failed:', e);
+      }
+    };
+
+
     // Daily-cap check (auto-likes only). Refuse before touching LinkedIn API.
     if (auto) {
       const todayStart = new Date();
@@ -68,6 +98,7 @@ Deno.serve(async (req) => {
           .gte('liked_at', todayStart.toISOString());
 
         if ((likedToday || 0) >= AUTO_LIKE_DAILY_CAP) {
+          await logAutoLike('skipped_cap', `daily cap reached (${likedToday}/${AUTO_LIKE_DAILY_CAP})`);
           return new Response(JSON.stringify({
             success: false,
             cap_reached: true,
@@ -151,6 +182,7 @@ Deno.serve(async (req) => {
         await supabase.from('engagement_posts').update({
           is_liked: true, liked_at: new Date().toISOString(),
         }).eq('id', post_id);
+        await logAutoLike('liked', null);
         return new Response(JSON.stringify({ success: true, urn }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
@@ -164,6 +196,7 @@ Deno.serve(async (req) => {
         await supabase.from('engagement_posts').update({
           is_liked: true, liked_at: new Date().toISOString(),
         }).eq('id', post_id);
+        await logAutoLike('skipped_already', null);
         return new Response(JSON.stringify({ success: true, already_liked: true }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
@@ -183,6 +216,7 @@ Deno.serve(async (req) => {
     if (lastStatus === 403) friendly = 'LinkedIn denied the like (403). Publisher token missing w_member_social scope. Reconnect.';
     else if (lastStatus === 401) friendly = 'LinkedIn token expired. Reconnect the publisher.';
 
+    await logAutoLike('failed', friendly);
     return new Response(JSON.stringify({ success: false, error: friendly, linkedin_status: lastStatus }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 

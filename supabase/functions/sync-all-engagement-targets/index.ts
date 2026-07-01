@@ -13,6 +13,7 @@ const corsHeaders = {
 
 const COOLDOWN_HOURS = 18;
 const BETWEEN_TARGETS_MS = 1500;
+const BETWEEN_AUTOLIKE_MS = 2000;
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -48,7 +49,7 @@ Deno.serve(async (req) => {
 
     let targetsQuery = supabase
       .from('engagement_targets')
-      .select('id, workspace_id, name, last_fetched_at');
+      .select('id, workspace_id, publisher_id, name, last_fetched_at, auto_like');
     if (onlyWorkspaceId) targetsQuery = targetsQuery.eq('workspace_id', onlyWorkspaceId);
 
     const { data: targets, error } = await targetsQuery;
@@ -133,6 +134,26 @@ Deno.serve(async (req) => {
             detail: err instanceof Error ? err.message : String(err),
           });
         }
+
+        // If auto_like is on for this target, run the server-side liker.
+        // Only when the fetch succeeded (otherwise there's nothing new to like).
+        const lastResult = results[results.length - 1];
+        if (t.auto_like && lastResult?.status === 'synced') {
+          try {
+            await fetch(`${SUPABASE_URL}/functions/v1/auto-like-target-posts`, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${SERVICE_KEY}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ workspace_id: t.workspace_id, target_id: t.id, trigger }),
+            });
+          } catch (err) {
+            console.error('auto-like invoke failed for target', t.id, err);
+          }
+          await sleep(BETWEEN_AUTOLIKE_MS);
+        }
+
         await sleep(BETWEEN_TARGETS_MS);
       }
 
