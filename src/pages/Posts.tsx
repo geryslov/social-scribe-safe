@@ -376,26 +376,26 @@ const Posts = () => {
               </div>
             </div>
 
-            {/* ============================================= */}
-            {/* SECTION: Active Posts                          */}
-            {/* ============================================= */}
-            <div className="space-y-4">
-              <p className="section-heading mb-4">
-                Active Posts <span className="text-muted-foreground/50 font-normal normal-case tracking-normal">({activePosts.length})</span>
-              </p>
+            {/* Active Posts */}
+            <div className="space-y-3">
+              <div className="flex items-baseline justify-between">
+                <h2 className="text-[13px] font-semibold uppercase tracking-wider text-[#3F4657]">
+                  Active posts <span className="text-[#667085] font-normal normal-case tracking-normal">({activePosts.length})</span>
+                </h2>
+              </div>
 
               {activePosts.length === 0 ? (
-                <div className="text-center py-20 bento-card">
-                  <div className="w-16 h-16 mx-auto mb-5 rounded-2xl bg-primary flex items-center justify-center">
-                    <Inbox className="h-8 w-8 text-white" />
+                <div className="text-center py-16 bg-white border border-[#E5E7ED] rounded-[14px]">
+                  <div className="w-12 h-12 mx-auto mb-4 rounded-xl bg-[#F4F0FF] flex items-center justify-center">
+                    <Inbox className="h-6 w-6 text-[#7C3AED]" />
                   </div>
-                  <h3 className="text-xl font-display font-bold mb-2">No upcoming posts</h3>
-                  <p className="text-muted-foreground mb-6 max-w-sm mx-auto text-sm">
+                  <h3 className="text-base font-semibold mb-1 text-[#171923]">No upcoming posts</h3>
+                  <p className="text-sm text-[#667085] mb-5 max-w-sm mx-auto">
                     {selectedPublisher ? `No scheduled posts for ${selectedPublisher}` : 'Start creating content for your thought leaders'}
                   </p>
                   {canCreateContent && (
-                    <Button onClick={handleNewPost} className="bg-primary text-white hover:bg-primary/90 rounded-xl gap-2">
-                      <Plus className="h-4 w-4" /> Create Post
+                    <Button onClick={handleNewPost} className="h-9 rounded-lg bg-[#7C3AED] text-white hover:bg-[#6D28D9] gap-2">
+                      <Plus className="h-4 w-4" /> Create post
                     </Button>
                   )}
                 </div>
@@ -421,22 +421,17 @@ const Posts = () => {
               )}
             </div>
 
-            {/* ============================================= */}
-            {/* SECTION: Published Posts                       */}
-            {/* ============================================= */}
+            {/* Published Posts */}
             {publishedPosts.length > 0 && (
               <div className="mt-10">
-                {/* Published divider */}
-                <div className="flex items-center gap-3 my-8">
-                  <div className="h-px flex-1 bg-gradient-to-r from-transparent via-border/50 to-transparent" />
-                  <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-success/8 border border-success/15">
-                    <div className="h-1.5 w-1.5 rounded-full bg-success" />
-                    <span className="text-xs font-semibold text-success">Published ({publishedPosts.length})</span>
-                  </div>
-                  <div className="h-px flex-1 bg-gradient-to-r from-transparent via-border/50 to-transparent" />
+                <div className="flex items-center gap-3 mb-4">
+                  <h2 className="text-[13px] font-semibold uppercase tracking-wider text-[#3F4657]">
+                    Published <span className="text-[#667085] font-normal normal-case tracking-normal">({publishedPosts.length})</span>
+                  </h2>
+                  <div className="h-px flex-1 bg-[#E5E7ED]" />
                 </div>
 
-                <div className="space-y-1.5">
+                <div className="bg-white border border-[#E5E7ED] rounded-[14px] overflow-hidden divide-y divide-[#E5E7ED]">
                   {publishedPosts.map((post, index) => {
                     const publisher = dbPublishers.find(p => p.name === post.publisherName);
                     return (
