@@ -107,25 +107,35 @@ export function useDiscoveredPosts(publisherId: string | null, days: number) {
       const since = new Date(Date.now() - days * 24 * 3600 * 1000).toISOString();
       const { data: targets } = await (supabase as any)
         .from('engagement_targets')
-        .select('id, name')
+        .select('id, name, avatar_url, linkedin_url, title, company_name')
         .eq('publisher_id', publisherId)
         .eq('workspace_id', currentWorkspace.id);
-      const targetMap = new Map<string, string>();
-      for (const t of (targets || []) as Array<{ id: string; name: string }>) targetMap.set(t.id, t.name);
+      const targetMap = new Map<string, { name: string; avatar_url: string | null; linkedin_url: string | null; title: string | null; company_name: string | null }>();
+      for (const t of (targets || []) as any[]) targetMap.set(t.id, {
+        name: t.name, avatar_url: t.avatar_url, linkedin_url: t.linkedin_url, title: t.title, company_name: t.company_name,
+      });
       const targetIds = [...targetMap.keys()];
       if (targetIds.length === 0) return [];
       const { data, error } = await (supabase as any)
         .from('engagement_posts')
-        .select('id, target_id, content, linkedin_post_url, published_at, created_at, likes_count, comments_count, is_liked, is_commented')
+        .select('id, target_id, content, linkedin_post_url, published_at, created_at, likes_count, comments_count, shares_count, is_liked, is_commented, liked_at, post_metadata')
         .in('target_id', targetIds)
         .gte('created_at', since)
         .order('created_at', { ascending: false })
         .limit(500);
       if (error) throw error;
-      return ((data || []) as any[]).map((p) => ({
-        ...p,
-        target_name: targetMap.get(p.target_id) ?? null,
-      })) as DiscoveredPost[];
+      return ((data || []) as any[]).map((p) => {
+        const t = targetMap.get(p.target_id);
+        return {
+          ...p,
+          target_name: t?.name ?? null,
+          target_avatar_url: t?.avatar_url ?? null,
+          target_linkedin_url: t?.linkedin_url ?? null,
+          target_title: t?.title ?? null,
+          target_company: t?.company_name ?? null,
+        };
+      }) as DiscoveredPost[];
+
     },
     enabled: !!currentWorkspace && !!publisherId,
   });
