@@ -13,10 +13,13 @@ import {
 import { Button } from '@/components/ui/button';
 import { ContactList } from '@/components/engagement/ContactList';
 import { PostPanel } from '@/components/engagement/PostPanel';
+import { EngagementActivity } from '@/components/engagement/EngagementActivity';
 import { EngagementTarget, useEngagementTargets } from '@/hooks/useEngagement';
 import { useEngagementSync, getNextScheduledSync } from '@/hooks/useEngagementSync';
+import { useEngagementSyncRuns } from '@/hooks/useEngagementActivity';
 import {
   RefreshCw, Loader2, ChevronDown, Check, Play, Clock, Heart, Wand2,
+  Radio, BarChart3,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
