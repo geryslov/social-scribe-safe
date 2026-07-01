@@ -65,7 +65,7 @@ function engagementScore(post: EngagementPost): number {
 
 type FeedFilter = 'live' | 'done' | 'liked';
 
-export function PostPanel({ target, publisher, isAdmin }: PostPanelProps) {
+export function PostPanel({ target, publisher, isAdmin, onCleared }: PostPanelProps) {
   const { currentWorkspace } = useWorkspace();
   const { posts, isLoading } = useEngagementPosts(target?.id || null);
   const { deleteTarget, updateTarget } = useEngagementTargets(publisher.id);
@@ -74,7 +74,7 @@ export function PostPanel({ target, publisher, isAdmin }: PostPanelProps) {
   const [composerPost, setComposerPost] = useState<EngagementPost | null>(null);
   const [likingPostId, setLikingPostId] = useState<string | null>(null);
   const [isFetching, setIsFetching] = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [feedFilter, setFeedFilter] = useState<FeedFilter>('live');
   const [autoLikeCapReached, setAutoLikeCapReached] = useState(false);
 
