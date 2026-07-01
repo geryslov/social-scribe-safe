@@ -722,16 +722,37 @@ export function ContactList({
                     {watchingList.length}
                   </span>
                 </header>
-                {watchingList.map((target) => (
-                  <TargetRow
-                    key={target.id}
-                    target={target}
-                    isSelected={selectedTargetId === target.id}
-                    isFetching={fetchingTargetId === target.id}
-                    isChecked={selectedIds.has(target.id)}
-                    selectionMode={selectionMode}
-                    fresh={freshCounts[target.id] || 0}
-                    done={doneCounts[target.id] || 0}
+                {watchingList.map((target, idx) => {
+                  const isQuiet = (freshCounts[target.id] || 0) + (doneCounts[target.id] || 0) === 0;
+                  const showQuietDivider = isQuiet && idx === watchingActiveCount && watchingActiveCount > 0;
+                  return (
+                    <div key={target.id}>
+                      {showQuietDivider && (
+                        <div className="px-3 pt-3 pb-1 flex items-center gap-2">
+                          <span className="text-[9.5px] font-mono uppercase tracking-[0.14em] text-muted-foreground/50">
+                            Quiet · no recent posts
+                          </span>
+                          <div className="flex-1 h-px bg-border/60" />
+                        </div>
+                      )}
+                      <TargetRow
+                        target={target}
+                        isSelected={selectedTargetId === target.id}
+                        isFetching={fetchingTargetId === target.id}
+                        isChecked={selectedIds.has(target.id)}
+                        selectionMode={selectionMode}
+                        fresh={freshCounts[target.id] || 0}
+                        done={doneCounts[target.id] || 0}
+                        onClick={() => {
+                          if (selectionMode) toggleSelected(target.id);
+                          else onSelectTarget(target);
+                        }}
+                        onToggleSelect={() => toggleSelected(target.id)}
+                        onRetryEnrich={() => enrichTarget.mutate(target.id)}
+                      />
+                    </div>
+                  );
+                })}
                     onClick={() => {
                       if (selectionMode) toggleSelected(target.id);
                       else onSelectTarget(target);
