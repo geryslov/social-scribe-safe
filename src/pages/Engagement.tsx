@@ -129,9 +129,9 @@ export default function Engagement() {
                 <CommentComposer
                   post={composerPost}
                   publisher={selectedPublisher}
-                  target={null as any}
-                  onDone={() => setComposerPost(null)}
+                  onClose={() => setComposerPost(null)}
                 />
+
               </div>
             </>
           )}
