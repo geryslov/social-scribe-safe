@@ -164,13 +164,71 @@ function CommandBar({ selectedPublisher, publishers, folderScope, canManage, tab
 
         <div className="flex-1" />
 
-        {/* Last pull mono micro-text */}
+        {/* Feed / Activity tab switcher */}
+        <div className="inline-flex items-center rounded-md border bg-muted/40 p-0.5">
+          <button
+            onClick={() => onChangeTab('feed')}
+            className={cn(
+              'inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-sm transition-colors',
+              tab === 'feed' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground',
+            )}
+          >
+            <Radio className="h-3 w-3" /> Feed
+          </button>
+          <button
+            onClick={() => onChangeTab('activity')}
+            className={cn(
+              'inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-sm transition-colors',
+              tab === 'activity' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground',
+            )}
+          >
+            <BarChart3 className="h-3 w-3" /> Activity
+          </button>
+        </div>
+
+        {/* Last pull — clickable popover with recent-runs detail */}
         {lastRun && (
-          <span className="hidden lg:inline text-[10.5px] font-mono text-muted-foreground/70 tabular-nums">
-            <span className="text-emerald-700 font-semibold">+{lastRun.new_posts}</span> new
-            <span className="mx-1.5 text-border">·</span>
-            <span>{lastRun.synced}/{lastRun.total_targets} pulled</span>
-          </span>
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                className="hidden lg:inline text-[10.5px] font-mono text-muted-foreground/70 hover:text-foreground tabular-nums px-2 py-1 rounded hover:bg-muted/60 transition-colors"
+                title="Show recent sync runs"
+              >
+                <span className="text-emerald-700 font-semibold">+{lastRun.new_posts}</span> new
+                <span className="mx-1.5 text-border">·</span>
+                <span>{lastRun.synced}/{lastRun.total_targets} pulled</span>
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-96 p-0">
+              <div className="px-3 py-2 border-b flex items-center justify-between">
+                <span className="text-xs font-semibold">Recent syncs</span>
+                <span className="text-[10px] font-mono text-muted-foreground/60">last {recentRuns.length}</span>
+              </div>
+              <div className="max-h-80 overflow-y-auto">
+                {recentRuns.length === 0 ? (
+                  <div className="p-4 text-xs text-muted-foreground text-center">No sync has run yet.</div>
+                ) : (
+                  recentRuns.map((r) => (
+                    <div key={r.id} className="px-3 py-2 border-b last:border-0 text-xs">
+                      <div className="flex items-center justify-between">
+                        <span className="font-mono text-muted-foreground tabular-nums">
+                          {new Date(r.started_at).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                        <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/60">{r.trigger}</span>
+                      </div>
+                      <div className="mt-1 flex items-baseline gap-2 tabular-nums">
+                        <span className="text-emerald-700 font-semibold">+{r.new_posts} new</span>
+                        <span className="text-muted-foreground">{r.synced}/{r.total_targets} synced</span>
+                        {r.failed > 0 && <span className="text-red-600">{r.failed} failed</span>}
+                        {r.skipped > 0 && <span className="text-muted-foreground/70">{r.skipped} skipped</span>}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </PopoverContent>
+          </Popover>
         )}
 
         {/* Next pull */}
