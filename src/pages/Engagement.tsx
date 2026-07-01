@@ -34,7 +34,7 @@ import {
   Search, Bell, RefreshCw, Loader2, ChevronDown, Check,
   Heart, MessageCircle, TrendingUp, AlertTriangle, ArrowRight,
   ExternalLink, MoreHorizontal, Filter, ArrowUpDown, Rows3, Rows2,
-  Clock, CheckCircle2, XCircle, EyeOff, BookmarkPlus, Users,
+  Clock, CheckCircle2, XCircle, EyeOff, BookmarkPlus, Users, Plus, UserPlus,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
