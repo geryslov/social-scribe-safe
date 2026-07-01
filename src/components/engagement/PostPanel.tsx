@@ -116,13 +116,17 @@ export function PostPanel({ target, publisher, isAdmin, onCleared }: PostPanelPr
 
   const handleDelete = () => {
     if (!target) return;
-    if (confirmDelete) {
-      deleteTarget.mutate(target.id);
-      setConfirmDelete(false);
-    } else {
-      setConfirmDelete(true);
-      setTimeout(() => setConfirmDelete(false), 3000);
-    }
+    setConfirmDeleteOpen(true);
+  };
+
+  const confirmDeleteNow = () => {
+    if (!target) return;
+    deleteTarget.mutate(target.id, {
+      onSuccess: () => {
+        setConfirmDeleteOpen(false);
+        onCleared?.();
+      },
+    });
   };
 
   // Auto-like background loop — jittered spacing + server-enforced daily cap
