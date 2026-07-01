@@ -334,6 +334,80 @@ export type Database = {
           },
         ]
       }
+      engagement_auto_like_runs: {
+        Row: {
+          error_message: string | null
+          id: string
+          post_excerpt: string | null
+          post_id: string | null
+          post_url: string | null
+          publisher_id: string
+          run_at: string
+          status: string
+          target_id: string | null
+          target_name: string | null
+          trigger: string
+          workspace_id: string
+        }
+        Insert: {
+          error_message?: string | null
+          id?: string
+          post_excerpt?: string | null
+          post_id?: string | null
+          post_url?: string | null
+          publisher_id: string
+          run_at?: string
+          status: string
+          target_id?: string | null
+          target_name?: string | null
+          trigger?: string
+          workspace_id: string
+        }
+        Update: {
+          error_message?: string | null
+          id?: string
+          post_excerpt?: string | null
+          post_id?: string | null
+          post_url?: string | null
+          publisher_id?: string
+          run_at?: string
+          status?: string
+          target_id?: string | null
+          target_name?: string | null
+          trigger?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "engagement_auto_like_runs_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "engagement_posts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "engagement_auto_like_runs_publisher_id_fkey"
+            columns: ["publisher_id"]
+            isOneToOne: false
+            referencedRelation: "publishers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "engagement_auto_like_runs_target_id_fkey"
+            columns: ["target_id"]
+            isOneToOne: false
+            referencedRelation: "engagement_targets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "engagement_auto_like_runs_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       engagement_comments: {
         Row: {
           comment_text: string
