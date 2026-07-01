@@ -18,7 +18,7 @@ import { EngagementTarget, useEngagementTargets } from '@/hooks/useEngagement';
 import { useEngagementSync, getNextScheduledSync } from '@/hooks/useEngagementSync';
 import { useEngagementSyncRuns } from '@/hooks/useEngagementActivity';
 import {
-  RefreshCw, Loader2, ChevronDown, Check, Play, Clock, Heart, Wand2,
+  RefreshCw, Loader2, ChevronDown, Check, Clock, Heart, Wand2,
   Radio, BarChart3,
 } from 'lucide-react';
 import { toast } from 'sonner';
