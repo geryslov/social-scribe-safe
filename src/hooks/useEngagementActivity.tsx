@@ -21,15 +21,23 @@ export interface DiscoveredPost {
   id: string;
   target_id: string;
   target_name: string | null;
+  target_avatar_url: string | null;
+  target_linkedin_url: string | null;
+  target_title: string | null;
+  target_company: string | null;
   content: string | null;
   linkedin_post_url: string;
   published_at: string | null;
   created_at: string;
   likes_count: number;
   comments_count: number;
+  shares_count: number;
   is_liked: boolean;
   is_commented: boolean;
+  liked_at: string | null;
+  post_metadata: Record<string, unknown>;
 }
+
 
 export interface EngagementSyncRunFull {
   id: string;
