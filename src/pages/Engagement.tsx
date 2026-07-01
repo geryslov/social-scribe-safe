@@ -68,6 +68,8 @@ export default function Engagement() {
           publishers={publishers}
           folderScope={folderScope}
           canManage={canManage}
+          tab={tab}
+          onChangeTab={setTab}
           onSelectPublisher={(id) => {
             setSelectedPublisherId(id);
             setSelectedTarget(null);
@@ -75,11 +77,13 @@ export default function Engagement() {
           }}
         />
 
-        {/* ── Master-detail body ──────────────────────────────────────── */}
+        {/* ── Body ────────────────────────────────────────────────────── */}
         {!selectedPublisher ? (
           <div className="flex-1 flex items-center justify-center text-muted-foreground">
             {pubsLoading ? 'Loading publishers…' : 'No publishers in this workspace.'}
           </div>
+        ) : tab === 'activity' ? (
+          <EngagementActivity publisher={selectedPublisher} />
         ) : (
           <div className="flex-1 flex overflow-hidden">
             <div className="w-[320px] flex-shrink-0 border-r flex flex-col bg-muted/10">
@@ -97,6 +101,7 @@ export default function Engagement() {
                 target={liveSelectedTarget}
                 publisher={selectedPublisher}
                 isAdmin={canManage}
+                onCleared={() => setSelectedTarget(null)}
               />
             </div>
           </div>
