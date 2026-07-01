@@ -48,6 +48,36 @@ Deno.serve(async (req) => {
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
+    // Fetch post + owning target now so we can log the auto-like attempt
+    const { data: postRow } = await supabase
+      .from('engagement_posts')
+      .select('id, target_id, linkedin_post_url, content')
+      .eq('id', post_id).eq('workspace_id', workspace_id).maybeSingle();
+    const { data: targetRow } = postRow?.target_id
+      ? await supabase.from('engagement_targets').select('id, name').eq('id', postRow.target_id).maybeSingle()
+      : { data: null as any };
+
+    const logAutoLike = async (status: string, errorMessage: string | null) => {
+      if (!auto) return;
+      try {
+        await supabase.from('engagement_auto_like_runs').insert({
+          workspace_id,
+          publisher_id,
+          target_id: postRow?.target_id ?? null,
+          target_name: targetRow?.name ?? null,
+          post_id: postRow?.id ?? null,
+          post_url: postRow?.linkedin_post_url ?? null,
+          post_excerpt: (postRow?.content || '').slice(0, 200),
+          status,
+          error_message: errorMessage,
+          trigger: 'auto',
+        });
+      } catch (e) {
+        console.warn('auto-like log failed:', e);
+      }
+    };
+
+
     // Daily-cap check (auto-likes only). Refuse before touching LinkedIn API.
     if (auto) {
       const todayStart = new Date();
