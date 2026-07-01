@@ -26,8 +26,8 @@ export default function Intelligence() {
   const selectedPublisher = publishers.find((p) => p.id === selectedPublisherId) || null;
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header />
+    <div className="min-h-full">
+
       <main id="main-content" className="max-w-5xl mx-auto px-5 py-8">
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-3">

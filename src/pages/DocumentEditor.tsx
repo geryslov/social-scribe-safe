@@ -120,8 +120,8 @@ export default function DocumentEditor() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background">
-        <Header />
+      <div className="min-h-full">
+
         <div className="flex flex-col items-center justify-center h-96 gap-3">
           <Loader2 className="h-6 w-6 animate-spin text-primary" />
           <p className="text-sm text-muted-foreground">Loading document...</p>
@@ -132,8 +132,8 @@ export default function DocumentEditor() {
 
   if (!document) {
     return (
-      <div className="min-h-screen bg-background">
-        <Header />
+      <div className="min-h-full">
+
         <div className="flex flex-col items-center justify-center h-96 gap-4">
           <p className="text-muted-foreground">Document not found</p>
           <Button variant="outline" onClick={() => navigate('/documents')} className="rounded-xl h-8 text-sm">
@@ -148,8 +148,8 @@ export default function DocumentEditor() {
   const status = statusConfig[document.status];
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header />
+    <div className="min-h-full">
+
 
       <main id="main-content" className="px-8 py-6">
 

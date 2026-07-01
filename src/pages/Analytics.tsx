@@ -65,7 +65,7 @@ const Analytics = () => {
 
   if (authLoading || isLoading) {
     return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-3">
+      <div className="min-h-full flex flex-col items-center justify-center gap-3">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
         {isAutoSyncing && (
           <p className="text-sm text-muted-foreground">Syncing analytics...</p>
@@ -125,8 +125,8 @@ const Analytics = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header />
+    <div className="min-h-full">
+
 
       <main id="main-content" className="p-8 max-w-7xl mx-auto">
 
