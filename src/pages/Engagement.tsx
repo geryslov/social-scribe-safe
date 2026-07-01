@@ -37,7 +37,7 @@ export default function Engagement() {
   const [selectedPublisherId, setSelectedPublisherId] = useState<string | null>(null);
   const [selectedTarget, setSelectedTarget] = useState<EngagementTarget | null>(null);
   const [folderScope, setFolderScope] = useState<FolderScope>('all');
-  const [tab, setTab] = useState<'feed' | 'activity'>('feed');
+  const [tab, setTab] = useState<'feed' | 'activity'>('activity');
   const { targets, markSeen } = useEngagementTargets(selectedPublisherId);
 
   const handleSelectTarget = (target: EngagementTarget) => {
@@ -192,15 +192,15 @@ function CommandBar({ selectedPublisher, publishers, folderScope, canManage, tab
             <PopoverTrigger asChild>
               <button
                 type="button"
-                className="hidden lg:inline text-[10.5px] font-mono text-muted-foreground/70 hover:text-foreground tabular-nums px-2 py-1 rounded hover:bg-muted/60 transition-colors"
+                className="hidden lg:inline text-[11px] text-muted-foreground hover:text-foreground tabular-nums px-2 py-1 rounded hover:bg-muted/60 transition-colors"
                 title="Show recent sync runs"
               >
-                <span className="text-emerald-700 font-semibold">+{lastRun.new_posts}</span> new
+                <span className="text-emerald-700 font-semibold">{lastRun.new_posts}</span> new post{lastRun.new_posts === 1 ? '' : 's'}
                 <span className="mx-1.5 text-border">·</span>
-                <span>{lastRun.synced}/{lastRun.total_targets} pulled</span>
+                <span>{lastRun.synced}/{lastRun.total_targets} profiles checked</span>
               </button>
             </PopoverTrigger>
-            <PopoverContent align="end" className="w-96 p-0">
+            <PopoverContent align="end" className="w-[420px] p-0">
               <div className="px-3 py-2 border-b flex items-center justify-between">
                 <span className="text-xs font-semibold">Recent syncs</span>
                 <span className="text-[10px] font-mono text-muted-foreground/60">last {recentRuns.length}</span>
@@ -209,27 +209,33 @@ function CommandBar({ selectedPublisher, publishers, folderScope, canManage, tab
                 {recentRuns.length === 0 ? (
                   <div className="p-4 text-xs text-muted-foreground text-center">No sync has run yet.</div>
                 ) : (
-                  recentRuns.map((r) => (
-                    <div key={r.id} className="px-3 py-2 border-b last:border-0 text-xs">
-                      <div className="flex items-center justify-between">
-                        <span className="font-mono text-muted-foreground tabular-nums">
-                          {new Date(r.started_at).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                        <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/60">{r.trigger}</span>
+                  recentRuns.map((r) => {
+                    const durMs = r.finished_at ? new Date(r.finished_at).getTime() - new Date(r.started_at).getTime() : 0;
+                    const duration = durMs > 0 ? `${Math.max(1, Math.round(durMs / 1000))}s` : '—';
+                    const triggerLabel = r.trigger === 'manual' ? 'Manual' : r.trigger === 'cron' ? 'Scheduled' : r.trigger;
+                    return (
+                      <div key={r.id} className="px-3 py-2 border-b last:border-0 text-xs">
+                        <div className="flex items-center justify-between">
+                          <span className="font-medium">
+                            {new Date(r.started_at).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                          <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/60">{triggerLabel} · {duration}</span>
+                        </div>
+                        <div className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-0.5 tabular-nums text-muted-foreground">
+                          <span><span className="font-semibold text-emerald-700">{r.new_posts}</span> new post{r.new_posts === 1 ? '' : 's'}</span>
+                          <span><span className="font-semibold text-foreground">{r.synced}</span> of {r.total_targets} profile{r.total_targets === 1 ? '' : 's'} checked</span>
+                          {r.failed > 0 && <span className="text-red-600">{r.failed} failed</span>}
+                          {r.skipped > 0 && <span>{r.skipped} skipped</span>}
+                        </div>
                       </div>
-                      <div className="mt-1 flex items-baseline gap-2 tabular-nums">
-                        <span className="text-emerald-700 font-semibold">+{r.new_posts} new</span>
-                        <span className="text-muted-foreground">{r.synced}/{r.total_targets} synced</span>
-                        {r.failed > 0 && <span className="text-red-600">{r.failed} failed</span>}
-                        {r.skipped > 0 && <span className="text-muted-foreground/70">{r.skipped} skipped</span>}
-                      </div>
-                    </div>
-                  ))
+                    );
+                  })
                 )}
               </div>
             </PopoverContent>
           </Popover>
         )}
+
 
         {/* Next pull */}
         <span className="inline-flex items-center gap-1 text-[10.5px] font-mono text-muted-foreground/60 tabular-nums">
