@@ -46,7 +46,7 @@ export default function Engagement() {
   const { user } = useAuth();
   const { publishers } = usePublishers();
   const [selectedPublisherId, setSelectedPublisherId] = useState<string | null>(null);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  
   const [tab, setTab] = useState<'overview' | 'activity' | 'rules' | 'history'>('activity');
   const [reviewTarget, setReviewTarget] = useState<ReviewRow | null>(null);
   const [composerPost, setComposerPost] = useState<EngagementPost | null>(null);
