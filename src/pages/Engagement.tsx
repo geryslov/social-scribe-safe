@@ -452,9 +452,9 @@ function ActivityDashboard({
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <KpiCard
           primary
-          label="New posts"
-          value={discoveredCount}
-          sub={`from ${profilesWithNew} profile${profilesWithNew === 1 ? '' : 's'}`}
+          label="Total posts"
+          value={totalPosts}
+          sub={`${newPostsYesterday} new yesterday · ${profilesWithNew} profile${profilesWithNew === 1 ? '' : 's'}`}
           icon={<TrendingUp className="h-4 w-4" />}
         />
         <KpiCard label="Likes completed" value={likedToday} sub="today" icon={<Heart className="h-4 w-4" />} />
