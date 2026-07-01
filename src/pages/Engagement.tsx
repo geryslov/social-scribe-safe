@@ -313,7 +313,25 @@ function ActivityDashboard({
   const likedToday = likes.filter((l) => l.status === 'liked').length;
   const failedToday = likes.filter((l) => l.status === 'failed').length;
   const commentedToday = comments.length;
-  const discoveredCount = discovered.length;
+  const totalPosts = discovered.length;
+  const yesterdayStart = useMemo(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    d.setDate(d.getDate() - 1);
+    return d;
+  }, []);
+  const yesterdayEnd = useMemo(() => {
+    const d = new Date(yesterdayStart);
+    d.setDate(d.getDate() + 1);
+    return d;
+  }, [yesterdayStart]);
+  const newPostsYesterday = useMemo(
+    () => discovered.filter((p) => {
+      const t = new Date(p.created_at).getTime();
+      return t >= yesterdayStart.getTime() && t < yesterdayEnd.getTime();
+    }).length,
+    [discovered, yesterdayStart, yesterdayEnd],
+  );
 
   // Build review rows
   const rows: ReviewRow[] = useMemo(() => {
