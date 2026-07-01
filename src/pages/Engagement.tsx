@@ -35,6 +35,8 @@ import {
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
+export type FolderScope = 'all' | 'unfiled' | string;
+
 const DAILY_CAP = 39;
 
 /* ============================================================================
