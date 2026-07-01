@@ -216,7 +216,9 @@ Deno.serve(async (req) => {
     if (lastStatus === 403) friendly = 'LinkedIn denied the like (403). Publisher token missing w_member_social scope. Reconnect.';
     else if (lastStatus === 401) friendly = 'LinkedIn token expired. Reconnect the publisher.';
 
+    await logAutoLike('failed', friendly);
     return new Response(JSON.stringify({ success: false, error: friendly, linkedin_status: lastStatus }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
   } catch (e) {
