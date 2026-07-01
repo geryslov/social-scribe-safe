@@ -182,6 +182,7 @@ Deno.serve(async (req) => {
         await supabase.from('engagement_posts').update({
           is_liked: true, liked_at: new Date().toISOString(),
         }).eq('id', post_id);
+        await logAutoLike('liked', null);
         return new Response(JSON.stringify({ success: true, urn }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
@@ -195,6 +196,7 @@ Deno.serve(async (req) => {
         await supabase.from('engagement_posts').update({
           is_liked: true, liked_at: new Date().toISOString(),
         }).eq('id', post_id);
+        await logAutoLike('skipped_already', null);
         return new Response(JSON.stringify({ success: true, already_liked: true }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
