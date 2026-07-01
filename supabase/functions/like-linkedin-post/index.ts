@@ -98,6 +98,7 @@ Deno.serve(async (req) => {
           .gte('liked_at', todayStart.toISOString());
 
         if ((likedToday || 0) >= AUTO_LIKE_DAILY_CAP) {
+          await logAutoLike('skipped_cap', `daily cap reached (${likedToday}/${AUTO_LIKE_DAILY_CAP})`);
           return new Response(JSON.stringify({
             success: false,
             cap_reached: true,
