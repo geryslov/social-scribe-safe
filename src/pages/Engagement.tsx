@@ -399,7 +399,7 @@ function ActivityDashboard({
           label={<><b className="text-[#171923] font-semibold">{profilesChecked}</b> of <b className="text-[#171923] font-semibold">{totalProfiles}</b> profiles checked</>} />
         <div className="h-4 w-px bg-[#E5E7ED]" />
         <StatusChip icon={<Sparkles className="h-3.5 w-3.5 text-[#7C3AED]" />}
-          label={<><b className="text-[#171923] font-semibold">{discoveredCount}</b> new posts discovered</>} />
+          label={<><b className="text-[#171923] font-semibold">{totalPosts}</b> total posts · <b className="text-[#171923] font-semibold">{newPostsYesterday}</b> new yesterday</>} />
         <div className="h-4 w-px bg-[#E5E7ED]" />
         <StatusChip icon={<Clock className="h-3.5 w-3.5 text-[#667085]" />}
           label={<>Next sync in <b className="text-[#171923] font-semibold tabular-nums">{nextLabel}</b></>} />
