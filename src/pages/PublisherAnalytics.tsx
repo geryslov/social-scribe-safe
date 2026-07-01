@@ -74,7 +74,7 @@ const PublisherAnalytics = () => {
 
   if (authLoading || isLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-full flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
@@ -82,8 +82,8 @@ const PublisherAnalytics = () => {
 
   if (!publisher) {
     return (
-      <div className="min-h-screen bg-background">
-        <Header />
+      <div className="min-h-full">
+
         <div className="flex items-center justify-center h-[calc(100vh-73px)]">
           <div className="text-center">
             <h2 className="text-2xl font-display font-bold mb-2">Publisher Not Found</h2>
@@ -147,8 +147,8 @@ const PublisherAnalytics = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header />
+    <div className="min-h-full">
+
 
       <main id="main-content" className="p-8 max-w-7xl mx-auto">
 

@@ -49,8 +49,8 @@ export default function AdminDashboard() {
 
   if (authLoading || isLoading) {
     return (
-      <div className="min-h-screen bg-background">
-        <Header />
+      <div className="min-h-full">
+
         <div className="flex flex-col items-center justify-center h-[60vh] gap-3">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
           <p className="text-sm text-muted-foreground">Loading workspaces...</p>
@@ -61,8 +61,8 @@ export default function AdminDashboard() {
 
   if (!isAdmin) {
     return (
-      <div className="min-h-screen bg-background">
-        <Header />
+      <div className="min-h-full">
+
         <div className="flex items-center justify-center h-[60vh]">
           <div className="text-center max-w-sm">
             <div className="w-20 h-20 rounded-2xl bg-destructive/10 flex items-center justify-center mx-auto mb-6">
@@ -81,8 +81,8 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header />
+    <div className="min-h-full">
+
 
       <main id="main-content" className="max-w-6xl mx-auto px-8 py-8">
 
