@@ -8,6 +8,10 @@ import { useWorkspaces } from '@/hooks/useWorkspaces';
 import { useWorkspacePermissions } from '@/hooks/useWorkspacePermissions';
 import { usePublishers, Publisher } from '@/hooks/usePublishers';
 import { useEngagementTargets, EngagementTarget, useLikePost } from '@/hooks/useEngagement';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 import { useEngagementSync, getNextScheduledSync } from '@/hooks/useEngagementSync';
 import {
   useDiscoveredPosts, useAutoLikeHistory, usePublisherComments,
@@ -30,7 +34,7 @@ import {
   Search, Bell, RefreshCw, Loader2, ChevronDown, Check,
   Heart, MessageCircle, TrendingUp, AlertTriangle, ArrowRight,
   ExternalLink, MoreHorizontal, Filter, ArrowUpDown, Rows3, Rows2,
-  Clock, CheckCircle2, XCircle, EyeOff, BookmarkPlus, Users,
+  Clock, CheckCircle2, XCircle, EyeOff, BookmarkPlus, Users, Plus, UserPlus,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -151,6 +155,7 @@ function PageHeader({
   const { runNow } = useEngagementSync();
   const { data: discovered = [] } = useDiscoveredPosts(publisher?.id ?? null, 7);
   const reviewCount = discovered.filter((p) => !p.is_liked && !p.is_commented).length;
+  const [addOpen, setAddOpen] = useState(false);
 
   const runSync = () => {
     if (!publisher) return;
@@ -158,6 +163,7 @@ function PageHeader({
     runNow.mutate();
     toast.info('Sync started…');
   };
+
 
   return (
     <div className="space-y-5">
@@ -177,12 +183,21 @@ function PageHeader({
         <div className="flex items-center gap-2">
           <button
             type="button"
+            onClick={() => setAddOpen(true)}
+            disabled={!publisher}
+            className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg border border-[#E5E7ED] bg-white hover:bg-[#F7F8FB] active:bg-[#EEF0F5] text-sm font-medium text-[#171923] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED]/40 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <UserPlus className="h-3.5 w-3.5" />
+            Add profile
+          </button>
+          <button
+            type="button"
             onClick={runSync}
             disabled={runNow.isPending}
             className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg border border-[#E5E7ED] bg-white hover:bg-[#F7F8FB] active:bg-[#EEF0F5] text-sm font-medium text-[#171923] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED]/40 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {runNow.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
-            Run sync
+            Manual sync
           </button>
           <button
             type="button"
@@ -195,6 +210,15 @@ function PageHeader({
           </button>
         </div>
       </div>
+
+      {publisher && (
+        <AddProfileDialog
+          open={addOpen}
+          onOpenChange={setAddOpen}
+          publisher={publisher}
+        />
+      )}
+
 
       {/* Tabs */}
       <div className="border-b border-[#E5E7ED]" role="tablist" aria-label="Engage sections">
@@ -912,3 +936,189 @@ function relativeTime(iso: string) {
   if (days < 7) return `${days}d ago`;
   return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
+
+/* ============================================================================
+ * Add Profile Dialog — single + bulk
+ * ==========================================================================*/
+function AddProfileDialog({
+  open, onOpenChange, publisher,
+}: {
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+  publisher: Publisher;
+}) {
+  const { createTarget } = useEngagementTargets(publisher.id);
+  const [mode, setMode] = useState<'single' | 'bulk'>('single');
+  const [url, setUrl] = useState('');
+  const [name, setName] = useState('');
+  const [bulk, setBulk] = useState('');
+  const [importing, setImporting] = useState(false);
+  const [progress, setProgress] = useState({ done: 0, total: 0 });
+
+  const reset = () => {
+    setUrl(''); setName(''); setBulk('');
+    setProgress({ done: 0, total: 0 });
+  };
+
+  const handleSingle = () => {
+    if (!url.trim().match(/linkedin\.com\/in\//)) {
+      toast.error('Please paste a full LinkedIn profile URL (linkedin.com/in/…)');
+      return;
+    }
+    createTarget.mutate(
+      { publisher_id: publisher.id, linkedin_url: url.trim(), name: name.trim() || undefined },
+      {
+        onSuccess: () => {
+          toast.success('Profile added — enriching in background');
+          reset();
+          onOpenChange(false);
+        },
+      }
+    );
+  };
+
+  const handleBulk = async () => {
+    const urls = bulk
+      .split(/\r?\n|,/)
+      .map((u) => u.trim())
+      .filter((u) => u.match(/linkedin\.com\/in\//));
+    if (urls.length === 0) {
+      toast.error('Paste one LinkedIn profile URL per line.');
+      return;
+    }
+    setImporting(true);
+    setProgress({ done: 0, total: urls.length });
+    const insertedIds: string[] = [];
+    for (let i = 0; i < urls.length; i++) {
+      try {
+        const res = await createTarget.mutateAsync({
+          publisher_id: publisher.id,
+          linkedin_url: urls[i],
+          skipEnrich: true,
+        });
+        if (res?.id) insertedIds.push(res.id);
+      } catch (err) {
+        console.error('Bulk add failed for', urls[i], err);
+      }
+      setProgress({ done: i + 1, total: urls.length });
+    }
+    setImporting(false);
+    toast.success(`Added ${insertedIds.length} of ${urls.length} profiles`);
+
+    // Kick off enrichment in the background, throttled
+    (async () => {
+      for (const id of insertedIds) {
+        try {
+          await supabase.functions.invoke('enrich-engagement-target', { body: { target_id: id } });
+        } catch (err) {
+          console.error('Bulk enrich failed for', id, err);
+        }
+      }
+    })();
+
+    reset();
+    onOpenChange(false);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => { onOpenChange(o); if (!o) reset(); }}>
+      <DialogContent className="sm:max-w-[520px]">
+        <DialogHeader>
+          <DialogTitle>Add profiles for {publisher.name}</DialogTitle>
+          <DialogDescription>
+            Add one or many LinkedIn profiles. Name, title, company, and photo are fetched automatically.
+          </DialogDescription>
+        </DialogHeader>
+
+        <Tabs value={mode} onValueChange={(v) => setMode(v as 'single' | 'bulk')} className="mt-2">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="single">Single</TabsTrigger>
+            <TabsTrigger value="bulk">Bulk import</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="single" className="space-y-3 pt-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="li-url" className="text-xs">LinkedIn URL</Label>
+              <Input
+                id="li-url"
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                placeholder="https://www.linkedin.com/in/username"
+                onKeyDown={(e) => e.key === 'Enter' && handleSingle()}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="li-name" className="text-xs">Display name (optional)</Label>
+              <Input
+                id="li-name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Auto-filled if left blank"
+              />
+            </div>
+            <DialogFooter className="pt-2">
+              <button
+                type="button"
+                onClick={() => onOpenChange(false)}
+                className="h-9 px-3.5 rounded-lg text-sm text-[#667085] hover:text-[#171923]"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSingle}
+                disabled={createTarget.isPending || !url.trim()}
+                className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg bg-[#7C3AED] hover:bg-[#6D28D9] text-white text-sm font-medium disabled:opacity-50"
+              >
+                {createTarget.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                Add & fetch
+              </button>
+            </DialogFooter>
+          </TabsContent>
+
+          <TabsContent value="bulk" className="space-y-3 pt-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="li-bulk" className="text-xs">LinkedIn URLs (one per line)</Label>
+              <Textarea
+                id="li-bulk"
+                value={bulk}
+                onChange={(e) => setBulk(e.target.value)}
+                placeholder={'https://www.linkedin.com/in/alice\nhttps://www.linkedin.com/in/bob'}
+                rows={8}
+                className="font-mono text-xs"
+              />
+              <p className="text-xs text-[#667085]">
+                Enrichment runs in the background after import.
+              </p>
+            </div>
+            {importing && (
+              <div className="text-xs text-[#667085]">
+                Importing {progress.done} of {progress.total}…
+              </div>
+            )}
+            <DialogFooter className="pt-2">
+              <button
+                type="button"
+                onClick={() => onOpenChange(false)}
+                disabled={importing}
+                className="h-9 px-3.5 rounded-lg text-sm text-[#667085] hover:text-[#171923] disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleBulk}
+                disabled={importing || !bulk.trim()}
+                className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg bg-[#7C3AED] hover:bg-[#6D28D9] text-white text-sm font-medium disabled:opacity-50"
+              >
+                {importing && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                Import profiles
+              </button>
+            </DialogFooter>
+          </TabsContent>
+        </Tabs>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
