@@ -35,6 +35,7 @@ interface PostPanelProps {
   target: EngagementTarget | null;
   publisher: Publisher;
   isAdmin: boolean;
+  onCleared?: () => void;
 }
 
 // Auto-like pacing — humans don't fire likes at API speed.
