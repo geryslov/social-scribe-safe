@@ -192,8 +192,19 @@ export function ContactList({
     const queueIds = new Set(queueList.map((t) => t.id));
     return [...searchFiltered]
       .filter((t) => !queueIds.has(t.id))
-      .sort((a, b) => a.name.localeCompare(b.name));
-  }, [searchFiltered, queueList]);
+      .sort((a, b) => {
+        // Active (has any posts or done items) before Quiet (nothing at all)
+        const aActive = (freshCounts[a.id] || 0) + (doneCounts[a.id] || 0);
+        const bActive = (freshCounts[b.id] || 0) + (doneCounts[b.id] || 0);
+        if ((aActive > 0) !== (bActive > 0)) return aActive > 0 ? -1 : 1;
+        return a.name.localeCompare(b.name);
+      });
+  }, [searchFiltered, queueList, freshCounts, doneCounts]);
+
+  const watchingActiveCount = useMemo(
+    () => watchingList.filter((t) => (freshCounts[t.id] || 0) + (doneCounts[t.id] || 0) > 0).length,
+    [watchingList, freshCounts, doneCounts],
+  );
 
   // Resolve the default folder for new targets based on current scope.
   // "all" or "unfiled" -> NULL (unfiled). A specific folder -> that folder.
