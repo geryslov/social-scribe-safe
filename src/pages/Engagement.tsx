@@ -155,6 +155,7 @@ function PageHeader({
   const { runNow } = useEngagementSync();
   const { data: discovered = [] } = useDiscoveredPosts(publisher?.id ?? null, 7);
   const reviewCount = discovered.filter((p) => !p.is_liked && !p.is_commented).length;
+  const [addOpen, setAddOpen] = useState(false);
 
   const runSync = () => {
     if (!publisher) return;
@@ -162,6 +163,7 @@ function PageHeader({
     runNow.mutate();
     toast.info('Sync started…');
   };
+
 
   return (
     <div className="space-y-5">
