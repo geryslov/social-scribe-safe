@@ -425,7 +425,7 @@ function ActivityDashboard({
             </div>
             <div className="flex-1 min-w-0">
               <div className="text-sm text-[#171923] leading-relaxed">
-                <b>{discoveredCount} new posts</b> were discovered across <b>{profilesWithNew} profiles</b>.
+                <b>{totalPosts} total posts</b> across <b>{profilesWithNew} profiles</b> · <b>{newPostsYesterday}</b> new yesterday.
                 {!hasEngagement && <> No engagement actions have been completed today.</>}
               </div>
               <div className="mt-3 flex flex-wrap items-center gap-2">
