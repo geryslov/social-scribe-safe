@@ -27,7 +27,7 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
   try {
-    const { workspace_id, target_id, trigger = 'cron' } = await req.json();
+    const { workspace_id, target_id } = await req.json();
     if (!workspace_id || !target_id) {
       return new Response(JSON.stringify({ success: false, error: 'workspace_id + target_id required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
