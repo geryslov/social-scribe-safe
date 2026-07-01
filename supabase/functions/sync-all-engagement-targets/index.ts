@@ -13,6 +13,7 @@ const corsHeaders = {
 
 const COOLDOWN_HOURS = 18;
 const BETWEEN_TARGETS_MS = 1500;
+const BETWEEN_AUTOLIKE_MS = 2000;
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
