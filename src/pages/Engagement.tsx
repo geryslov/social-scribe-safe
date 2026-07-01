@@ -37,7 +37,7 @@ export default function Engagement() {
   const [selectedPublisherId, setSelectedPublisherId] = useState<string | null>(null);
   const [selectedTarget, setSelectedTarget] = useState<EngagementTarget | null>(null);
   const [folderScope, setFolderScope] = useState<FolderScope>('all');
-  const [tab, setTab] = useState<'feed' | 'activity'>('feed');
+  const [tab, setTab] = useState<'feed' | 'activity'>('activity');
   const { targets, markSeen } = useEngagementTargets(selectedPublisherId);
 
   const handleSelectTarget = (target: EngagementTarget) => {
