@@ -417,7 +417,7 @@ function ActivityDashboard({
       </div>
 
       {/* Smart summary */}
-      {discoveredCount > 0 && (
+      {totalPosts > 0 && (
         <div className="rounded-[14px] border border-[#E5E7ED] bg-gradient-to-br from-white to-[#FBFAFF] p-5">
           <div className="flex items-start gap-4">
             <div className="h-10 w-10 rounded-lg bg-[#F4F0FF] text-[#7C3AED] flex items-center justify-center flex-shrink-0">
