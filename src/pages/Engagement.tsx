@@ -8,6 +8,10 @@ import { useWorkspaces } from '@/hooks/useWorkspaces';
 import { useWorkspacePermissions } from '@/hooks/useWorkspacePermissions';
 import { usePublishers, Publisher } from '@/hooks/usePublishers';
 import { useEngagementTargets, EngagementTarget, useLikePost } from '@/hooks/useEngagement';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 import { useEngagementSync, getNextScheduledSync } from '@/hooks/useEngagementSync';
 import {
   useDiscoveredPosts, useAutoLikeHistory, usePublisherComments,
