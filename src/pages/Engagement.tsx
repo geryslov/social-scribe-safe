@@ -491,7 +491,7 @@ function ActivityDashboard({
             </div>
             <h3 className="text-sm font-semibold text-[#171923]">No engagement activity yet</h3>
             <p className="text-sm text-[#667085] mt-1 max-w-md">
-              Nothing has been liked or commented on during this period. <b className="text-[#171923]">{discoveredCount}</b> newly discovered posts are ready to review.
+              Nothing has been liked or commented on during this period. <b className="text-[#171923]">{totalPosts}</b> posts are ready to review (<b className="text-[#171923]">{newPostsYesterday}</b> new yesterday).
             </p>
             <div className="mt-4 flex items-center gap-2">
               <button
