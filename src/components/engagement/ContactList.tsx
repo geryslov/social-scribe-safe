@@ -753,14 +753,6 @@ export function ContactList({
                     </div>
                   );
                 })}
-                    onClick={() => {
-                      if (selectionMode) toggleSelected(target.id);
-                      else onSelectTarget(target);
-                    }}
-                    onToggleSelect={() => toggleSelected(target.id)}
-                    onRetryEnrich={() => enrichTarget.mutate(target.id)}
-                  />
-                ))}
               </section>
             )}
 
