@@ -69,8 +69,6 @@ Deno.serve(async (req) => {
       const p = queue[i];
       attempted++;
 
-      let statusLabel = 'failed';
-      let errorMsg: string | null = null;
 
       try {
         const res = await fetch(`${SUPABASE_URL}/functions/v1/like-linkedin-post`, {
