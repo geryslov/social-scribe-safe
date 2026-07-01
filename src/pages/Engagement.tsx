@@ -313,7 +313,25 @@ function ActivityDashboard({
   const likedToday = likes.filter((l) => l.status === 'liked').length;
   const failedToday = likes.filter((l) => l.status === 'failed').length;
   const commentedToday = comments.length;
-  const discoveredCount = discovered.length;
+  const totalPosts = discovered.length;
+  const yesterdayStart = useMemo(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    d.setDate(d.getDate() - 1);
+    return d;
+  }, []);
+  const yesterdayEnd = useMemo(() => {
+    const d = new Date(yesterdayStart);
+    d.setDate(d.getDate() + 1);
+    return d;
+  }, [yesterdayStart]);
+  const newPostsYesterday = useMemo(
+    () => discovered.filter((p) => {
+      const t = new Date(p.created_at).getTime();
+      return t >= yesterdayStart.getTime() && t < yesterdayEnd.getTime();
+    }).length,
+    [discovered, yesterdayStart, yesterdayEnd],
+  );
 
   // Build review rows
   const rows: ReviewRow[] = useMemo(() => {
@@ -381,7 +399,7 @@ function ActivityDashboard({
           label={<><b className="text-[#171923] font-semibold">{profilesChecked}</b> of <b className="text-[#171923] font-semibold">{totalProfiles}</b> profiles checked</>} />
         <div className="h-4 w-px bg-[#E5E7ED]" />
         <StatusChip icon={<Sparkles className="h-3.5 w-3.5 text-[#7C3AED]" />}
-          label={<><b className="text-[#171923] font-semibold">{discoveredCount}</b> new posts discovered</>} />
+          label={<><b className="text-[#171923] font-semibold">{totalPosts}</b> total posts · <b className="text-[#171923] font-semibold">{newPostsYesterday}</b> new yesterday</>} />
         <div className="h-4 w-px bg-[#E5E7ED]" />
         <StatusChip icon={<Clock className="h-3.5 w-3.5 text-[#667085]" />}
           label={<>Next sync in <b className="text-[#171923] font-semibold tabular-nums">{nextLabel}</b></>} />
@@ -399,7 +417,7 @@ function ActivityDashboard({
       </div>
 
       {/* Smart summary */}
-      {discoveredCount > 0 && (
+      {totalPosts > 0 && (
         <div className="rounded-[14px] border border-[#E5E7ED] bg-gradient-to-br from-white to-[#FBFAFF] p-5">
           <div className="flex items-start gap-4">
             <div className="h-10 w-10 rounded-lg bg-[#F4F0FF] text-[#7C3AED] flex items-center justify-center flex-shrink-0">
@@ -407,7 +425,7 @@ function ActivityDashboard({
             </div>
             <div className="flex-1 min-w-0">
               <div className="text-sm text-[#171923] leading-relaxed">
-                <b>{discoveredCount} new posts</b> were discovered across <b>{profilesWithNew} profiles</b>.
+                <b>{totalPosts} total posts</b> across <b>{profilesWithNew} profiles</b> · <b>{newPostsYesterday}</b> new yesterday.
                 {!hasEngagement && <> No engagement actions have been completed today.</>}
               </div>
               <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -434,9 +452,9 @@ function ActivityDashboard({
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <KpiCard
           primary
-          label="New posts"
-          value={discoveredCount}
-          sub={`from ${profilesWithNew} profile${profilesWithNew === 1 ? '' : 's'}`}
+          label="Total posts"
+          value={totalPosts}
+          sub={`${newPostsYesterday} new yesterday · ${profilesWithNew} profile${profilesWithNew === 1 ? '' : 's'}`}
           icon={<TrendingUp className="h-4 w-4" />}
         />
         <KpiCard label="Likes completed" value={likedToday} sub="today" icon={<Heart className="h-4 w-4" />} />
@@ -473,7 +491,7 @@ function ActivityDashboard({
             </div>
             <h3 className="text-sm font-semibold text-[#171923]">No engagement activity yet</h3>
             <p className="text-sm text-[#667085] mt-1 max-w-md">
-              Nothing has been liked or commented on during this period. <b className="text-[#171923]">{discoveredCount}</b> newly discovered posts are ready to review.
+              Nothing has been liked or commented on during this period. <b className="text-[#171923]">{totalPosts}</b> posts are ready to review (<b className="text-[#171923]">{newPostsYesterday}</b> new yesterday).
             </p>
             <div className="mt-4 flex items-center gap-2">
               <button
