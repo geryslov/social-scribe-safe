@@ -120,11 +120,14 @@ interface CommandBarProps {
   publishers: Publisher[];
   folderScope: FolderScope;
   canManage: boolean;
+  tab: 'feed' | 'activity';
+  onChangeTab: (t: 'feed' | 'activity') => void;
   onSelectPublisher: (id: string) => void;
 }
 
-function CommandBar({ selectedPublisher, publishers, folderScope, canManage, onSelectPublisher }: CommandBarProps) {
+function CommandBar({ selectedPublisher, publishers, folderScope, canManage, tab, onChangeTab, onSelectPublisher }: CommandBarProps) {
   const { runNow, lastRun, settings } = useEngagementSync();
+  const { data: recentRuns = [] } = useEngagementSyncRuns(10);
   const isSyncing = runNow.isPending;
   const autoEnabled = settings?.auto_sync_enabled ?? true;
   const nextSync = getNextScheduledSync();
