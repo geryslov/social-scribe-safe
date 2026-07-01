@@ -362,6 +362,27 @@ export function PostPanel({ target, publisher, isAdmin, onCleared }: PostPanelPr
           )}
         </SheetContent>
       </Sheet>
+
+      <AlertDialog open={confirmDeleteOpen} onOpenChange={setConfirmDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove {target.name}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This removes the profile from your engagement list and deletes all fetched posts
+              and drafted comments for them. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); confirmDeleteNow(); }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteTarget.isPending ? 'Removing…' : 'Remove profile'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
