@@ -231,31 +231,29 @@ const Posts = () => {
 
   if (authLoading || postsLoading) {
     return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-3">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="min-h-[60vh] flex flex-col items-center justify-center gap-3">
+        <Loader2 className="h-8 w-8 animate-spin text-[#7C3AED]" />
         {isAutoSyncing && (
-          <p className="text-sm text-muted-foreground">Syncing latest analytics...</p>
+          <p className="text-sm text-[#667085]">Syncing latest analytics…</p>
         )}
       </div>
     );
   }
 
   const statCards = [
-    { label: 'Reach', value: analyticsStats.totalReach, icon: Users, color: 'text-info', bg: 'bg-info/10' },
-    { label: 'Impressions', value: analyticsStats.totalImpressions, icon: Eye, color: 'text-primary', bg: 'bg-primary/10' },
-    { label: 'Reactions', value: analyticsStats.totalReactions, icon: Heart, color: 'text-destructive', bg: 'bg-destructive/10', onClick: () => { setReactorsPanelTab('profiles'); setShowReactorsPanel(true); }, hint: 'View profiles' },
-    { label: 'Comments', value: analyticsStats.totalComments, icon: MessageCircle, color: 'text-primary', bg: 'bg-primary/10', onClick: () => { setReactorsPanelTab('comments'); setShowReactorsPanel(true); }, hint: 'View threads' },
-    { label: 'Reshares', value: analyticsStats.totalReshares, icon: Repeat2, color: 'text-muted-foreground', bg: 'bg-muted' },
-    { label: 'Engagement', value: analyticsStats.avgEngagementRate, icon: TrendingUp, color: 'text-success', bg: 'bg-success/10', suffix: '%', decimals: 1 },
+    { label: 'Reach', value: analyticsStats.totalReach, icon: Users },
+    { label: 'Impressions', value: analyticsStats.totalImpressions, icon: Eye },
+    { label: 'Reactions', value: analyticsStats.totalReactions, icon: Heart, onClick: () => { setReactorsPanelTab('profiles'); setShowReactorsPanel(true); }, hint: 'View profiles' },
+    { label: 'Comments', value: analyticsStats.totalComments, icon: MessageCircle, onClick: () => { setReactorsPanelTab('comments'); setShowReactorsPanel(true); }, hint: 'View threads' },
+    { label: 'Reshares', value: analyticsStats.totalReshares, icon: Repeat2 },
+    { label: 'Engagement', value: analyticsStats.avgEngagementRate, icon: TrendingUp, suffix: '%', decimals: 1 },
   ];
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header />
-
+    <div>
       {/* Mobile sidebar toggle */}
-      <div className="lg:hidden px-4 py-2 border-b border-border">
-        <Button variant="outline" size="sm" onClick={() => setSidebarOpen(!sidebarOpen)} className="gap-2 rounded-xl bento-card">
+      <div className="lg:hidden px-6 py-3 border-b border-[#E5E7ED] bg-white">
+        <Button variant="outline" size="sm" onClick={() => setSidebarOpen(!sidebarOpen)} className="gap-2 rounded-lg">
           {sidebarOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
           Publishers
         </Button>
@@ -270,61 +268,57 @@ const Posts = () => {
           />
         </div>
 
-        <main id="main-content" className="flex-1 overflow-y-auto h-[calc(100vh-73px)]">
-          <div className="px-6 py-5">
+        <main className="flex-1 min-w-0">
+          <div className="px-8 py-6 max-w-[1400px] mx-auto">
 
-            {/* ============================================= */}
-            {/* HERO SECTION: Publisher profile + action bar   */}
-            {/* ============================================= */}
-            <div className="mb-8">
-              {/* Title row */}
-              <div className="flex items-start justify-between mb-6">
-                <div>
+            {/* Header row */}
+            <div className="mb-6">
+              <div className="flex items-start justify-between gap-4 mb-5">
+                <div className="min-w-0">
                   {currentPublisher ? (
-                    <div className="flex items-center gap-5">
-                      <PublisherAvatar name={currentPublisher.name} size="lg" editable={true} className="ring-2 ring-primary/20" />
-                      <div>
+                    <div className="flex items-center gap-4">
+                      <PublisherAvatar name={currentPublisher.name} size="lg" editable={true} className="ring-2 ring-[#7C3AED]/15" />
+                      <div className="min-w-0">
                         <div className="flex items-center gap-2">
-                          <h2 className="text-3xl font-display font-extrabold tracking-tight">{currentPublisher.name}</h2>
+                          <h1 className="text-[22px] font-semibold tracking-tight text-[#171923] truncate">{currentPublisher.name}</h1>
                           {currentPublisher.linkedinUrl && (
                             <a
                               href={currentPublisher.linkedinUrl}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-primary hover:text-primary/80 transition-colors"
+                              className="text-[#7C3AED] hover:text-[#5B21B6] transition-colors"
+                              aria-label="Open LinkedIn profile"
                             >
                               <ExternalLink className="h-4 w-4" />
                             </a>
                           )}
                         </div>
                         {currentPublisher.role && (
-                          <p className="text-muted-foreground mt-1">{currentPublisher.role}</p>
+                          <p className="text-sm text-[#667085] mt-0.5 truncate">{currentPublisher.role}</p>
                         )}
-                        <p className="text-sm text-muted-foreground mt-1">
+                        <p className="text-xs text-[#667085] mt-0.5">
                           {totalPosts} post{totalPosts !== 1 ? 's' : ''}
                         </p>
                       </div>
                     </div>
                   ) : (
                     <div>
-                      <p className="section-heading mb-2">Workspace</p>
-                      <h2 className="text-4xl font-display font-extrabold tracking-tight">
-                        Content Hub
-                      </h2>
-                      <p className="text-muted-foreground mt-2">
-                        <span className="text-foreground font-semibold">{totalPosts}</span> posts across <span className="text-foreground font-semibold">{publishers.length}</span> publishers
+                      <p className="text-[11px] font-medium uppercase tracking-wider text-[#667085] mb-1">Workspace</p>
+                      <h1 className="text-[22px] font-semibold tracking-tight text-[#171923]">Content Hub</h1>
+                      <p className="text-sm text-[#667085] mt-1">
+                        <span className="text-[#171923] font-medium">{totalPosts}</span> posts across <span className="text-[#171923] font-medium">{publishers.length}</span> publishers
                       </p>
                     </div>
                   )}
                 </div>
 
-                <div className="flex gap-2">
+                <div className="flex gap-2 flex-shrink-0">
                   {currentWorkspace && (
                     <Button
                       onClick={handleExportReactors}
                       disabled={isExporting}
                       variant="outline"
-                      className="gap-2 rounded-xl border-border"
+                      className="gap-2 h-9 rounded-lg border-[#E5E7ED] bg-white text-[#3F4657] hover:bg-[#F7F8FB]"
                       title="Export reactors + commenters as CSV"
                     >
                       {isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
@@ -335,17 +329,17 @@ const Posts = () => {
                     <>
                       {isAdmin && (
                         <>
-                          <Button onClick={() => setIsTrackPostOpen(true)} variant="outline" className="gap-2 rounded-xl border-border">
+                          <Button onClick={() => setIsTrackPostOpen(true)} variant="outline" className="gap-2 h-9 rounded-lg border-[#E5E7ED] bg-white text-[#3F4657] hover:bg-[#F7F8FB]">
                             <LinkIcon className="h-4 w-4" />
                             Track
                           </Button>
-                          <Button onClick={() => setIsBulkUploadOpen(true)} variant="outline" className="gap-2 rounded-xl border-border">
+                          <Button onClick={() => setIsBulkUploadOpen(true)} variant="outline" className="gap-2 h-9 rounded-lg border-[#E5E7ED] bg-white text-[#3F4657] hover:bg-[#F7F8FB]">
                             <Upload className="h-4 w-4" />
                             Import
                           </Button>
                         </>
                       )}
-                      <Button onClick={handleNewPost} className="gap-2 bg-primary text-white hover:bg-primary/90 rounded-xl">
+                      <Button onClick={handleNewPost} className="gap-2 h-9 rounded-lg bg-[#7C3AED] text-white hover:bg-[#6D28D9]">
                         <Plus className="h-4 w-4" />
                         New Post
                       </Button>
@@ -354,53 +348,54 @@ const Posts = () => {
                 </div>
               </div>
 
-              {/* Bento Stats Grid */}
+              {/* KPI cards */}
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-                {statCards.map((stat, i) => (
-                  <div
+                {statCards.map((stat) => (
+                  <button
+                    type="button"
                     key={stat.label}
-                    className={cn(
-                      "bento-card p-4 group cursor-default animate-fade-in",
-                      stat.onClick && "cursor-pointer"
-                    )}
-                    style={{ animationDelay: `${i * 50}ms` }}
                     onClick={stat.onClick}
+                    disabled={!stat.onClick}
+                    className={cn(
+                      "text-left bg-white border border-[#E5E7ED] rounded-[14px] p-4 transition-all",
+                      stat.onClick
+                        ? "hover:border-[#CFD2DA] hover:shadow-sm cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED]/40"
+                        : "cursor-default"
+                    )}
                   >
-                    <div className="flex items-center gap-2 mb-3">
-                      <div className={cn("p-1.5 rounded-lg", stat.bg)}>
-                        <stat.icon className={cn("h-3.5 w-3.5", stat.color)} />
-                      </div>
-                      <span className="text-xs text-muted-foreground">{stat.label}</span>
+                    <div className="flex items-center gap-2 mb-2.5 text-[#667085]">
+                      <stat.icon className="h-3.5 w-3.5" />
+                      <span className="text-[11px] font-medium uppercase tracking-wider">{stat.label}</span>
                     </div>
-                    <p className="text-2xl font-display font-extrabold tabular-nums tracking-tight">
+                    <p className="text-[24px] font-semibold tabular-nums tracking-tight text-[#171923] leading-none">
                       <CountUp end={stat.value} suffix={stat.suffix} decimals={stat.decimals} />
                     </p>
-                    {stat.hint && <p className="text-xs text-primary/50 mt-1">{stat.hint}</p>}
-                  </div>
+                    {stat.hint && <p className="text-[11px] text-[#7C3AED] mt-2">{stat.hint} →</p>}
+                  </button>
                 ))}
               </div>
             </div>
 
-            {/* ============================================= */}
-            {/* SECTION: Active Posts                          */}
-            {/* ============================================= */}
-            <div className="space-y-4">
-              <p className="section-heading mb-4">
-                Active Posts <span className="text-muted-foreground/50 font-normal normal-case tracking-normal">({activePosts.length})</span>
-              </p>
+            {/* Active Posts */}
+            <div className="space-y-3">
+              <div className="flex items-baseline justify-between">
+                <h2 className="text-[13px] font-semibold uppercase tracking-wider text-[#3F4657]">
+                  Active posts <span className="text-[#667085] font-normal normal-case tracking-normal">({activePosts.length})</span>
+                </h2>
+              </div>
 
               {activePosts.length === 0 ? (
-                <div className="text-center py-20 bento-card">
-                  <div className="w-16 h-16 mx-auto mb-5 rounded-2xl bg-primary flex items-center justify-center">
-                    <Inbox className="h-8 w-8 text-white" />
+                <div className="text-center py-16 bg-white border border-[#E5E7ED] rounded-[14px]">
+                  <div className="w-12 h-12 mx-auto mb-4 rounded-xl bg-[#F4F0FF] flex items-center justify-center">
+                    <Inbox className="h-6 w-6 text-[#7C3AED]" />
                   </div>
-                  <h3 className="text-xl font-display font-bold mb-2">No upcoming posts</h3>
-                  <p className="text-muted-foreground mb-6 max-w-sm mx-auto text-sm">
+                  <h3 className="text-base font-semibold mb-1 text-[#171923]">No upcoming posts</h3>
+                  <p className="text-sm text-[#667085] mb-5 max-w-sm mx-auto">
                     {selectedPublisher ? `No scheduled posts for ${selectedPublisher}` : 'Start creating content for your thought leaders'}
                   </p>
                   {canCreateContent && (
-                    <Button onClick={handleNewPost} className="bg-primary text-white hover:bg-primary/90 rounded-xl gap-2">
-                      <Plus className="h-4 w-4" /> Create Post
+                    <Button onClick={handleNewPost} className="h-9 rounded-lg bg-[#7C3AED] text-white hover:bg-[#6D28D9] gap-2">
+                      <Plus className="h-4 w-4" /> Create post
                     </Button>
                   )}
                 </div>
@@ -426,22 +421,17 @@ const Posts = () => {
               )}
             </div>
 
-            {/* ============================================= */}
-            {/* SECTION: Published Posts                       */}
-            {/* ============================================= */}
+            {/* Published Posts */}
             {publishedPosts.length > 0 && (
               <div className="mt-10">
-                {/* Published divider */}
-                <div className="flex items-center gap-3 my-8">
-                  <div className="h-px flex-1 bg-gradient-to-r from-transparent via-border/50 to-transparent" />
-                  <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-success/8 border border-success/15">
-                    <div className="h-1.5 w-1.5 rounded-full bg-success" />
-                    <span className="text-xs font-semibold text-success">Published ({publishedPosts.length})</span>
-                  </div>
-                  <div className="h-px flex-1 bg-gradient-to-r from-transparent via-border/50 to-transparent" />
+                <div className="flex items-center gap-3 mb-4">
+                  <h2 className="text-[13px] font-semibold uppercase tracking-wider text-[#3F4657]">
+                    Published <span className="text-[#667085] font-normal normal-case tracking-normal">({publishedPosts.length})</span>
+                  </h2>
+                  <div className="h-px flex-1 bg-[#E5E7ED]" />
                 </div>
 
-                <div className="space-y-1.5">
+                <div className="bg-white border border-[#E5E7ED] rounded-[14px] overflow-hidden divide-y divide-[#E5E7ED]">
                   {publishedPosts.map((post, index) => {
                     const publisher = dbPublishers.find(p => p.name === post.publisherName);
                     return (
