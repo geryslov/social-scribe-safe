@@ -60,44 +60,35 @@ export default function Engagement() {
   const selectedPublisher = publishers.find((p) => p.id === selectedPublisherId) || null;
 
   return (
-    <div className="min-h-screen w-full flex bg-[#F7F8FB] text-[#171923] font-sans antialiased">
-      <SideNav collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed((v) => !v)} />
+    <div className="w-full">
+      <div className="max-w-[1280px] mx-auto px-6 lg:px-8 py-6 space-y-6">
+        <PageHeader
+          tab={tab}
+          onTabChange={setTab}
+          publisher={selectedPublisher}
+          publishers={publishers}
+          onSelectPublisher={setSelectedPublisherId}
+          onOpenFirstReview={() => {
+            document.getElementById('review-queue')?.scrollIntoView({ behavior: 'smooth' });
+          }}
+        />
 
-      <div className="flex-1 min-w-0 flex flex-col">
-        <TopBar />
+        {tab === 'activity' && selectedPublisher && (
+          <ActivityDashboard
+            publisher={selectedPublisher}
+            onOpenReview={setReviewTarget}
+            onOpenComment={setComposerPost}
+          />
+        )}
+        {tab === 'overview' && <ComingSoon label="Overview" />}
+        {tab === 'rules' && <ComingSoon label="Rules" />}
+        {tab === 'history' && <ComingSoon label="History" />}
 
-        <main id="main-content" className="flex-1 min-w-0 overflow-y-auto">
-          <div className="max-w-[1280px] mx-auto px-6 lg:px-8 py-6 space-y-6">
-            <PageHeader
-              tab={tab}
-              onTabChange={setTab}
-              publisher={selectedPublisher}
-              publishers={publishers}
-              onSelectPublisher={setSelectedPublisherId}
-              onOpenFirstReview={() => {
-                // scroll into queue
-                document.getElementById('review-queue')?.scrollIntoView({ behavior: 'smooth' });
-              }}
-            />
-
-            {tab === 'activity' && selectedPublisher && (
-              <ActivityDashboard
-                publisher={selectedPublisher}
-                onOpenReview={setReviewTarget}
-                onOpenComment={setComposerPost}
-              />
-            )}
-            {tab === 'overview' && <ComingSoon label="Overview" />}
-            {tab === 'rules' && <ComingSoon label="Rules" />}
-            {tab === 'history' && <ComingSoon label="History" />}
-
-            {!selectedPublisher && (
-              <div className="rounded-[14px] border border-[#E5E7ED] bg-white p-10 text-center text-sm text-[#667085]">
-                No publishers in this workspace yet.
-              </div>
-            )}
+        {!selectedPublisher && (
+          <div className="rounded-[14px] border border-[#E5E7ED] bg-white p-10 text-center text-sm text-[#667085]">
+            No publishers in this workspace yet.
           </div>
-        </main>
+        )}
       </div>
 
       {/* Review drawer */}
@@ -131,7 +122,6 @@ export default function Engagement() {
                   publisher={selectedPublisher}
                   onClose={() => setComposerPost(null)}
                 />
-
               </div>
             </>
           )}
@@ -140,6 +130,7 @@ export default function Engagement() {
     </div>
   );
 }
+
 
 /* ============================================================================
  * Side Navigation — 248px collapsible
