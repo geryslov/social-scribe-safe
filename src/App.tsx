@@ -18,6 +18,7 @@ import JoinWorkspace from "./pages/JoinWorkspace";
 import AdminDashboard from "./pages/AdminDashboard";
 import Intelligence from "./pages/Intelligence";
 import Engagement from "./pages/Engagement";
+import AppShell from "./components/AppShell";
 
 const App = () => {
   const [queryClient] = React.useState(() => new QueryClient());
@@ -32,16 +33,22 @@ const App = () => {
               <Sonner />
               <BrowserRouter>
                 <Routes>
-                <Route path="/" element={<Posts />} />
-                  <Route path="/analytics" element={<Analytics />} />
-                  <Route path="/publisher/:name" element={<PublisherAnalytics />} />
+                  {/* Unauthenticated / standalone routes */}
                   <Route path="/auth" element={<Auth />} />
-                  <Route path="/documents" element={<DocumentLibrary />} />
-                  <Route path="/documents/:id" element={<DocumentEditor />} />
                   <Route path="/join/:token" element={<JoinWorkspace />} />
-                  <Route path="/intelligence" element={<Intelligence />} />
-                  <Route path="/engagement" element={<Engagement />} />
-                  <Route path="/admin" element={<AdminDashboard />} />
+
+                  {/* Authenticated app shell (sidebar + top bar) */}
+                  <Route element={<AppShell />}>
+                    <Route path="/" element={<Posts />} />
+                    <Route path="/analytics" element={<Analytics />} />
+                    <Route path="/publisher/:name" element={<PublisherAnalytics />} />
+                    <Route path="/documents" element={<DocumentLibrary />} />
+                    <Route path="/documents/:id" element={<DocumentEditor />} />
+                    <Route path="/intelligence" element={<Intelligence />} />
+                    <Route path="/engagement" element={<Engagement />} />
+                    <Route path="/admin" element={<AdminDashboard />} />
+                  </Route>
+
                   {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                   <Route path="*" element={<NotFound />} />
                 </Routes>
