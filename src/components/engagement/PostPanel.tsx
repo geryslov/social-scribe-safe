@@ -272,7 +272,7 @@ export function PostPanel({ target, publisher, isAdmin, onCleared }: PostPanelPr
         initials={initials}
         isAdmin={isAdmin}
         isFetching={isFetching}
-        confirmDelete={confirmDelete}
+        confirmDelete={false}
         fetchCommentPending={fetchCommentEngagement.isPending}
         autoLikeCapReached={autoLikeCapReached}
         autoLikeActive={autoLikeActive}
