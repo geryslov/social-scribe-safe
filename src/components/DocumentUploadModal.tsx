@@ -122,12 +122,26 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate, 
   }, []);
 
   const processFile = async (file: File) => {
+    // Guard: size (20 MB) and extension whitelist so users get a clear message
+    // instead of a silent failure.
+    const MAX_BYTES = 20 * 1024 * 1024;
+    if (file.size > MAX_BYTES) {
+      toast.error(`File is too large (max 20 MB). Yours is ${(file.size / 1024 / 1024).toFixed(1)} MB.`);
+      return;
+    }
+    const lowerName = file.name.toLowerCase();
+    const allowedExts = ['.txt', '.md', '.csv', '.docx', '.pdf'];
+    if (!allowedExts.some(ext => lowerName.endsWith(ext))) {
+      toast.error('Unsupported file type. Use .txt, .md, .csv, .docx, or .pdf');
+      return;
+    }
+
     setIsLoading(true);
     try {
       const storagePath = `${Date.now()}-${file.name}`;
       const { error: uploadError } = await supabase.storage
         .from('documents')
-        .upload(storagePath, file);
+        .upload(storagePath, file, { contentType: file.type || undefined, upsert: false });
       if (uploadError) throw uploadError;
 
       const { data: urlData } = supabase.storage
@@ -138,24 +152,26 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate, 
       setFileUrl(urlData.publicUrl);
       setTitle(file.name.replace(/\.[^/.]+$/, ''));
 
-      if (file.name.endsWith('.txt')) {
+      if (lowerName.endsWith('.txt') || lowerName.endsWith('.md')) {
         const text = await file.text();
         setContent(text);
-      } else if (file.name.endsWith('.docx') || file.name.endsWith('.csv')) {
+      } else {
+        // .docx, .csv, .pdf → parse server-side
         const formData = new FormData();
         formData.append('file', file);
         const { data, error } = await supabase.functions.invoke('parse-document', {
           body: formData,
         });
         if (error) throw error;
+        if (!data?.success) throw new Error(data?.error || 'Failed to parse document');
         setContent(data.content || '');
-      } else {
-        const text = await file.text();
-        setContent(text);
       }
     } catch (error) {
       console.error('Error processing file:', error);
-      toast.error('Failed to process file');
+      const message = error instanceof Error ? error.message : 'Failed to process file';
+      toast.error(message);
+      setFileName(null);
+      setFileUrl(null);
     } finally {
       setIsLoading(false);
     }
@@ -163,8 +179,9 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate, 
 
   const handleDrop = useCallback(async (e: React.DragEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     setIsDragging(false);
-    const file = e.dataTransfer.files[0];
+    const file = e.dataTransfer.files?.[0];
     if (file) {
       await processFile(file);
     }
@@ -172,10 +189,13 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate, 
 
   const handleFileInput = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    // Reset value so selecting the same file again still fires onChange.
+    e.target.value = '';
     if (file) {
       await processFile(file);
     }
   };
+
 
   const handleReferenceFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
