@@ -146,9 +146,17 @@ function WorkspaceSelector({ collapsed }: { collapsed: boolean }) {
         )}
         aria-label="Switch workspace"
       >
-        <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-[#7C3AED] to-[#5B21B6] text-white text-xs font-bold flex items-center justify-center flex-shrink-0">
-          {initials}
-        </div>
+        {currentWorkspace?.logoUrl ? (
+          <img
+            src={currentWorkspace.logoUrl}
+            alt={currentWorkspace.name}
+            className="h-8 w-8 rounded-lg object-cover flex-shrink-0 border border-[#E5E7ED] bg-white"
+          />
+        ) : (
+          <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-[#7C3AED] to-[#5B21B6] text-white text-xs font-bold flex items-center justify-center flex-shrink-0">
+            {initials}
+          </div>
+        )}
         {!collapsed && (
           <>
             <div className="flex-1 min-w-0 text-left">
