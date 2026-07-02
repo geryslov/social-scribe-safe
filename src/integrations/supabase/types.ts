@@ -660,6 +660,7 @@ export type Database = {
       engagement_targets: {
         Row: {
           auto_like: boolean
+          auto_sync: boolean
           avatar_url: string | null
           company_name: string | null
           created_at: string
@@ -684,6 +685,7 @@ export type Database = {
         }
         Insert: {
           auto_like?: boolean
+          auto_sync?: boolean
           avatar_url?: string | null
           company_name?: string | null
           created_at?: string
@@ -708,6 +710,7 @@ export type Database = {
         }
         Update: {
           auto_like?: boolean
+          auto_sync?: boolean
           avatar_url?: string | null
           company_name?: string | null
           created_at?: string
