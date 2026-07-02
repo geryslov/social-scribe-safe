@@ -24,6 +24,7 @@ export interface EngagementTarget {
   avatar_url: string | null;
   notes: string | null;
   is_active: boolean;
+  auto_sync: boolean;
   auto_like: boolean;
   last_fetched_at: string | null;
   last_seen_at: string | null;
