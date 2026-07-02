@@ -49,7 +49,8 @@ Deno.serve(async (req) => {
 
     let targetsQuery = supabase
       .from('engagement_targets')
-      .select('id, workspace_id, publisher_id, name, last_fetched_at, auto_like');
+      .select('id, workspace_id, publisher_id, name, last_fetched_at, auto_like, is_active')
+      .neq('is_active', false);
     if (onlyWorkspaceId) targetsQuery = targetsQuery.eq('workspace_id', onlyWorkspaceId);
 
     const { data: targets, error } = await targetsQuery;

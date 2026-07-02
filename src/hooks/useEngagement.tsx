@@ -343,8 +343,46 @@ export function useEngagementTargets(publisherId: string | null) {
     },
   });
 
+  const bulkUpdatePublisherTargets = useMutation({
+    mutationFn: async ({ publisher_id, updates }: { publisher_id: string; updates: Partial<Pick<EngagementTarget, 'auto_like' | 'is_active'>> }) => {
+      if (!currentWorkspace) throw new Error('No workspace');
+      const { error, count } = await (supabase as any)
+        .from('engagement_targets')
+        .update(updates, { count: 'exact' })
+        .eq('workspace_id', currentWorkspace.id)
+        .eq('publisher_id', publisher_id);
+      if (error) throw error;
+      return count ?? 0;
+    },
+    onMutate: async ({ publisher_id, updates }) => {
+      await queryClient.cancelQueries({ queryKey: ['engagement-targets'] });
+      const snapshots: Array<[readonly unknown[], unknown]> = [];
+      queryClient.getQueriesData({ queryKey: ['engagement-targets'] }).forEach(([key, data]) => {
+        snapshots.push([key, data]);
+        if (Array.isArray(data)) {
+          queryClient.setQueryData(key, (data as any[]).map((t) => (t.publisher_id === publisher_id ? { ...t, ...updates } : t)));
+        }
+      });
+      return { snapshots };
+    },
+    onError: (error: Error, _vars, ctx) => {
+      ctx?.snapshots?.forEach(([key, data]) => queryClient.setQueryData(key, data));
+      toast.error('Update failed: ' + error.message);
+    },
+    onSuccess: (count, { updates }) => {
+      const keys = Object.keys(updates);
+      const label = keys.includes('auto_like')
+        ? (updates.auto_like ? 'Auto-like enabled' : 'Auto-like disabled')
+        : (updates.is_active ? 'Auto-sync enabled' : 'Auto-sync paused');
+      toast.success(`${label} on ${count} profile${count === 1 ? '' : 's'}`);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['engagement-targets'] });
+    },
+  });
 
-  return { targets, isLoading, createTarget, deleteTarget, bulkDeleteTargets, bulkReassignTargets, markSeen, enrichTarget, updateTarget };
+
+  return { targets, isLoading, createTarget, deleteTarget, bulkDeleteTargets, bulkReassignTargets, markSeen, enrichTarget, updateTarget, bulkUpdatePublisherTargets };
 }
 
 // ---------------------------------------------------------------------------
