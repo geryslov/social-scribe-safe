@@ -699,7 +699,7 @@ function KpiCard({
   );
 }
 
-function LikesCompletedCard({ likes, value }: { likes: import('@/hooks/useEngagementActivity').AutoLikeRun[]; value: number }) {
+function LikesCompletedCard({ likes }: { likes: import('@/hooks/useEngagementActivity').AutoLikeRun[] }) {
   const todayStart = useMemo(() => {
     const d = new Date();
     d.setHours(0, 0, 0, 0);
@@ -711,6 +711,7 @@ function LikesCompletedCard({ likes, value }: { likes: import('@/hooks/useEngage
       .sort((a, b) => new Date(b.run_at).getTime() - new Date(a.run_at).getTime()),
     [likes, todayStart],
   );
+  const value = likedToday.length;
 
   return (
     <Popover>
