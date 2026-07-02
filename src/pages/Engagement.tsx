@@ -507,7 +507,7 @@ function ActivityDashboard({
   }, [rows, query, queueTab, sort]);
 
   const hasCompletedEngagement = totalLikes7d + totalComments7d > 0;
-  const hasChartActivity = totalLikes7d + totalComments7d + totalPosts7d > 0;
+  const hasChartActivity = totalLikes7d + totalComments7d + totalPosts7d + totalChecks7d > 0;
 
   return (
     <div className="space-y-6">
@@ -1117,7 +1117,10 @@ function ActivitySpark({ series }: { series: { label: string; date: Date; likes:
                   {dateFmt.format(d.date)} · {d.posts} new · {d.likes} like{d.likes === 1 ? '' : 's'} · {d.comments} comment{d.comments === 1 ? '' : 's'} · {d.checked} checked
                 </div>
                 {fullTotal === 0 ? (
-                  <div className="w-full rounded-md bg-[#F4F0FF]" style={{ height: 4 }} />
+                  <div
+                    className={cn('w-full rounded-md', d.checked > 0 ? 'bg-[#D0D5DD]' : 'bg-[#F4F0FF]')}
+                    style={{ height: d.checked > 0 ? 24 : 4 }}
+                  />
                 ) : (
                   <div className="w-full flex flex-col overflow-hidden rounded-md" style={{ height: `${postH + likeH + commentH}%`, minHeight: 6 }}>
                     {d.comments > 0 && (
