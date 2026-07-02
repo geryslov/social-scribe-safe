@@ -508,20 +508,26 @@ function ActivityDashboard({
 
       {/* Activity chart / empty state */}
       <section className="rounded-[14px] border border-[#E5E7ED] bg-white overflow-hidden" aria-label="Engagement activity">
-        <div className="px-5 py-3 border-b border-[#E5E7ED] flex items-center justify-between">
+        <div className="px-5 py-3 border-b border-[#E5E7ED] flex items-center justify-between gap-3 flex-wrap">
           <div>
             <h2 className="text-sm font-semibold text-[#171923]">Engagement activity</h2>
             <p className="text-xs text-[#667085] mt-0.5">Last 7 days</p>
           </div>
-          {hasEngagement && (
-            <div className="inline-flex rounded-md border border-[#E5E7ED] p-0.5 text-xs">
-              <button className="px-2.5 py-1 rounded-sm bg-[#F4F0FF] text-[#7C3AED] font-medium">Chart</button>
-              <button className="px-2.5 py-1 rounded-sm text-[#667085] hover:text-[#171923]">Table</button>
+          <div className="flex items-center gap-4 text-xs">
+            <div className="inline-flex items-center gap-1.5 text-[#3F4657]">
+              <span className="h-2 w-2 rounded-full bg-[#7C3AED]" />
+              <span>Likes</span>
+              <span className="tabular-nums font-semibold text-[#171923]">{totalLikes7d}</span>
             </div>
-          )}
+            <div className="inline-flex items-center gap-1.5 text-[#3F4657]">
+              <span className="h-2 w-2 rounded-full bg-[#06B6D4]" />
+              <span>Comments</span>
+              <span className="tabular-nums font-semibold text-[#171923]">{totalComments7d}</span>
+            </div>
+          </div>
         </div>
         {hasEngagement ? (
-          <ActivitySpark likes={likedToday} comments={commentedToday} />
+          <ActivitySpark series={activitySeries} />
         ) : (
           <div className="p-8 flex flex-col items-center text-center">
             <div className="h-12 w-12 rounded-xl bg-[#F4F0FF] text-[#7C3AED] flex items-center justify-center mb-3">
