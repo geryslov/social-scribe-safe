@@ -1,0 +1,1 @@
+ALTER TABLE public.engagement_targets ADD COLUMN IF NOT EXISTS auto_sync boolean NOT NULL DEFAULT true;

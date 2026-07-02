@@ -287,7 +287,7 @@ function BulkAutomationToggles({ publisher }: { publisher: Publisher }) {
   const { targets, bulkUpdatePublisherTargets } = useEngagementTargets(publisher.id);
 
   const total = targets.length;
-  const syncOn = targets.filter((t) => t.is_active !== false).length;
+  const syncOn = targets.filter((t) => t.auto_sync !== false).length;
   const likeOn = targets.filter((t) => t.auto_like).length;
   const syncAllOn = total > 0 && syncOn === total;
   const syncMixed = syncOn > 0 && syncOn < total;
@@ -295,7 +295,7 @@ function BulkAutomationToggles({ publisher }: { publisher: Publisher }) {
   const likeMixed = likeOn > 0 && likeOn < total;
 
   const onSync = (checked: boolean) => {
-    bulkUpdatePublisherTargets.mutate({ publisher_id: publisher.id, updates: { is_active: checked } });
+    bulkUpdatePublisherTargets.mutate({ publisher_id: publisher.id, updates: { auto_sync: checked } });
   };
   const onLike = (checked: boolean) => {
     bulkUpdatePublisherTargets.mutate({ publisher_id: publisher.id, updates: { auto_like: checked } });
