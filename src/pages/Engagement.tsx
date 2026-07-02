@@ -936,22 +936,41 @@ function TotalPostsCard({
 
 
 
-function ActivitySpark({ likes, comments }: { likes: number; comments: number }) {
-  // Minimal 7-bar mock derived from today's counts
-  const bars = Array.from({ length: 7 }, (_, i) => (i === 6 ? likes + comments : Math.max(0, Math.round((likes + comments) * (0.2 + i * 0.05)))));
-  const max = Math.max(1, ...bars);
+function ActivitySpark({ series }: { series: { label: string; date: Date; likes: number; comments: number }[] }) {
+  const max = Math.max(1, ...series.map((d) => d.likes + d.comments));
+  const dateFmt = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' });
   return (
     <div className="px-5 py-6">
-      <div className="flex items-end gap-2 h-40">
-        {bars.map((v, i) => (
-          <div key={i} className="flex-1 flex flex-col items-center gap-1.5">
-            <div
-              className={cn('w-full rounded-t-md bg-gradient-to-t from-[#7C3AED] to-[#A78BFA] transition-all', v === 0 && 'from-[#EEF0F5] to-[#F4F0FF]')}
-              style={{ height: `${(v / max) * 100}%`, minHeight: 4 }}
-            />
-            <span className="text-[10px] font-mono text-[#667085]">{['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i]}</span>
-          </div>
-        ))}
+      <div className="flex items-end gap-3 h-40">
+        {series.map((d, i) => {
+          const total = d.likes + d.comments;
+          const likeH = (d.likes / max) * 100;
+          const commentH = (d.comments / max) * 100;
+          return (
+            <div key={i} className="flex-1 flex flex-col items-center gap-1.5 group">
+              <div className="w-full flex-1 flex flex-col justify-end relative">
+                <div
+                  className="w-full opacity-0 group-hover:opacity-100 transition-opacity absolute -top-1 left-1/2 -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-md bg-[#171923] text-white text-[10px] px-2 py-1 pointer-events-none z-10"
+                >
+                  {dateFmt.format(d.date)} · {d.likes} like{d.likes === 1 ? '' : 's'} · {d.comments} comment{d.comments === 1 ? '' : 's'}
+                </div>
+                {total === 0 ? (
+                  <div className="w-full rounded-md bg-[#F4F0FF]" style={{ height: 4 }} />
+                ) : (
+                  <div className="w-full flex flex-col overflow-hidden rounded-md" style={{ height: `${likeH + commentH}%`, minHeight: 6 }}>
+                    {d.comments > 0 && (
+                      <div className="w-full bg-[#06B6D4]" style={{ flex: d.comments }} />
+                    )}
+                    {d.likes > 0 && (
+                      <div className="w-full bg-gradient-to-t from-[#7C3AED] to-[#A78BFA]" style={{ flex: d.likes }} />
+                    )}
+                  </div>
+                )}
+              </div>
+              <span className="text-[10px] font-mono text-[#667085]">{d.label}</span>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
