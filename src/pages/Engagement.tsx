@@ -457,7 +457,7 @@ function ActivityDashboard({
           sub={`${newPostsYesterday} new yesterday · ${profilesWithNew} profile${profilesWithNew === 1 ? '' : 's'}`}
           icon={<TrendingUp className="h-4 w-4" />}
         />
-        <KpiCard label="Likes completed" value={likedToday} sub="today" icon={<Heart className="h-4 w-4" />} />
+        <LikesCompletedCard likes={likes} value={likedToday} />
         <KpiCard label="Comments completed" value={commentedToday} sub="today" icon={<MessageCircle className="h-4 w-4" />} />
         <KpiCard
           label="Failures"
