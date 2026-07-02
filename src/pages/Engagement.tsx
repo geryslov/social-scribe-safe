@@ -457,7 +457,7 @@ function ActivityDashboard({
           sub={`${newPostsYesterday} new yesterday · ${profilesWithNew} profile${profilesWithNew === 1 ? '' : 's'}`}
           icon={<TrendingUp className="h-4 w-4" />}
         />
-        <KpiCard label="Likes completed" value={likedToday} sub="today" icon={<Heart className="h-4 w-4" />} />
+        <LikesCompletedCard likes={likes} value={likedToday} />
         <KpiCard label="Comments completed" value={commentedToday} sub="today" icon={<MessageCircle className="h-4 w-4" />} />
         <KpiCard
           label="Failures"
@@ -654,6 +654,99 @@ function KpiCard({
     </div>
   );
 }
+
+function LikesCompletedCard({ likes, value }: { likes: import('@/hooks/useEngagementActivity').AutoLikeRun[]; value: number }) {
+  const todayStart = useMemo(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d.getTime();
+  }, []);
+  const likedToday = useMemo(
+    () => likes
+      .filter((l) => l.status === 'liked' && new Date(l.run_at).getTime() >= todayStart)
+      .sort((a, b) => new Date(b.run_at).getTime() - new Date(a.run_at).getTime()),
+    [likes, todayStart],
+  );
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="text-left rounded-[14px] border border-[#E5E7ED] bg-white p-4 transition-colors hover:bg-[#F7F8FB] hover:border-[#E4DAFB] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED]/40"
+          aria-label={`View ${value} likes completed today`}
+        >
+          <div className="flex items-center justify-between">
+            <div className="h-7 w-7 rounded-md flex items-center justify-center bg-[#F7F8FB] text-[#667085]">
+              <Heart className="h-4 w-4" />
+            </div>
+            <span className="text-[10px] font-medium text-[#7C3AED] uppercase tracking-wider">View</span>
+          </div>
+          <div className="mt-2.5 text-[26px] leading-none font-semibold tracking-tight text-[#171923] tabular-nums">
+            {value}
+          </div>
+          <div className="mt-1 flex items-baseline justify-between gap-2">
+            <span className="text-xs font-medium text-[#171923]">Likes completed</span>
+            <span className="text-[11px] text-[#667085]">today</span>
+          </div>
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-[380px] p-0">
+        <div className="px-4 py-3 border-b border-[#E5E7ED]">
+          <div className="text-sm font-semibold text-[#171923]">Likes completed today</div>
+          <div className="text-xs text-[#667085] mt-0.5">
+            {likedToday.length === 0 ? 'No likes yet today.' : `${likedToday.length} post${likedToday.length === 1 ? '' : 's'} liked · most recent first`}
+          </div>
+        </div>
+        <div className="max-h-[360px] overflow-y-auto">
+          {likedToday.length === 0 ? (
+            <div className="p-6 text-center">
+              <Heart className="h-6 w-6 text-[#E5E7ED] mx-auto mb-2" />
+              <p className="text-xs text-[#667085]">Auto-likes will appear here as they happen.</p>
+            </div>
+          ) : (
+            <ul className="divide-y divide-[#E5E7ED]">
+              {likedToday.map((l) => (
+                <li key={l.id} className="px-4 py-3 hover:bg-[#F7F8FB]">
+                  <div className="flex items-start gap-2">
+                    <Heart className="h-3.5 w-3.5 text-rose-500 fill-rose-500 mt-0.5 flex-shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-[#171923] truncate">
+                          {l.target_name || 'Unknown profile'}
+                        </span>
+                        <span className="text-[11px] text-[#667085] tabular-nums flex-shrink-0">
+                          {relativeTime(l.run_at)}
+                        </span>
+                      </div>
+                      {l.post_excerpt && (
+                        <p className="text-xs text-[#667085] mt-0.5 line-clamp-2 leading-snug">
+                          {l.post_excerpt}
+                        </p>
+                      )}
+                      {l.post_url && (
+                        <a
+                          href={l.post_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="mt-1 inline-flex items-center gap-1 text-[11px] text-[#7C3AED] hover:underline"
+                        >
+                          Open post <ExternalLink className="h-2.5 w-2.5" />
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+
 
 function ActivitySpark({ likes, comments }: { likes: number; comments: number }) {
   // Minimal 7-bar mock derived from today's counts
