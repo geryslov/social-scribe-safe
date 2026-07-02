@@ -426,7 +426,7 @@ function ActivityDashboard({
     return out;
   }, [rows, query, queueTab, sort]);
 
-  const hasEngagement = likedToday + commentedToday > 0;
+  const hasEngagement = totalLikes7d + totalComments7d > 0;
 
   return (
     <div className="space-y-6">
