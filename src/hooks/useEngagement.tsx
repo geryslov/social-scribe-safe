@@ -345,7 +345,7 @@ export function useEngagementTargets(publisherId: string | null) {
   });
 
   const bulkUpdatePublisherTargets = useMutation({
-    mutationFn: async ({ publisher_id, updates }: { publisher_id: string; updates: Partial<Pick<EngagementTarget, 'auto_like' | 'is_active'>> }) => {
+    mutationFn: async ({ publisher_id, updates }: { publisher_id: string; updates: Partial<Pick<EngagementTarget, 'auto_like' | 'auto_sync'>> }) => {
       if (!currentWorkspace) throw new Error('No workspace');
       const { error, count } = await (supabase as any)
         .from('engagement_targets')
@@ -374,7 +374,7 @@ export function useEngagementTargets(publisherId: string | null) {
       const keys = Object.keys(updates);
       const label = keys.includes('auto_like')
         ? (updates.auto_like ? 'Auto-like enabled' : 'Auto-like disabled')
-        : (updates.is_active ? 'Auto-sync enabled' : 'Auto-sync paused');
+        : (updates.auto_sync ? 'Auto-sync enabled' : 'Auto-sync paused');
       toast.success(`${label} on ${count} profile${count === 1 ? '' : 's'}`);
     },
     onSettled: () => {
