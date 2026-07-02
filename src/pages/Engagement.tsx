@@ -301,8 +301,8 @@ function ActivityDashboard({
 }) {
   const { targets } = useEngagementTargets(publisher.id);
   const { data: discovered = [], isLoading: discoveredLoading } = useDiscoveredPosts(publisher.id, 7);
-  const { data: likes = [] } = useAutoLikeHistory(publisher.id, 1);
-  const { data: comments = [] } = usePublisherComments(publisher.id, 1);
+  const { data: likes = [] } = useAutoLikeHistory(publisher.id, 7);
+  const { data: comments = [] } = usePublisherComments(publisher.id, 7);
   const { lastRun } = useEngagementSync();
 
   const [queueTab, setQueueTab] = useState<'review' | 'all' | 'engaged' | 'dismissed'>('review');
@@ -310,10 +310,47 @@ function ActivityDashboard({
   const [sort, setSort] = useState<'relevance' | 'new_posts' | 'recent'>('relevance');
   const [density, setDensity] = useState<'comfortable' | 'compact'>('comfortable');
 
-  const likedToday = likes.filter((l) => l.status === 'liked').length;
-  const failedToday = likes.filter((l) => l.status === 'failed').length;
-  const commentedToday = comments.length;
+  const todayStart = useMemo(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d.getTime();
+  }, []);
+  const likedToday = likes.filter((l) => l.status === 'liked' && new Date(l.run_at).getTime() >= todayStart).length;
+  const failedToday = likes.filter((l) => l.status === 'failed' && new Date(l.run_at).getTime() >= todayStart).length;
+  const commentedToday = comments.filter((c) => c.posted_at && new Date(c.posted_at).getTime() >= todayStart).length;
   const totalPosts = discovered.length;
+
+  // Build 7-day series for the activity chart
+  const activitySeries = useMemo(() => {
+    const days: { label: string; date: Date; likes: number; comments: number }[] = [];
+    const base = new Date();
+    base.setHours(0, 0, 0, 0);
+    const dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(base);
+      d.setDate(d.getDate() - i);
+      days.push({ label: dayLabels[d.getDay()], date: d, likes: 0, comments: 0 });
+    }
+    const startMs = days[0].date.getTime();
+    for (const l of likes) {
+      if (l.status !== 'liked') continue;
+      const t = new Date(l.run_at).getTime();
+      if (t < startMs) continue;
+      const idx = Math.floor((t - startMs) / (24 * 3600 * 1000));
+      if (days[idx]) days[idx].likes++;
+    }
+    for (const c of comments) {
+      if (!c.posted_at) continue;
+      const t = new Date(c.posted_at).getTime();
+      if (t < startMs) continue;
+      const idx = Math.floor((t - startMs) / (24 * 3600 * 1000));
+      if (days[idx]) days[idx].comments++;
+    }
+    return days;
+  }, [likes, comments]);
+  const totalLikes7d = activitySeries.reduce((a, d) => a + d.likes, 0);
+  const totalComments7d = activitySeries.reduce((a, d) => a + d.comments, 0);
+
   const yesterdayStart = useMemo(() => {
     const d = new Date();
     d.setHours(0, 0, 0, 0);
@@ -389,7 +426,7 @@ function ActivityDashboard({
     return out;
   }, [rows, query, queueTab, sort]);
 
-  const hasEngagement = likedToday + commentedToday > 0;
+  const hasEngagement = totalLikes7d + totalComments7d > 0;
 
   return (
     <div className="space-y-6">
@@ -471,20 +508,26 @@ function ActivityDashboard({
 
       {/* Activity chart / empty state */}
       <section className="rounded-[14px] border border-[#E5E7ED] bg-white overflow-hidden" aria-label="Engagement activity">
-        <div className="px-5 py-3 border-b border-[#E5E7ED] flex items-center justify-between">
+        <div className="px-5 py-3 border-b border-[#E5E7ED] flex items-center justify-between gap-3 flex-wrap">
           <div>
             <h2 className="text-sm font-semibold text-[#171923]">Engagement activity</h2>
             <p className="text-xs text-[#667085] mt-0.5">Last 7 days</p>
           </div>
-          {hasEngagement && (
-            <div className="inline-flex rounded-md border border-[#E5E7ED] p-0.5 text-xs">
-              <button className="px-2.5 py-1 rounded-sm bg-[#F4F0FF] text-[#7C3AED] font-medium">Chart</button>
-              <button className="px-2.5 py-1 rounded-sm text-[#667085] hover:text-[#171923]">Table</button>
+          <div className="flex items-center gap-4 text-xs">
+            <div className="inline-flex items-center gap-1.5 text-[#3F4657]">
+              <span className="h-2 w-2 rounded-full bg-[#7C3AED]" />
+              <span>Likes</span>
+              <span className="tabular-nums font-semibold text-[#171923]">{totalLikes7d}</span>
             </div>
-          )}
+            <div className="inline-flex items-center gap-1.5 text-[#3F4657]">
+              <span className="h-2 w-2 rounded-full bg-[#06B6D4]" />
+              <span>Comments</span>
+              <span className="tabular-nums font-semibold text-[#171923]">{totalComments7d}</span>
+            </div>
+          </div>
         </div>
         {hasEngagement ? (
-          <ActivitySpark likes={likedToday} comments={commentedToday} />
+          <ActivitySpark series={activitySeries} />
         ) : (
           <div className="p-8 flex flex-col items-center text-center">
             <div className="h-12 w-12 rounded-xl bg-[#F4F0FF] text-[#7C3AED] flex items-center justify-center mb-3">
@@ -893,22 +936,41 @@ function TotalPostsCard({
 
 
 
-function ActivitySpark({ likes, comments }: { likes: number; comments: number }) {
-  // Minimal 7-bar mock derived from today's counts
-  const bars = Array.from({ length: 7 }, (_, i) => (i === 6 ? likes + comments : Math.max(0, Math.round((likes + comments) * (0.2 + i * 0.05)))));
-  const max = Math.max(1, ...bars);
+function ActivitySpark({ series }: { series: { label: string; date: Date; likes: number; comments: number }[] }) {
+  const max = Math.max(1, ...series.map((d) => d.likes + d.comments));
+  const dateFmt = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' });
   return (
     <div className="px-5 py-6">
-      <div className="flex items-end gap-2 h-40">
-        {bars.map((v, i) => (
-          <div key={i} className="flex-1 flex flex-col items-center gap-1.5">
-            <div
-              className={cn('w-full rounded-t-md bg-gradient-to-t from-[#7C3AED] to-[#A78BFA] transition-all', v === 0 && 'from-[#EEF0F5] to-[#F4F0FF]')}
-              style={{ height: `${(v / max) * 100}%`, minHeight: 4 }}
-            />
-            <span className="text-[10px] font-mono text-[#667085]">{['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i]}</span>
-          </div>
-        ))}
+      <div className="flex items-end gap-3 h-40">
+        {series.map((d, i) => {
+          const total = d.likes + d.comments;
+          const likeH = (d.likes / max) * 100;
+          const commentH = (d.comments / max) * 100;
+          return (
+            <div key={i} className="flex-1 flex flex-col items-center gap-1.5 group">
+              <div className="w-full flex-1 flex flex-col justify-end relative">
+                <div
+                  className="w-full opacity-0 group-hover:opacity-100 transition-opacity absolute -top-1 left-1/2 -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-md bg-[#171923] text-white text-[10px] px-2 py-1 pointer-events-none z-10"
+                >
+                  {dateFmt.format(d.date)} · {d.likes} like{d.likes === 1 ? '' : 's'} · {d.comments} comment{d.comments === 1 ? '' : 's'}
+                </div>
+                {total === 0 ? (
+                  <div className="w-full rounded-md bg-[#F4F0FF]" style={{ height: 4 }} />
+                ) : (
+                  <div className="w-full flex flex-col overflow-hidden rounded-md" style={{ height: `${likeH + commentH}%`, minHeight: 6 }}>
+                    {d.comments > 0 && (
+                      <div className="w-full bg-[#06B6D4]" style={{ flex: d.comments }} />
+                    )}
+                    {d.likes > 0 && (
+                      <div className="w-full bg-gradient-to-t from-[#7C3AED] to-[#A78BFA]" style={{ flex: d.likes }} />
+                    )}
+                  </div>
+                )}
+              </div>
+              <span className="text-[10px] font-mono text-[#667085]">{d.label}</span>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
