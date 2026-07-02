@@ -212,11 +212,14 @@ function PageHeader({
       </div>
 
       {publisher && (
-        <AddProfileDialog
-          open={addOpen}
-          onOpenChange={setAddOpen}
-          publisher={publisher}
-        />
+        <>
+          <BulkAutomationToggles publisher={publisher} />
+          <AddProfileDialog
+            open={addOpen}
+            onOpenChange={setAddOpen}
+            publisher={publisher}
+          />
+        </>
       )}
 
 
