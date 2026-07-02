@@ -128,6 +128,8 @@ Deno.serve(async (req) => {
   try {
     const { publisherId, content, postId, mediaUrl } = await req.json();
 
+    console.log('linkedin-post invoked with:', { publisherId, postId, hasContent: !!content, hasMedia: !!mediaUrl });
+
     if (!publisherId || !content || !postId) {
       return new Response(
         JSON.stringify({ error: 'publisherId, content, and postId are required' }),
