@@ -231,7 +231,9 @@ function parsePostSections(content: string): { sections: string[]; appendix: str
   let inExcludedSection = false;
 
   for (const line of lines) {
-    const isPostMarker = /^(?:#*\s*)?Post\s*\d+/i.test(line.trim());
+    // Accept: "Post 1", "## Post 1", "**Post 1:**", "Post #1", "POST 1 —", with optional bold/markdown wrappers
+    const strippedLine = line.trim().replace(/^[#>*_`~\-\s]+/, '').replace(/[*_`~]+$/, '').trim();
+    const isPostMarker = /^Post\s*#?\s*\d+\b/i.test(strippedLine);
     
     if (isExcluded(line)) {
       inExcludedSection = true;
