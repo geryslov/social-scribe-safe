@@ -747,6 +747,150 @@ function LikesCompletedCard({ likes, value }: { likes: import('@/hooks/useEngage
   );
 }
 
+function TotalPostsCard({
+  total, newYesterday, profileCount, posts, yesterdayStart, yesterdayEnd,
+}: {
+  total: number;
+  newYesterday: number;
+  profileCount: number;
+  posts: DiscoveredPost[];
+  yesterdayStart: Date;
+  yesterdayEnd: Date;
+}) {
+  const [scope, setScope] = useState<'yesterday' | 'all'>('yesterday');
+  const yesterdayPosts = useMemo(
+    () => posts
+      .filter((p) => {
+        const t = new Date(p.created_at).getTime();
+        return t >= yesterdayStart.getTime() && t < yesterdayEnd.getTime();
+      })
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()),
+    [posts, yesterdayStart, yesterdayEnd],
+  );
+  const allPosts = useMemo(
+    () => [...posts].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()),
+    [posts],
+  );
+  const list = scope === 'yesterday' ? yesterdayPosts : allPosts;
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="text-left rounded-[14px] border border-[#E4DAFB] bg-[#FBFAFF] p-4 transition-colors hover:bg-[#F4F0FF] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED]/40"
+          aria-label={`View ${total} total posts, ${newYesterday} new yesterday`}
+        >
+          <div className="flex items-center justify-between">
+            <div className="h-7 w-7 rounded-md flex items-center justify-center bg-[#F4F0FF] text-[#7C3AED]">
+              <TrendingUp className="h-4 w-4" />
+            </div>
+            <span className="text-[10px] font-medium text-[#7C3AED] uppercase tracking-wider">View</span>
+          </div>
+          <div className="mt-2.5 text-[26px] leading-none font-semibold tracking-tight text-[#171923] tabular-nums">
+            {total}
+          </div>
+          <div className="mt-1 flex items-baseline justify-between gap-2">
+            <span className="text-xs font-medium text-[#171923]">Total posts</span>
+            <span className="text-[11px] text-[#667085]">
+              {newYesterday} new yesterday · {profileCount} profile{profileCount === 1 ? '' : 's'}
+            </span>
+          </div>
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-[420px] p-0">
+        <div className="px-4 py-3 border-b border-[#E5E7ED]">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <div className="text-sm font-semibold text-[#171923]">Discovered posts</div>
+              <div className="text-xs text-[#667085] mt-0.5">
+                {list.length === 0 ? 'Nothing to show here.' : `${list.length} post${list.length === 1 ? '' : 's'} · most recent first`}
+              </div>
+            </div>
+            <div className="inline-flex rounded-md border border-[#E5E7ED] p-0.5 text-[11px]">
+              <button
+                onClick={() => setScope('yesterday')}
+                className={cn(
+                  'px-2 h-6 rounded-sm font-medium transition-colors',
+                  scope === 'yesterday' ? 'bg-[#F4F0FF] text-[#7C3AED]' : 'text-[#667085] hover:text-[#171923]',
+                )}
+              >
+                Yesterday
+              </button>
+              <button
+                onClick={() => setScope('all')}
+                className={cn(
+                  'px-2 h-6 rounded-sm font-medium transition-colors',
+                  scope === 'all' ? 'bg-[#F4F0FF] text-[#7C3AED]' : 'text-[#667085] hover:text-[#171923]',
+                )}
+              >
+                All
+              </button>
+            </div>
+          </div>
+        </div>
+        <div className="max-h-[380px] overflow-y-auto">
+          {list.length === 0 ? (
+            <div className="p-6 text-center">
+              <Sparkles className="h-6 w-6 text-[#E5E7ED] mx-auto mb-2" />
+              <p className="text-xs text-[#667085]">
+                {scope === 'yesterday' ? 'No new posts from yesterday.' : 'No discovered posts yet.'}
+              </p>
+            </div>
+          ) : (
+            <ul className="divide-y divide-[#E5E7ED]">
+              {list.map((p) => (
+                <li key={p.id} className="px-4 py-3 hover:bg-[#F7F8FB]">
+                  <div className="flex items-start gap-2.5">
+                    <Avatar url={p.target_avatar_url} name={p.target_name || '?'} size={28} />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-[#171923] truncate">
+                          {p.target_name || 'Unknown profile'}
+                        </span>
+                        <span className="text-[11px] text-[#667085] tabular-nums flex-shrink-0">
+                          {relativeTime(p.created_at)}
+                        </span>
+                      </div>
+                      {p.content && (
+                        <p className="text-xs text-[#667085] mt-0.5 line-clamp-2 leading-snug">
+                          {p.content}
+                        </p>
+                      )}
+                      <div className="mt-1 flex items-center gap-2 text-[11px] text-[#667085]">
+                        <span className="tabular-nums">{p.likes_count} likes</span>
+                        <span>·</span>
+                        <span className="tabular-nums">{p.comments_count} comments</span>
+                        {p.is_liked && (
+                          <span className="inline-flex items-center gap-1 text-rose-600">
+                            · <Heart className="h-2.5 w-2.5 fill-rose-500" /> Liked
+                          </span>
+                        )}
+                        {p.linkedin_post_url && (
+                          <a
+                            href={p.linkedin_post_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="ml-auto inline-flex items-center gap-1 text-[#7C3AED] hover:underline"
+                          >
+                            Open <ExternalLink className="h-2.5 w-2.5" />
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+
+
 
 
 function ActivitySpark({ likes, comments }: { likes: number; comments: number }) {
