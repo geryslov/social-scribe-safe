@@ -128,6 +128,8 @@ Deno.serve(async (req) => {
   try {
     const { publisherId, content, postId, mediaUrl } = await req.json();
 
+    console.log('linkedin-post invoked with:', { publisherId, postId, hasContent: !!content, hasMedia: !!mediaUrl });
+
     if (!publisherId || !content || !postId) {
       return new Response(
         JSON.stringify({ error: 'publisherId, content, and postId are required' }),
@@ -250,7 +252,7 @@ Deno.serve(async (req) => {
 
     const publishedAt = new Date().toISOString();
 
-    const { error: updateError } = await supabase
+    const { data: updateData, error: updateError } = await supabase
       .from('posts')
       .update({
         status: 'done',
@@ -259,10 +261,30 @@ Deno.serve(async (req) => {
         linkedin_post_urn: linkedinPostUrn,
         publish_method: 'linkedin_api',
       })
-      .eq('id', postId);
+      .eq('id', postId)
+      .select('id');
 
     if (updateError) {
-      console.error('Failed to update post record:', updateError);
+      console.error('Failed to update post record:', updateError, 'postId=', postId);
+    } else if (!updateData || updateData.length === 0) {
+      console.warn('Update matched 0 rows for postId=', postId, '- attempting fallback match by publisher + content');
+      const { data: fallback, error: fallbackErr } = await supabase
+        .from('posts')
+        .update({
+          status: 'done',
+          published_at: publishedAt,
+          linkedin_post_url: linkedinPostUrl,
+          linkedin_post_urn: linkedinPostUrn,
+          publish_method: 'linkedin_api',
+        })
+        .eq('publisher_name', publisher.name)
+        .eq('content', content)
+        .is('linkedin_post_urn', null)
+        .select('id');
+      if (fallbackErr) console.error('Fallback update failed:', fallbackErr);
+      else console.log('Fallback update matched', fallback?.length ?? 0, 'rows');
+    } else {
+      console.log('Post row updated:', updateData[0].id);
     }
 
     // Send Slack notification
