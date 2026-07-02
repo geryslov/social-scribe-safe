@@ -318,7 +318,6 @@ function ActivityDashboard({
   const { data: likes = [] } = useAutoLikeHistory(publisher.id, 7);
   const { data: comments = [] } = usePublisherComments(publisher.id, 7);
   const { data: syncRuns = [] } = useEngagementSyncRuns(20);
-  const { lastRun } = useEngagementSync();
 
   const [queueTab, setQueueTab] = useState<'review' | 'all' | 'engaged' | 'dismissed'>('review');
   const [query, setQuery] = useState('');
@@ -793,6 +792,73 @@ function KpiCard({
   );
 }
 
+function DailySyncTimeline({ rows, latestRunStartedAt }: { rows: DailySyncRow[]; latestRunStartedAt: string | null }) {
+  const mostRecent = [...rows].reverse().find((row) => row.checked > 0 || row.newPosts > 0 || row.recordedRuns > 0);
+  return (
+    <section id="daily-syncs" className="rounded-[14px] border border-[#E5E7ED] bg-white overflow-hidden" aria-label="Daily syncs">
+      <div className="px-5 py-3 border-b border-[#E5E7ED] flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <h2 className="text-sm font-semibold text-[#171923]">Daily syncs</h2>
+          <p className="text-xs text-[#667085] mt-0.5">
+            {mostRecent
+              ? `${mostRecent.checked} profile${mostRecent.checked === 1 ? '' : 's'} checked ${dailyStatusLabel(mostRecent.date)} · ${mostRecent.newPosts} new post${mostRecent.newPosts === 1 ? '' : 's'}`
+              : 'No profile checks in the last 7 days'}
+          </p>
+        </div>
+        {latestRunStartedAt && (
+          <span className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full bg-[#F7F8FB] text-[11px] text-[#667085] border border-[#E5E7ED]">
+            <RefreshCw className="h-3 w-3" /> Stored run {relativeTime(latestRunStartedAt)}
+          </span>
+        )}
+      </div>
+      <div className="divide-y divide-[#E5E7ED]">
+        {[...rows].reverse().map((row) => {
+          const percent = row.total > 0 ? Math.min(100, (row.checked / row.total) * 100) : 0;
+          const statusText = row.checked > 0
+            ? `${row.checked} of ${row.total} checked`
+            : row.recordedRuns > 0
+              ? 'Run recorded'
+              : 'No checks';
+          return (
+            <div key={row.key} className="px-5 py-3 grid grid-cols-[120px_minmax(0,1fr)_120px] gap-4 items-center">
+              <div className="min-w-0">
+                <div className="text-sm font-medium text-[#171923]">{row.label}</div>
+                <div className="text-[11px] text-[#667085] tabular-nums">{row.date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</div>
+              </div>
+              <div className="min-w-0 space-y-2">
+                <div className="flex items-center gap-3 text-xs text-[#3F4657] flex-wrap">
+                  <span className="tabular-nums"><b className="text-[#171923]">{row.newPosts}</b> new post{row.newPosts === 1 ? '' : 's'}</span>
+                  <span className="tabular-nums text-[#667085]">{statusText}</span>
+                  {row.failed > 0 && <span className="text-[#B42318] tabular-nums">{row.failed} failed</span>}
+                  {row.skipped > 0 && <span className="text-[#667085] tabular-nums">{row.skipped} skipped</span>}
+                </div>
+                <div className="h-1.5 rounded-full bg-[#EEF0F5] overflow-hidden">
+                  <div className="h-full rounded-full bg-[#7C3AED] transition-all" style={{ width: `${percent}%` }} />
+                </div>
+                {row.profilesWithNew.length > 0 && (
+                  <div className="text-[11px] text-[#667085] truncate">
+                    {row.profilesWithNew.slice(0, 4).join(' · ')}{row.profilesWithNew.length > 4 ? ` +${row.profilesWithNew.length - 4} more` : ''}
+                  </div>
+                )}
+              </div>
+              <div className="text-right">
+                <span className={cn(
+                  'inline-flex items-center h-6 px-2 rounded-full border text-[11px] font-medium',
+                  row.checked > 0
+                    ? 'bg-[#ECFDF3] text-[#027A48] border-[#ABEFC6]'
+                    : 'bg-[#F7F8FB] text-[#667085] border-[#E5E7ED]',
+                )}>
+                  {row.checked > 0 ? 'Synced' : 'Quiet'}
+                </span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
 function LikesCompletedCard({ likes }: { likes: import('@/hooks/useEngagementActivity').AutoLikeRun[] }) {
   const todayStart = useMemo(() => {
     const d = new Date();
@@ -1031,14 +1097,16 @@ function TotalPostsCard({
 
 
 
-function ActivitySpark({ series }: { series: { label: string; date: Date; likes: number; comments: number }[] }) {
-  const max = Math.max(1, ...series.map((d) => d.likes + d.comments));
+function ActivitySpark({ series }: { series: { label: string; date: Date; likes: number; comments: number; posts: number; checked: number }[] }) {
+  const max = Math.max(1, ...series.map((d) => d.likes + d.comments + d.posts));
   const dateFmt = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' });
   return (
     <div className="px-5 py-6">
       <div className="flex items-end gap-3 h-40">
         {series.map((d, i) => {
           const total = d.likes + d.comments;
+          const fullTotal = d.likes + d.comments + d.posts;
+          const postH = (d.posts / max) * 100;
           const likeH = (d.likes / max) * 100;
           const commentH = (d.comments / max) * 100;
           return (
@@ -1047,17 +1115,20 @@ function ActivitySpark({ series }: { series: { label: string; date: Date; likes:
                 <div
                   className="w-full opacity-0 group-hover:opacity-100 transition-opacity absolute -top-1 left-1/2 -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-md bg-[#171923] text-white text-[10px] px-2 py-1 pointer-events-none z-10"
                 >
-                  {dateFmt.format(d.date)} · {d.likes} like{d.likes === 1 ? '' : 's'} · {d.comments} comment{d.comments === 1 ? '' : 's'}
+                  {dateFmt.format(d.date)} · {d.posts} new · {d.likes} like{d.likes === 1 ? '' : 's'} · {d.comments} comment{d.comments === 1 ? '' : 's'} · {d.checked} checked
                 </div>
-                {total === 0 ? (
+                {fullTotal === 0 ? (
                   <div className="w-full rounded-md bg-[#F4F0FF]" style={{ height: 4 }} />
                 ) : (
-                  <div className="w-full flex flex-col overflow-hidden rounded-md" style={{ height: `${likeH + commentH}%`, minHeight: 6 }}>
+                  <div className="w-full flex flex-col overflow-hidden rounded-md" style={{ height: `${postH + likeH + commentH}%`, minHeight: 6 }}>
                     {d.comments > 0 && (
                       <div className="w-full bg-[#06B6D4]" style={{ flex: d.comments }} />
                     )}
                     {d.likes > 0 && (
                       <div className="w-full bg-gradient-to-t from-[#7C3AED] to-[#A78BFA]" style={{ flex: d.likes }} />
+                    )}
+                    {d.posts > 0 && (
+                      <div className="w-full bg-[#10B981]" style={{ flex: d.posts }} />
                     )}
                   </div>
                 )}
@@ -1348,6 +1419,43 @@ function relativeTime(iso: string) {
   const days = Math.round(hrs / 24);
   if (days < 7) return `${days}d ago`;
   return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+function startOfLocalDay(date: Date) {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+function localDayKey(date: Date) {
+  const d = startOfLocalDay(date);
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${month}-${day}`;
+}
+
+function shortWeekday(date: Date) {
+  return date.toLocaleDateString(undefined, { weekday: 'short' });
+}
+
+function dailyLabel(date: Date) {
+  const key = localDayKey(date);
+  const today = localDayKey(new Date());
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  if (key === today) return 'Today';
+  if (key === localDayKey(yesterday)) return 'Yesterday';
+  return date.toLocaleDateString(undefined, { weekday: 'short' });
+}
+
+function dailyStatusLabel(date: Date) {
+  const key = localDayKey(date);
+  const today = localDayKey(new Date());
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  if (key === today) return 'today';
+  if (key === localDayKey(yesterday)) return 'yesterday';
+  return `on ${date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`;
 }
 
 /* ============================================================================
