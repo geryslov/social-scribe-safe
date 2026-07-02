@@ -495,7 +495,7 @@ function ActivityDashboard({
           yesterdayStart={yesterdayStart}
           yesterdayEnd={yesterdayEnd}
         />
-        <LikesCompletedCard likes={likes} value={likedToday} />
+        <LikesCompletedCard likes={likes} />
         <KpiCard label="Comments completed" value={commentedToday} sub="today" icon={<MessageCircle className="h-4 w-4" />} />
         <KpiCard
           label="Failures"
