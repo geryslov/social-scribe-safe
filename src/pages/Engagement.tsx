@@ -292,6 +292,20 @@ type ReviewRow = {
   posts: DiscoveredPost[];
 };
 
+type DailySyncRow = {
+  key: string;
+  label: string;
+  date: Date;
+  checked: number;
+  total: number;
+  newPosts: number;
+  profilesWithNew: string[];
+  recordedRuns: number;
+  runNewPosts: number;
+  failed: number;
+  skipped: number;
+};
+
 function ActivityDashboard({
   publisher, onOpenReview, onOpenComment,
 }: {
@@ -303,6 +317,7 @@ function ActivityDashboard({
   const { data: discovered = [], isLoading: discoveredLoading } = useDiscoveredPosts(publisher.id, 7);
   const { data: likes = [] } = useAutoLikeHistory(publisher.id, 7);
   const { data: comments = [] } = usePublisherComments(publisher.id, 7);
+  const { data: syncRuns = [] } = useEngagementSyncRuns(20);
   const { lastRun } = useEngagementSync();
 
   const [queueTab, setQueueTab] = useState<'review' | 'all' | 'engaged' | 'dismissed'>('review');
@@ -320,17 +335,76 @@ function ActivityDashboard({
   const commentedToday = comments.filter((c) => c.posted_at && new Date(c.posted_at).getTime() >= todayStart).length;
   const totalPosts = discovered.length;
 
+  const activeTargets = useMemo(
+    () => targets.filter((t) => t.is_active !== false),
+    [targets],
+  );
+
+  const dailySyncRows: DailySyncRow[] = useMemo(() => {
+    const base = startOfLocalDay(new Date());
+    const rows = Array.from({ length: 7 }, (_, index) => {
+      const date = new Date(base);
+      date.setDate(date.getDate() - (6 - index));
+      return {
+        key: localDayKey(date),
+        label: dailyLabel(date),
+        date,
+        checked: 0,
+        total: activeTargets.length,
+        newPosts: 0,
+        profilesWithNew: new Set<string>(),
+        recordedRuns: 0,
+        runNewPosts: 0,
+        failed: 0,
+        skipped: 0,
+      };
+    });
+    const byKey = new Map(rows.map((row) => [row.key, row]));
+
+    for (const target of activeTargets) {
+      if (!target.last_fetched_at) continue;
+      const key = localDayKey(new Date(target.last_fetched_at));
+      const row = byKey.get(key);
+      if (row) row.checked += 1;
+    }
+
+    for (const post of discovered) {
+      const key = localDayKey(new Date(post.created_at));
+      const row = byKey.get(key);
+      if (!row) continue;
+      row.newPosts += 1;
+      if (post.target_name) row.profilesWithNew.add(post.target_name);
+    }
+
+    for (const run of syncRuns) {
+      const key = localDayKey(new Date(run.started_at));
+      const row = byKey.get(key);
+      if (!row) continue;
+      row.recordedRuns += 1;
+      row.runNewPosts += run.new_posts || 0;
+      row.failed += run.failed || 0;
+      row.skipped += run.skipped || 0;
+    }
+
+    return rows.map((row) => ({
+      ...row,
+      profilesWithNew: [...row.profilesWithNew],
+    }));
+  }, [activeTargets, discovered, syncRuns]);
+
   // Build 7-day series for the activity chart
   const activitySeries = useMemo(() => {
-    const days: { label: string; date: Date; likes: number; comments: number }[] = [];
+    const days: { label: string; date: Date; likes: number; comments: number; posts: number; checked: number }[] = dailySyncRows.map((row) => ({
+      label: shortWeekday(row.date),
+      date: row.date,
+      likes: 0,
+      comments: 0,
+      posts: row.newPosts,
+      checked: row.checked,
+    }));
     const base = new Date();
     base.setHours(0, 0, 0, 0);
-    const dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date(base);
-      d.setDate(d.getDate() - i);
-      days.push({ label: dayLabels[d.getDay()], date: d, likes: 0, comments: 0 });
-    }
+    if (days.length === 0) return [];
     const startMs = days[0].date.getTime();
     for (const l of likes) {
       if (l.status !== 'liked') continue;
@@ -347,9 +421,11 @@ function ActivityDashboard({
       if (days[idx]) days[idx].comments++;
     }
     return days;
-  }, [likes, comments]);
+  }, [dailySyncRows, likes, comments]);
   const totalLikes7d = activitySeries.reduce((a, d) => a + d.likes, 0);
   const totalComments7d = activitySeries.reduce((a, d) => a + d.comments, 0);
+  const totalPosts7d = activitySeries.reduce((a, d) => a + d.posts, 0);
+  const totalChecks7d = activitySeries.reduce((a, d) => a + d.checked, 0);
 
   const yesterdayStart = useMemo(() => {
     const d = new Date();
@@ -403,8 +479,13 @@ function ActivityDashboard({
   }, [discovered]);
 
   const profilesWithNew = rows.length;
-  const profilesChecked = lastRun?.synced ?? 0;
-  const totalProfiles = lastRun?.total_targets ?? targets.length;
+  const latestDailySync = useMemo(
+    () => [...dailySyncRows].reverse().find((row) => row.checked > 0 || row.recordedRuns > 0) ?? null,
+    [dailySyncRows],
+  );
+  const profilesChecked = latestDailySync?.checked ?? 0;
+  const totalProfiles = activeTargets.length || targets.length;
+  const latestSyncLabel = latestDailySync ? dailyStatusLabel(latestDailySync.date) : 'not synced yet';
   const nextSync = getNextScheduledSync();
   const minsUntil = Math.max(0, Math.floor((nextSync.getTime() - Date.now()) / 60_000));
   const nextLabel = minsUntil > 60 ? `${Math.floor(minsUntil / 60)}h ${minsUntil % 60}m` : `${minsUntil}m`;
@@ -426,14 +507,15 @@ function ActivityDashboard({
     return out;
   }, [rows, query, queueTab, sort]);
 
-  const hasEngagement = totalLikes7d + totalComments7d > 0;
+  const hasCompletedEngagement = totalLikes7d + totalComments7d > 0;
+  const hasChartActivity = totalLikes7d + totalComments7d + totalPosts7d > 0;
 
   return (
     <div className="space-y-6">
       {/* System status bar */}
       <div className="rounded-[14px] border border-[#E5E7ED] bg-white px-4 py-3 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
         <StatusChip icon={<CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />}
-          label={<><b className="text-[#171923] font-semibold">{profilesChecked}</b> of <b className="text-[#171923] font-semibold">{totalProfiles}</b> profiles checked</>} />
+          label={<><b className="text-[#171923] font-semibold">{profilesChecked}</b> of <b className="text-[#171923] font-semibold">{totalProfiles}</b> profiles checked <span className="text-[#667085]">{latestSyncLabel}</span></>} />
         <div className="h-4 w-px bg-[#E5E7ED]" />
         <StatusChip icon={<Sparkles className="h-3.5 w-3.5 text-[#7C3AED]" />}
           label={<><b className="text-[#171923] font-semibold">{totalPosts}</b> total posts · <b className="text-[#171923] font-semibold">{newPostsYesterday}</b> new yesterday</>} />
@@ -463,7 +545,7 @@ function ActivityDashboard({
             <div className="flex-1 min-w-0">
               <div className="text-sm text-[#171923] leading-relaxed">
                 <b>{totalPosts} total posts</b> across <b>{profilesWithNew} profiles</b> · <b>{newPostsYesterday}</b> new yesterday.
-                {!hasEngagement && <> No engagement actions have been completed today.</>}
+                {!hasCompletedEngagement && <> No engagement actions have been completed today.</>}
               </div>
               <div className="mt-3 flex flex-wrap items-center gap-2">
                 <button
@@ -475,6 +557,7 @@ function ActivityDashboard({
                 </button>
                 <button
                   type="button"
+                  onClick={() => document.getElementById('daily-syncs')?.scrollIntoView({ behavior: 'smooth' })}
                   className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md border border-[#E5E7ED] bg-white hover:bg-[#F7F8FB] text-xs font-medium text-[#171923] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED]/40"
                 >
                   View details
@@ -506,6 +589,8 @@ function ActivityDashboard({
         />
       </div>
 
+      <DailySyncTimeline rows={dailySyncRows} latestRunStartedAt={syncRuns[0]?.started_at ?? null} />
+
       {/* Activity chart / empty state */}
       <section className="rounded-[14px] border border-[#E5E7ED] bg-white overflow-hidden" aria-label="Engagement activity">
         <div className="px-5 py-3 border-b border-[#E5E7ED] flex items-center justify-between gap-3 flex-wrap">
@@ -514,6 +599,11 @@ function ActivityDashboard({
             <p className="text-xs text-[#667085] mt-0.5">Last 7 days</p>
           </div>
           <div className="flex items-center gap-4 text-xs">
+            <div className="inline-flex items-center gap-1.5 text-[#3F4657]">
+              <span className="h-2 w-2 rounded-full bg-[#10B981]" />
+              <span>New posts</span>
+              <span className="tabular-nums font-semibold text-[#171923]">{totalPosts7d}</span>
+            </div>
             <div className="inline-flex items-center gap-1.5 text-[#3F4657]">
               <span className="h-2 w-2 rounded-full bg-[#7C3AED]" />
               <span>Likes</span>
@@ -524,9 +614,13 @@ function ActivityDashboard({
               <span>Comments</span>
               <span className="tabular-nums font-semibold text-[#171923]">{totalComments7d}</span>
             </div>
+            <div className="hidden sm:inline-flex items-center gap-1.5 text-[#667085]">
+              <span>Checks</span>
+              <span className="tabular-nums font-semibold text-[#171923]">{totalChecks7d}</span>
+            </div>
           </div>
         </div>
-        {hasEngagement ? (
+        {hasChartActivity ? (
           <ActivitySpark series={activitySeries} />
         ) : (
           <div className="p-8 flex flex-col items-center text-center">
