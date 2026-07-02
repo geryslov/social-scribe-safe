@@ -1104,7 +1104,6 @@ function ActivitySpark({ series }: { series: { label: string; date: Date; likes:
     <div className="px-5 py-6">
       <div className="flex items-end gap-3 h-40">
         {series.map((d, i) => {
-          const total = d.likes + d.comments;
           const fullTotal = d.likes + d.comments + d.posts;
           const postH = (d.posts / max) * 100;
           const likeH = (d.likes / max) * 100;
