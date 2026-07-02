@@ -280,6 +280,76 @@ function PublisherPill({
 }
 
 /* ============================================================================
+ * Bulk automation toggles (per-publisher)
+ * ==========================================================================*/
+function BulkAutomationToggles({ publisher }: { publisher: Publisher }) {
+  const { targets, bulkUpdatePublisherTargets } = useEngagementTargets(publisher.id);
+
+  const total = targets.length;
+  const syncOn = targets.filter((t) => t.is_active !== false).length;
+  const likeOn = targets.filter((t) => t.auto_like).length;
+  const syncAllOn = total > 0 && syncOn === total;
+  const syncMixed = syncOn > 0 && syncOn < total;
+  const likeAllOn = total > 0 && likeOn === total;
+  const likeMixed = likeOn > 0 && likeOn < total;
+
+  const onSync = (checked: boolean) => {
+    bulkUpdatePublisherTargets.mutate({ publisher_id: publisher.id, updates: { is_active: checked } });
+  };
+  const onLike = (checked: boolean) => {
+    bulkUpdatePublisherTargets.mutate({ publisher_id: publisher.id, updates: { auto_like: checked } });
+  };
+
+  return (
+    <div className="rounded-[14px] border border-[#E5E7ED] bg-white px-4 py-3 flex items-center gap-6 flex-wrap">
+      <div className="text-xs text-[#667085]">
+        Automation for <b className="text-[#171923] font-semibold">{publisher.name}</b>
+        <span className="ml-1">· {total} profile{total === 1 ? '' : 's'}</span>
+      </div>
+      <div className="h-4 w-px bg-[#E5E7ED]" />
+      <BulkToggleRow
+        label="Auto-sync all"
+        hint={syncMixed ? `${syncOn} of ${total} active` : syncAllOn ? 'Fetch new posts daily for every profile' : 'Paused — daily sync skips these profiles'}
+        checked={syncAllOn}
+        mixed={syncMixed}
+        disabled={total === 0 || bulkUpdatePublisherTargets.isPending}
+        onChange={onSync}
+      />
+      <BulkToggleRow
+        label="Auto-like all"
+        hint={likeMixed ? `${likeOn} of ${total} enabled` : likeAllOn ? 'Automatically like new posts from every profile' : 'Off — no posts will be auto-liked'}
+        checked={likeAllOn}
+        mixed={likeMixed}
+        disabled={total === 0 || bulkUpdatePublisherTargets.isPending}
+        onChange={onLike}
+      />
+    </div>
+  );
+}
+
+function BulkToggleRow({
+  label, hint, checked, mixed, disabled, onChange,
+}: { label: string; hint: string; checked: boolean; mixed: boolean; disabled: boolean; onChange: (c: boolean) => void }) {
+  return (
+    <label className={cn('flex items-center gap-3 cursor-pointer select-none', disabled && 'cursor-not-allowed opacity-60')}>
+      <Switch
+        checked={checked}
+        onCheckedChange={onChange}
+        disabled={disabled}
+        className={cn(mixed && 'data-[state=unchecked]:bg-[#F4F0FF] ring-2 ring-[#7C3AED]/30')}
+      />
+      <div className="min-w-0">
+        <div className="text-sm font-medium text-[#171923] flex items-center gap-1.5">
+          {label}
+          {mixed && <span className="text-[10px] uppercase tracking-wider text-[#7C3AED] font-semibold">Mixed</span>}
+        </div>
+        <div className="text-[11px] text-[#667085]">{hint}</div>
+      </div>
+    </label>
+  );
+}
+
+/* ============================================================================
  * Activity Dashboard
  * ==========================================================================*/
 type ReviewRow = {
