@@ -28,6 +28,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
 import {
   FileText, BarChart3, FolderKanban, Sparkles, MessageSquareHeart,
   ShieldCheck, HelpCircle, PanelLeftClose, PanelLeftOpen,
