@@ -301,8 +301,8 @@ function ActivityDashboard({
 }) {
   const { targets } = useEngagementTargets(publisher.id);
   const { data: discovered = [], isLoading: discoveredLoading } = useDiscoveredPosts(publisher.id, 7);
-  const { data: likes = [] } = useAutoLikeHistory(publisher.id, 1);
-  const { data: comments = [] } = usePublisherComments(publisher.id, 1);
+  const { data: likes = [] } = useAutoLikeHistory(publisher.id, 7);
+  const { data: comments = [] } = usePublisherComments(publisher.id, 7);
   const { lastRun } = useEngagementSync();
 
   const [queueTab, setQueueTab] = useState<'review' | 'all' | 'engaged' | 'dismissed'>('review');
@@ -310,10 +310,47 @@ function ActivityDashboard({
   const [sort, setSort] = useState<'relevance' | 'new_posts' | 'recent'>('relevance');
   const [density, setDensity] = useState<'comfortable' | 'compact'>('comfortable');
 
-  const likedToday = likes.filter((l) => l.status === 'liked').length;
-  const failedToday = likes.filter((l) => l.status === 'failed').length;
-  const commentedToday = comments.length;
+  const todayStart = useMemo(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d.getTime();
+  }, []);
+  const likedToday = likes.filter((l) => l.status === 'liked' && new Date(l.run_at).getTime() >= todayStart).length;
+  const failedToday = likes.filter((l) => l.status === 'failed' && new Date(l.run_at).getTime() >= todayStart).length;
+  const commentedToday = comments.filter((c) => c.posted_at && new Date(c.posted_at).getTime() >= todayStart).length;
   const totalPosts = discovered.length;
+
+  // Build 7-day series for the activity chart
+  const activitySeries = useMemo(() => {
+    const days: { label: string; date: Date; likes: number; comments: number }[] = [];
+    const base = new Date();
+    base.setHours(0, 0, 0, 0);
+    const dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(base);
+      d.setDate(d.getDate() - i);
+      days.push({ label: dayLabels[d.getDay()], date: d, likes: 0, comments: 0 });
+    }
+    const startMs = days[0].date.getTime();
+    for (const l of likes) {
+      if (l.status !== 'liked') continue;
+      const t = new Date(l.run_at).getTime();
+      if (t < startMs) continue;
+      const idx = Math.floor((t - startMs) / (24 * 3600 * 1000));
+      if (days[idx]) days[idx].likes++;
+    }
+    for (const c of comments) {
+      if (!c.posted_at) continue;
+      const t = new Date(c.posted_at).getTime();
+      if (t < startMs) continue;
+      const idx = Math.floor((t - startMs) / (24 * 3600 * 1000));
+      if (days[idx]) days[idx].comments++;
+    }
+    return days;
+  }, [likes, comments]);
+  const totalLikes7d = activitySeries.reduce((a, d) => a + d.likes, 0);
+  const totalComments7d = activitySeries.reduce((a, d) => a + d.comments, 0);
+
   const yesterdayStart = useMemo(() => {
     const d = new Date();
     d.setHours(0, 0, 0, 0);
