@@ -446,10 +446,11 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate, 
                 type="file"
                 id="file-upload"
                 className="hidden"
-                accept=".txt,.docx,.csv"
+                accept=".txt,.md,.csv,.docx,.pdf"
                 onChange={handleFileInput}
+                disabled={isLoading}
               />
-              <label htmlFor="file-upload" className="cursor-pointer">
+              <label htmlFor="file-upload" className={cn("cursor-pointer", isLoading && "pointer-events-none opacity-60")}>
                 <div className="flex flex-col items-center gap-3">
                   <div className={cn(
                     "w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-300",
@@ -457,14 +458,14 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate, 
                       ? "bg-primary text-primary-foreground scale-110"
                       : "bg-primary/10 text-primary"
                   )}>
-                    <Upload className="h-7 w-7" />
+                    {isLoading ? <Loader2 className="h-7 w-7 animate-spin" /> : <Upload className="h-7 w-7" />}
                   </div>
                   <div>
                     <p className="font-medium text-foreground">
-                      Drop your file here or click to browse
+                      {isLoading ? 'Uploading…' : 'Drop your file here or click to browse'}
                     </p>
                     <p className="text-sm text-muted-foreground mt-1">
-                      Supports .txt, .docx, and .csv files
+                      Supports .txt, .md, .csv, .docx, and .pdf (max 20 MB)
                     </p>
                   </div>
                 </div>
