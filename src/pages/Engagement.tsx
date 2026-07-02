@@ -744,6 +744,9 @@ function LikesCompletedCard({ likes, value }: { likes: import('@/hooks/useEngage
       </PopoverContent>
     </Popover>
   );
+}
+
+
 
 function ActivitySpark({ likes, comments }: { likes: number; comments: number }) {
   // Minimal 7-bar mock derived from today's counts
