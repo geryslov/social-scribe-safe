@@ -124,10 +124,11 @@ export function DocumentSplitModal({ open, onOpenChange, document, sections, onS
   const handleAISplit = async () => {
     if (!document) return;
 
-    // Use sections content for AI splitting if available
-    const contentToSplit = sections.length > 0
-      ? sections.map(s => s.content).join('\n\n---\n\n')
-      : document.content;
+    // Prefer the original document content so the AI can re-split even if
+    // sections were parsed as a single blob on creation.
+    const contentToSplit = document.content && document.content.trim().length > 0
+      ? document.content
+      : sections.map(s => s.content).join('\n\n---\n\n');
 
     setIsSplitting(true);
     try {
