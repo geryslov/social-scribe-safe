@@ -73,13 +73,18 @@ Multi-tenant LinkedIn thought leadership platform. Agency operators manage publi
 - `engagement_comments` — Comments drafted/posted on target posts. Fields: comment_text, status (draft/posted/failed), linkedin_comment_urn, posted_at, error_message, reaction_count, reply_count, reactions_breakdown JSONB, engagement_fetched_at
 
 ### Comment Classification Agent
-The `generate-comment` function runs a four-phase process in a single Claude call (single round-trip; phases are prompt-side, not separate API calls):
-1. **Phase 1 — Classify** (silent): Identifies post_type + subject. 11 known types + dynamic creation for unknown types.
-2. **Phase 2 — Notable angle** (silent): Names the ONE specific thing worth reacting to on this particular post, then derives `comment_strategy` from it. Prevents the bucket-driven "every funding comment is about size/stage" flattening.
+Two Edge Functions, one shared classification schema:
+
+- **`classify-post`** — Runs automatically when `CommentComposer` mounts (unless a cached classification exists on `engagement_posts.post_metadata.classification`). Small, fast Claude call (max_tokens 200) that returns `{ post_type, subject, notable_angle }` and writes it back to `post_metadata.classification` so every subsequent composer open reads from DB. Uses the same 11 known post types as `generate-comment`.
+- **`generate-comment`** — Runs on "AI Suggest" click. Accepts optional `classification` in the body. When provided, skips phases 1-2 and jumps straight to strategy → draft → critique. When absent, runs the full 4-phase pipeline (backwards compatible).
+
+Phases inside `generate-comment` (single Claude call; phases are prompt-side, not separate API calls):
+1. **Phase 1 — Classify** (silent, skipped if classification supplied): Identifies post_type + subject. 11 known types + dynamic creation for unknown types.
+2. **Phase 2 — Notable angle** (silent, skipped if classification supplied): Names the ONE specific thing worth reacting to on this particular post, then derives `comment_strategy` from it. Prevents the bucket-driven "every funding comment is about size/stage" flattening.
 3. **Phase 3 — Draft**: Uses strategy + publisher voice profile (including any "Positions & Beliefs" section) to write a first draft.
 4. **Phase 4 — Critique & revise**: Silently checks the draft against a 6-item checklist (restates the post? assistant-toned? formulaic first name? bloated? hedged praise? ignored a relevant position?) and revises once. Only the revised version is returned.
 
-The classification strip in `CommentComposer` surfaces `post_type · notable_angle` (falls back to `comment_strategy` if angle is missing).
+The classification strip in `CommentComposer` surfaces `post_type · notable_angle` (falls back to `comment_strategy` if angle is missing) and shows "reading post…" during the auto-classify.
 
 Known types: announcement_funding, announcement_launch, announcement_hire, announcement_milestone, opinion_hot_take, opinion_lesson, data_insight, story_personal, educational, question, promotion.
 

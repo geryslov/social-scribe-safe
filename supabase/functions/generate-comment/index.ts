@@ -127,7 +127,13 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { post_content, author_name, publisher_name, voice_profile } = await req.json();
+    const {
+      post_content,
+      author_name,
+      publisher_name,
+      voice_profile,
+      classification: preClassification,
+    } = await req.json();
 
     if (!post_content) {
       return new Response(
@@ -152,7 +158,20 @@ Deno.serve(async (req) => {
       userMessage += `You are ${publisher_name}.\n\n`;
     }
 
-    userMessage += `Post by ${author_name || 'someone'}:\n\n"""\n${post_content.slice(0, 2500)}\n"""\n\nClassify it and write the comment. Return the JSON object only.`;
+    userMessage += `Post by ${author_name || 'someone'}:\n\n"""\n${post_content.slice(0, 2500)}\n"""\n\n`;
+
+    const hasPreClassification =
+      preClassification && typeof preClassification === 'object' && preClassification.post_type;
+
+    if (hasPreClassification) {
+      userMessage += `This post has already been classified. Use these labels as-is; do not re-classify. Skip straight to strategy, draft, and critique.\n\n`;
+      userMessage += `post_type: ${preClassification.post_type}\n`;
+      if (preClassification.subject) userMessage += `subject: ${preClassification.subject}\n`;
+      if (preClassification.notable_angle) userMessage += `notable_angle: ${preClassification.notable_angle}\n`;
+      userMessage += `\nReturn the JSON object only, echoing these labels back in the response.`;
+    } else {
+      userMessage += `Classify it and write the comment. Return the JSON object only.`;
+    }
 
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',

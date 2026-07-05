@@ -42,8 +42,19 @@ function formatPostType(type?: string): string {
 export function CommentComposer({ post, publisher, onClose }: CommentComposerProps) {
   const [commentText, setCommentText] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isClassifying, setIsClassifying] = useState(false);
   const [justPosted, setJustPosted] = useState(false);
-  const [classification, setClassification] = useState<Classification | null>(null);
+  const [classification, setClassification] = useState<Classification | null>(() => {
+    const cached = (post.post_metadata as any)?.classification;
+    if (cached && typeof cached === 'object' && cached.post_type) {
+      return {
+        post_type: cached.post_type,
+        subject: cached.subject,
+        notable_angle: cached.notable_angle,
+      };
+    }
+    return null;
+  });
   const { saveDraft, postComment } = usePostComment();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { can } = useWorkspacePermissions();
@@ -62,6 +73,42 @@ export function CommentComposer({ post, publisher, onClose }: CommentComposerPro
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
 
+  // Auto-classify on mount if we don't already have a cached classification.
+  // First open per post writes to engagement_posts.post_metadata.classification;
+  // every subsequent open (any user in the workspace) reads it from the row.
+  useEffect(() => {
+    if (classification) return;
+    if (!post.content) return;
+    let cancelled = false;
+    setIsClassifying(true);
+    (async () => {
+      try {
+        const authorName = (post.post_metadata as any)?.author_name || undefined;
+        const { data, error } = await supabase.functions.invoke('classify-post', {
+          body: {
+            post_content: post.content,
+            author_name: authorName,
+            engagement_post_id: post.id,
+            workspace_id: post.workspace_id,
+          },
+        });
+        if (cancelled) return;
+        if (error) throw error;
+        if (data?.success && data.classification?.post_type) {
+          setClassification(data.classification as Classification);
+        }
+      } catch (err) {
+        // Silent fail — user can still write manually or trigger AI Suggest,
+        // which falls back to full classify + generate in one call.
+        console.error('classify-post failed:', err);
+      } finally {
+        if (!cancelled) setIsClassifying(false);
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [post.id]);
+
   const handleGenerate = async () => {
     if (!can.generateAi) {
       toast.error('Your role does not allow AI generation in this workspace');
@@ -73,7 +120,6 @@ export function CommentComposer({ post, publisher, onClose }: CommentComposerPro
     }
 
     setIsGenerating(true);
-    setClassification(null);
     try {
       const authorName = (post.post_metadata as any)?.author_name || 'this person';
       const { data, error } = await supabase.functions.invoke('generate-comment', {
@@ -82,6 +128,7 @@ export function CommentComposer({ post, publisher, onClose }: CommentComposerPro
           author_name: authorName,
           publisher_name: publisher.name,
           voice_profile: (publisher as any).voice_profile || '',
+          classification: classification ?? undefined,
         },
       });
       if (error) throw error;
@@ -162,10 +209,10 @@ export function CommentComposer({ post, publisher, onClose }: CommentComposerPro
         <div className="flex items-center gap-2 min-h-[18px]">
           <Sparkles className={cn(
             'h-3 w-3 flex-shrink-0',
-            classification ? 'text-amber-500' : 'text-muted-foreground/40',
+            classification ? 'text-amber-500' : isClassifying ? 'text-amber-400 animate-pulse' : 'text-muted-foreground/40',
           )} />
           <p className="text-[10.5px] font-mono uppercase tracking-[0.14em] text-muted-foreground/80 truncate">
-            {isGenerating ? (
+            {isClassifying && !classification ? (
               <span className="text-amber-600">reading post…</span>
             ) : classification ? (
               <>
@@ -186,7 +233,7 @@ export function CommentComposer({ post, publisher, onClose }: CommentComposerPro
                 )}
               </>
             ) : (
-              <span className="text-muted-foreground/50">classifier will read this post when you suggest</span>
+              <span className="text-muted-foreground/50">post has no text to classify</span>
             )}
           </p>
         </div>
