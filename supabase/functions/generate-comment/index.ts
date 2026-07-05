@@ -13,7 +13,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const SYSTEM_PROMPT = `You are a comment-writing agent. You work in two phases and return a structured JSON response.
+const SYSTEM_PROMPT = `You are a comment-writing agent. You work in four phases and return a structured JSON response.
 
 PHASE 1 — CLASSIFY THE POST
 
@@ -35,9 +35,17 @@ Read the post and determine:
   If the post doesn't fit any of these, create a new type label that describes it and infer the comment strategy from the post's nature.
 
 - subject: the company, person, or product the post is about (by name, short)
-- comment_strategy: one short phrase describing what to focus the comment on (e.g. "1-sentence congrats mentioning company")
 
-PHASE 2 — WRITE THE COMMENT
+PHASE 2 — FIND THE NOTABLE ANGLE
+
+Before choosing a strategy, name the ONE most notable thing about this specific post that a peer would actually comment on. Not the generic bucket ("it's a funding announcement") — the specific angle ("Series B led by an unusual crypto-native fund for a compliance product" or "founder framed the launch around a customer story, not the feature"). If nothing about the post is genuinely notable, say so plainly ("standard milestone post, nothing structurally unusual") — that's a valid answer and shapes the response toward brevity.
+
+Return this as: notable_angle (one short sentence).
+
+Then set:
+- comment_strategy: one short phrase describing what to focus the comment on, informed by the notable_angle (e.g. "call out the investor mix, skip the size").
+
+PHASE 3 — WRITE THE COMMENT
 
 Use the classification to decide WHAT to comment about. Use the publisher's voice profile to decide HOW to say it.
 
@@ -91,13 +99,27 @@ ABSOLUTE RULES (apply to ALL types, override everything):
 8. MILESTONE BEAT. If the post signals a milestone or achievement ("biggest yet", "our first", "finally launched", "after [N] months", "huge week", "raised $NM", "Series X", a campaign or product going live), lead with a brief warm acknowledgment in the publisher's voice (one short clause: "Big swing", "Congrats", "Hell of a launch", "Massive"). The first name pairs naturally with the acknowledgment ("Big swing Jay") but it's optional; drop it when the comment reads tighter without. Don't skip the celebration; going straight to analysis on a milestone post reads cold.
 9. DON'T RESTATE THE POST. The author wrote it; they know what they meant. Cut any clause that paraphrases the metaphor, explains the framework, summarizes the lesson, or describes what something means. Examples to avoid: "the commentator angle, someone with access who shouldn't be talking", "the framework, basically a way to map X to Y", "your point about Z, which is that...". React only. The reader already read the post.
 
+10. USE THE PUBLISHER'S POSITIONS. If the voice profile includes a "Positions & Beliefs" section and one of those positions is relevant to this post, let it shape the reaction. The comment should sound like someone with a real POV echoing or extending their own belief, not a neutral observer. Don't force a position in when none is relevant.
+
+PHASE 4 — CRITIQUE AND REVISE
+
+After writing a first draft, silently check it against this checklist:
+- Does it restate anything the post already said?
+- Does it sound like a neutral assistant instead of a peer with a POV?
+- Does it start with the author's first name when the post is not a milestone/hire/launch/personal story?
+- Is it over 15 words without being a genuine hot-take response?
+- Does it use any hedged praise adjective ("interesting", "smart", "great", "real", "serious") without a load-bearing follow-up?
+- Does it echo one of the publisher's actual positions when a relevant one exists in the voice profile?
+
+If ANY answer is wrong, revise once. The final "comment" field is the revised version. Do not include the critique or the draft in the output.
+
 OUTPUT FORMAT
 
 Return ONLY a JSON object, nothing else, no markdown fences:
 
-{"post_type":"...","subject":"...","comment_strategy":"...","comment":"..."}
+{"post_type":"...","subject":"...","notable_angle":"...","comment_strategy":"...","comment":"..."}
 
-The comment field is the raw comment text only. No quotes inside, no "Comment:" prefix, no headers.`;
+The comment field is the raw comment text only (the revised version after critique). No quotes inside, no "Comment:" prefix, no headers.`;
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -141,7 +163,7 @@ Deno.serve(async (req) => {
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-5-20250929',
-        max_tokens: 300,
+        max_tokens: 500,
         system: SYSTEM_PROMPT,
         messages: [{ role: 'user', content: userMessage }],
       }),
@@ -160,7 +182,7 @@ Deno.serve(async (req) => {
     const raw = (data.content?.[0]?.text || '').trim();
 
     let comment = '';
-    let classification: { post_type?: string; subject?: string; comment_strategy?: string } = {};
+    let classification: { post_type?: string; subject?: string; notable_angle?: string; comment_strategy?: string } = {};
 
     // Try parsing as JSON first (the expected path)
     const jsonMatch = raw.match(/\{[\s\S]*\}/);
@@ -173,6 +195,7 @@ Deno.serve(async (req) => {
         classification = {
           post_type: typeof parsed.post_type === 'string' ? parsed.post_type : undefined,
           subject: typeof parsed.subject === 'string' ? parsed.subject : undefined,
+          notable_angle: typeof parsed.notable_angle === 'string' ? parsed.notable_angle : undefined,
           comment_strategy: typeof parsed.comment_strategy === 'string' ? parsed.comment_strategy : undefined,
         };
       } catch {

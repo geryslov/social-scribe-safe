@@ -149,7 +149,13 @@ Create the profile using EXACTLY this structure:
 - How they see their industry evolving
 - The change they want to drive
 
-Keep the profile to 300-500 words. Be SPECIFIC — generic descriptions like "professional and engaging" are useless. Every line should help differentiate this person's voice from anyone else's.
+## Positions & Beliefs
+List 6-10 concrete positions this person actually holds, formatted as one line each:
+- [topic]: [their specific take, one sentence, in their own likely phrasing]
+
+These are the claims they'd nod along to, echo, or push against when reacting to someone else's post. Be concrete — not "cares about product quality" but "believes most B2B SaaS onboarding wastes the first session on tours instead of getting the user to a first output." If a position can't be inferred confidently, skip it rather than invent one. Prefer specificity to breadth.
+
+Keep the profile to 350-600 words total. Be SPECIFIC — generic descriptions like "professional and engaging" are useless. Every line should help differentiate this person's voice from anyone else's.
 
 If you don't have enough information to fill a section, make an informed inference based on their role, industry, and company — but flag it as inferred.`;
 

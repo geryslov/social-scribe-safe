@@ -18,6 +18,7 @@ interface CommentComposerProps {
 interface Classification {
   post_type?: string;
   subject?: string;
+  notable_angle?: string;
   comment_strategy?: string;
 }
 
@@ -165,22 +166,22 @@ export function CommentComposer({ post, publisher, onClose }: CommentComposerPro
           )} />
           <p className="text-[10.5px] font-mono uppercase tracking-[0.14em] text-muted-foreground/80 truncate">
             {isGenerating ? (
-              <span className="text-amber-600">classifying post…</span>
+              <span className="text-amber-600">reading post…</span>
             ) : classification ? (
               <>
                 <span className="text-amber-700 font-semibold">
                   {formatPostType(classification.post_type)}
                 </span>
-                {classification.comment_strategy && (
+                {classification.notable_angle && (
+                  <>
+                    <span className="mx-1.5 text-border">·</span>
+                    <span className="normal-case tracking-normal">{classification.notable_angle}</span>
+                  </>
+                )}
+                {!classification.notable_angle && classification.comment_strategy && (
                   <>
                     <span className="mx-1.5 text-border">·</span>
                     <span>{classification.comment_strategy}</span>
-                  </>
-                )}
-                {classification.subject && (
-                  <>
-                    <span className="mx-1.5 text-border">·</span>
-                    <span>mention {classification.subject}</span>
                   </>
                 )}
               </>
