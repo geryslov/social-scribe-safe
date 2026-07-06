@@ -108,6 +108,75 @@ async function scrapeWithApify(
 }
 
 // ---------------------------------------------------------------------------
+// Scrape recent LinkedIn posts via Apify (harvestapi~linkedin-profile-posts)
+// so Claude has real writing samples to analyze the person's voice.
+// ---------------------------------------------------------------------------
+async function scrapeRecentPostsWithApify(
+  linkedinUrl: string,
+  apifyToken: string,
+  maxPosts = 15,
+): Promise<string | null> {
+  const APIFY_BASE = 'https://api.apify.com/v2';
+  const ACTOR = 'harvestapi~linkedin-profile-posts';
+
+  try {
+    const startRes = await fetch(`${APIFY_BASE}/acts/${ACTOR}/runs?token=${apifyToken}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        targetUrls: [linkedinUrl],
+        maxPosts,
+        scrapeReactions: false,
+        scrapeComments: false,
+        includeReposts: false,
+        includeQuotePosts: true,
+      }),
+    });
+    if (!startRes.ok) {
+      console.log('Apify posts start failed:', startRes.status);
+      return null;
+    }
+    const startData = await startRes.json();
+    const runId = startData?.data?.id;
+    if (!runId) return null;
+
+    const startTime = Date.now();
+    while (Date.now() - startTime < 55000) {
+      const pollRes = await fetch(`${APIFY_BASE}/actor-runs/${runId}?token=${apifyToken}`);
+      if (!pollRes.ok) return null;
+      const pollData = await pollRes.json();
+      const status = pollData?.data?.status;
+      if (status === 'SUCCEEDED') {
+        const dsId = pollData?.data?.defaultDatasetId;
+        if (!dsId) return null;
+        const dsRes = await fetch(`${APIFY_BASE}/datasets/${dsId}/items?token=${apifyToken}&format=json`);
+        if (!dsRes.ok) return null;
+        const items = await dsRes.json();
+        if (!Array.isArray(items) || items.length === 0) return null;
+        const samples = items
+          .map((p: any, i: number) => {
+            const text = p?.content ?? p?.text ?? p?.postText ?? p?.description ?? '';
+            if (!text || text.length < 50) return null;
+            return `--- Post ${i + 1} ---\n${String(text).substring(0, 1200)}`;
+          })
+          .filter(Boolean)
+          .slice(0, 10)
+          .join('\n\n');
+        console.log(`Apify posts: collected ${samples.split('--- Post').length - 1} usable post samples`);
+        return samples.length > 100 ? samples : null;
+      }
+      if (status === 'FAILED' || status === 'TIMED-OUT' || status === 'ABORTED') return null;
+      await sleep(3000);
+    }
+    return null;
+  } catch (err) {
+    console.error('Apify posts scrape error:', err);
+    return null;
+  }
+}
+
+
+// ---------------------------------------------------------------------------
 // Voice profile generation prompt
 // ---------------------------------------------------------------------------
 const VOICE_PROFILE_PROMPT = `You are an expert content strategist and ghostwriter specializing in LinkedIn thought leadership.
@@ -249,6 +318,26 @@ Deno.serve(async (req) => {
         .join('\n\n');
       if (samples.length > 100) {
         existingPosts = samples;
+      }
+    }
+
+    // 3b. If we have no in-app posts, pull the publisher's recent LinkedIn
+    // posts via Apify so Claude has actual writing samples to analyze.
+    if (!existingPosts && pub.linkedin_url) {
+      const { data: keyRow } = await supabase
+        .from('workspace_api_keys')
+        .select('api_key_encrypted')
+        .eq('workspace_id', pub.workspace_id)
+        .eq('service_name', 'apify')
+        .eq('is_valid', true)
+        .maybeSingle();
+
+      if (keyRow?.api_key_encrypted) {
+        let url = pub.linkedin_url.trim();
+        if (!url.startsWith('http')) url = `https://${url}`;
+        console.log('Fetching recent LinkedIn posts for voice analysis');
+        const scraped = await scrapeRecentPostsWithApify(url, keyRow.api_key_encrypted, 15);
+        if (scraped) existingPosts = scraped;
       }
     }
 
