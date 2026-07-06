@@ -332,6 +332,10 @@ export default function DocumentEditor() {
                         onDelete={(id) => deleteSection.mutate(id)}
                         onApprove={(id) => updateSection.mutate({ id, status: 'approved' })}
                         onPublisherChange={(id, publisherId) => updateSection.mutate({ id, publisherId })}
+                        onAssignToPosts={async (id) => {
+                          await updateSection.mutateAsync({ id, publisherId: section.publisherId });
+                        }}
+                        hasPost={posts.some((p: any) => p.content === section.content)}
                         workspaceSystemPrompt={currentWorkspace?.systemPrompt || undefined}
                       />
                     </div>
