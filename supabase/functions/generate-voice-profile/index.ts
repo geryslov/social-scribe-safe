@@ -319,6 +319,26 @@ Deno.serve(async (req) => {
       }
     }
 
+    // 3b. If we have no in-app posts, pull the publisher's recent LinkedIn
+    // posts via Apify so Claude has actual writing samples to analyze.
+    if (!existingPosts && pub.linkedin_url) {
+      const { data: keyRow } = await supabase
+        .from('workspace_api_keys')
+        .select('api_key_encrypted')
+        .eq('workspace_id', pub.workspace_id)
+        .eq('service_name', 'apify')
+        .eq('is_valid', true)
+        .maybeSingle();
+
+      if (keyRow?.api_key_encrypted) {
+        let url = pub.linkedin_url.trim();
+        if (!url.startsWith('http')) url = `https://${url}`;
+        console.log('Fetching recent LinkedIn posts for voice analysis');
+        const scraped = await scrapeRecentPostsWithApify(url, keyRow.api_key_encrypted, 15);
+        if (scraped) existingPosts = scraped;
+      }
+    }
+
     // --- Build the Claude prompt ---
     let userMessage = `Analyze this person and create their voice profile:\n\n`;
     userMessage += `Name: ${pub.name}\n`;
