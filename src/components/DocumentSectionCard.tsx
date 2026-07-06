@@ -170,11 +170,9 @@ export function DocumentSectionCard({
             <span className="text-sm font-medium text-muted-foreground">
               Post {section.sectionNumber}
             </span>
-            <Badge variant="secondary" className={statusColors[section.status] || ''}>
-              {section.status}
-            </Badge>
             {assignedPublisher && <PublisherBadge publisher={assignedPublisher} />}
           </div>
+
           
           <div className="flex items-center gap-1">
             {/* Redo with AI */}
