@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useLayoutEffect } from 'react';
-import { Trash2, User, Linkedin, RefreshCw, Loader2 } from 'lucide-react';
+import { Trash2, User, Linkedin, RefreshCw, Loader2, Send, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { DocumentSection } from '@/hooks/useDocuments';
