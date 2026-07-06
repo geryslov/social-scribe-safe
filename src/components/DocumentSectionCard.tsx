@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { Trash2, User, Linkedin, RefreshCw, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -65,7 +65,9 @@ export function DocumentSectionCard({
   const [redoTone, setRedoTone] = useState('professional');
   const [redoLength, setRedoLength] = useState('medium');
   const [redoOpen, setRedoOpen] = useState(false);
+  const [editorMinHeight, setEditorMinHeight] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const contentRef = useRef<HTMLParagraphElement>(null);
   const { publishers } = usePublishers();
   const queryClient = useQueryClient();
 
@@ -80,16 +82,17 @@ export function DocumentSectionCard({
     const el = textareaRef.current;
     if (!el) return;
     el.style.height = 'auto';
-    el.style.height = `${el.scrollHeight}px`;
+    el.style.height = `${Math.max(el.scrollHeight, editorMinHeight)}px`;
   };
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (isEditing && textareaRef.current) {
       textareaRef.current.focus();
       textareaRef.current.selectionStart = textareaRef.current.value.length;
       autoResize();
+      requestAnimationFrame(autoResize);
     }
-  }, [isEditing]);
+  }, [isEditing, editorMinHeight]);
 
   const handleBlur = () => {
     if (editContent.trim() !== section.content) {
@@ -100,6 +103,7 @@ export function DocumentSectionCard({
 
   const handleContentClick = () => {
     if (!isEditing) {
+      setEditorMinHeight(Math.ceil(contentRef.current?.getBoundingClientRect().height || 0));
       setIsEditing(true);
     }
   };
@@ -267,14 +271,15 @@ export function DocumentSectionCard({
             value={editContent}
             onChange={(e) => {
               setEditContent(e.target.value);
-              autoResize();
+              requestAnimationFrame(autoResize);
             }}
             onBlur={handleBlur}
             className="resize-none overflow-hidden text-sm leading-relaxed"
-            style={{ minHeight: 'auto' }}
+            style={{ minHeight: editorMinHeight ? `${editorMinHeight}px` : 'auto' }}
           />
         ) : (
           <p 
+            ref={contentRef}
             className="text-sm whitespace-pre-wrap cursor-text hover:bg-muted/50 rounded p-2 -m-2 transition-colors"
             onClick={handleContentClick}
           >
