@@ -76,10 +76,18 @@ export function DocumentSectionCard({
     setEditContent(section.content);
   }, [section.content]);
 
+  const autoResize = () => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight}px`;
+  };
+
   useEffect(() => {
     if (isEditing && textareaRef.current) {
       textareaRef.current.focus();
       textareaRef.current.selectionStart = textareaRef.current.value.length;
+      autoResize();
     }
   }, [isEditing]);
 
