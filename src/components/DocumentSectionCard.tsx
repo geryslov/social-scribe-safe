@@ -164,11 +164,6 @@ export function DocumentSectionCard({
     toast.info('Edit the publisher to connect LinkedIn');
   };
 
-  const statusColors: Record<string, string> = {
-    pending: 'bg-yellow-500/20 text-yellow-600',
-    approved: 'bg-green-500/20 text-green-600',
-    rejected: 'bg-red-500/20 text-red-600',
-  };
 
   return (
     <>
