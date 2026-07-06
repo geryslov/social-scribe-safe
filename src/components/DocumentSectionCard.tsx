@@ -47,6 +47,8 @@ interface DocumentSectionCardProps {
   onDelete: (id: string) => void;
   onApprove: (id: string) => void;
   onPublisherChange: (id: string, publisherId: string | null) => void;
+  onAssignToPosts?: (id: string) => Promise<void> | void;
+  hasPost?: boolean;
   workspaceSystemPrompt?: string;
 }
 
@@ -56,6 +58,8 @@ export function DocumentSectionCard({
   onDelete,
   onApprove,
   onPublisherChange,
+  onAssignToPosts,
+  hasPost,
   workspaceSystemPrompt
 }: DocumentSectionCardProps) {
   const [isEditing, setIsEditing] = useState(false);
