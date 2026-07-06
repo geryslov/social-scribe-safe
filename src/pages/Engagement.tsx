@@ -1602,13 +1602,20 @@ function AddProfileDialog({
     setImporting(false);
     toast.success(`Added ${insertedIds.length} of ${urls.length} profiles`);
 
-    // Kick off enrichment in the background, throttled
+    // Kick off enrichment + post fetching in the background, throttled
     (async () => {
       for (const id of insertedIds) {
         try {
           await supabase.functions.invoke('enrich-engagement-target', { body: { target_id: id } });
         } catch (err) {
           console.error('Bulk enrich failed for', id, err);
+        }
+        try {
+          await supabase.functions.invoke('fetch-target-posts', {
+            body: { workspace_id: publisher.workspace_id, target_id: id },
+          });
+        } catch (err) {
+          console.error('Bulk fetch-posts failed for', id, err);
         }
       }
     })();
