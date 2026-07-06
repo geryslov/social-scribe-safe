@@ -270,9 +270,13 @@ export function DocumentSectionCard({
           <Textarea
             ref={textareaRef}
             value={editContent}
-            onChange={(e) => setEditContent(e.target.value)}
+            onChange={(e) => {
+              setEditContent(e.target.value);
+              autoResize();
+            }}
             onBlur={handleBlur}
-            className="min-h-32 resize-none"
+            className="resize-none overflow-hidden text-sm leading-relaxed"
+            style={{ minHeight: 'auto' }}
           />
         ) : (
           <p 
