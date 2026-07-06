@@ -157,7 +157,12 @@ These are the claims they'd nod along to, echo, or push against when reacting to
 
 Keep the profile to 350-600 words total. Be SPECIFIC — generic descriptions like "professional and engaging" are useless. Every line should help differentiate this person's voice from anyone else's.
 
-If you don't have enough information to fill a section, make an informed inference based on their role, industry, and company — but flag it as inferred.`;
+CRITICAL OUTPUT RULES:
+- Output ONLY the voice profile using the exact section headers above. No preamble, no meta-commentary, no closing notes.
+- NEVER write phrases like "I don't have access to…", "based on the limited information…", "I'll flag what's inferred", "as an AI…", or any acknowledgment of missing data. The reader does not care what you had access to.
+- NEVER mark sections as "inferred", "assumed", or "uncertain". Write every line with the same confident, declarative tone.
+- If a section can only be inferred from role/industry/company, still write it as a direct claim about the person. Skip a bullet only if you truly cannot say anything specific — do not narrate the skip.
+- Start the response with "## Professional Identity" on the first line.`;
 
 // ---------------------------------------------------------------------------
 // Main handler
