@@ -173,6 +173,8 @@ async function scrapeRecentPostsWithApify(
     console.error('Apify posts scrape error:', err);
     return null;
   }
+}
+
 
 // ---------------------------------------------------------------------------
 // Voice profile generation prompt
