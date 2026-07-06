@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useLayoutEffect } from 'react';
-import { Trash2, User, Linkedin, RefreshCw, Loader2 } from 'lucide-react';
+import { Trash2, User, Linkedin, RefreshCw, Loader2, Send, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { DocumentSection } from '@/hooks/useDocuments';
@@ -47,6 +47,8 @@ interface DocumentSectionCardProps {
   onDelete: (id: string) => void;
   onApprove: (id: string) => void;
   onPublisherChange: (id: string, publisherId: string | null) => void;
+  onAssignToPosts?: (id: string) => Promise<void> | void;
+  hasPost?: boolean;
   workspaceSystemPrompt?: string;
 }
 
@@ -56,6 +58,8 @@ export function DocumentSectionCard({
   onDelete,
   onApprove,
   onPublisherChange,
+  onAssignToPosts,
+  hasPost,
   workspaceSystemPrompt
 }: DocumentSectionCardProps) {
   const [isEditing, setIsEditing] = useState(false);
@@ -65,6 +69,7 @@ export function DocumentSectionCard({
   const [redoTone, setRedoTone] = useState('professional');
   const [redoLength, setRedoLength] = useState('medium');
   const [redoOpen, setRedoOpen] = useState(false);
+  const [isAssigning, setIsAssigning] = useState(false);
   const [editorMinHeight, setEditorMinHeight] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const contentRef = useRef<HTMLParagraphElement>(null);
@@ -240,6 +245,42 @@ export function DocumentSectionCard({
                 </Button>
               </PopoverContent>
             </Popover>
+
+            {/* Assign to Posts */}
+            {assignedPublisher && onAssignToPosts && (
+              hasPost ? (
+                <span className="inline-flex items-center gap-1 h-7 px-2 text-xs rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                  <Check className="h-3.5 w-3.5" />
+                  In Posts
+                </span>
+              ) : (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-xs gap-1 hover:bg-primary/10 hover:text-primary"
+                  onClick={async () => {
+                    setIsAssigning(true);
+                    try {
+                      await onAssignToPosts(section.id);
+                      toast.success(`Added to ${assignedPublisher.name}'s posts`);
+                    } catch (e) {
+                      toast.error('Failed to add to posts');
+                    } finally {
+                      setIsAssigning(false);
+                    }
+                  }}
+                  disabled={isAssigning}
+                  title="Add this post to the publisher's Posts feed"
+                >
+                  {isAssigning ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Send className="h-3.5 w-3.5" />
+                  )}
+                  Add to Posts
+                </Button>
+              )
+            )}
 
             {/* Push to LinkedIn button */}
             {assignedPublisher && (
