@@ -693,8 +693,11 @@ function PostRow({
           </span>
         )}
         {post.published_at && (
-          <span title={new Date(post.published_at).toLocaleString()}>
-            {timeAgo(post.published_at)}
+          <span title={`Posted ${new Date(post.published_at).toLocaleString()}`}>
+            {new Date(post.published_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
+            <span className="ml-1 text-muted-foreground/60 normal-case tracking-normal font-sans">
+              · {timeAgo(post.published_at)}
+            </span>
           </span>
         )}
         <span className="ml-auto inline-flex items-center gap-3 tabular-nums text-foreground/70 normal-case tracking-normal font-sans text-[11px]">
