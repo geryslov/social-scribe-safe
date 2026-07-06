@@ -211,8 +211,16 @@ export function useEngagementTargets(publisherId: string | null) {
             });
           } catch (err) {
             console.error('Enrichment invoke failed:', err);
+          }
+          try {
+            await supabase.functions.invoke('fetch-target-posts', {
+              body: { workspace_id: currentWorkspace.id, target_id: result.id },
+            });
+          } catch (err) {
+            console.error('Initial post fetch failed:', err);
           } finally {
             queryClient.invalidateQueries({ queryKey: ['engagement-targets'] });
+            queryClient.invalidateQueries({ queryKey: ['discovered-posts'] });
           }
         })();
       }
