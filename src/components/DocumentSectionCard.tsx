@@ -1,8 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
-import { Check, Trash2, User, Linkedin, RefreshCw, Loader2 } from 'lucide-react';
+import { Trash2, User, Linkedin, RefreshCw, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
 import { DocumentSection } from '@/hooks/useDocuments';
 import { SectionEditHistory } from '@/components/SectionEditHistory';
 import { DocumentPublisherSelect, PublisherBadge } from '@/components/DocumentPublisherSelect';
@@ -77,10 +76,18 @@ export function DocumentSectionCard({
     setEditContent(section.content);
   }, [section.content]);
 
+  const autoResize = () => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight}px`;
+  };
+
   useEffect(() => {
     if (isEditing && textareaRef.current) {
       textareaRef.current.focus();
       textareaRef.current.selectionStart = textareaRef.current.value.length;
+      autoResize();
     }
   }, [isEditing]);
 
@@ -157,11 +164,6 @@ export function DocumentSectionCard({
     toast.info('Edit the publisher to connect LinkedIn');
   };
 
-  const statusColors: Record<string, string> = {
-    pending: 'bg-yellow-500/20 text-yellow-600',
-    approved: 'bg-green-500/20 text-green-600',
-    rejected: 'bg-red-500/20 text-red-600',
-  };
 
   return (
     <>
@@ -171,11 +173,9 @@ export function DocumentSectionCard({
             <span className="text-sm font-medium text-muted-foreground">
               Post {section.sectionNumber}
             </span>
-            <Badge variant="secondary" className={statusColors[section.status] || ''}>
-              {section.status}
-            </Badge>
             {assignedPublisher && <PublisherBadge publisher={assignedPublisher} />}
           </div>
+
           
           <div className="flex items-center gap-1">
             {/* Redo with AI */}
@@ -250,16 +250,6 @@ export function DocumentSectionCard({
                 Push
               </Button>
             )}
-            {section.status === 'pending' && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7 text-green-600"
-                onClick={() => onApprove(section.id)}
-              >
-                <Check className="h-4 w-4" />
-              </Button>
-            )}
             <Button
               variant="ghost"
               size="icon"
@@ -275,9 +265,13 @@ export function DocumentSectionCard({
           <Textarea
             ref={textareaRef}
             value={editContent}
-            onChange={(e) => setEditContent(e.target.value)}
+            onChange={(e) => {
+              setEditContent(e.target.value);
+              autoResize();
+            }}
             onBlur={handleBlur}
-            className="min-h-32 resize-none"
+            className="resize-none overflow-hidden text-sm leading-relaxed"
+            style={{ minHeight: 'auto' }}
           />
         ) : (
           <p 
