@@ -1,8 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
-import { Check, Trash2, User, Linkedin, RefreshCw, Loader2 } from 'lucide-react';
+import { Trash2, User, Linkedin, RefreshCw, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
 import { DocumentSection } from '@/hooks/useDocuments';
 import { SectionEditHistory } from '@/components/SectionEditHistory';
 import { DocumentPublisherSelect, PublisherBadge } from '@/components/DocumentPublisherSelect';
