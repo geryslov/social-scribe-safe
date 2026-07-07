@@ -1368,7 +1368,9 @@ function ReviewDrawer({
         {row.posts.map((p) => (
           <article key={p.id} className="rounded-[14px] border border-[#E5E7ED] bg-white p-3.5">
             <div className="flex items-center gap-2 text-[11px] text-[#667085]">
-              <span className="tabular-nums">{relativeTime(p.created_at)}</span>
+              <span className="tabular-nums" title={p.published_at ? new Date(p.published_at).toLocaleString() : undefined}>
+                {p.published_at ? relativeTime(p.published_at) : '—'}
+              </span>
               <span>·</span>
               <span className="tabular-nums">{p.likes_count} likes</span>
               <span>·</span>
