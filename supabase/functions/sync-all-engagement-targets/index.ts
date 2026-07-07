@@ -14,6 +14,9 @@ const corsHeaders = {
 const COOLDOWN_HOURS = 18;
 const BETWEEN_TARGETS_MS = 1500;
 const BETWEEN_AUTOLIKE_MS = 2000;
+// Stop processing new targets after this many ms and re-invoke self to continue.
+// Edge functions cap around ~150s; leave headroom for the in-flight fetch + summary insert.
+const TIME_BUDGET_MS = 110_000;
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
