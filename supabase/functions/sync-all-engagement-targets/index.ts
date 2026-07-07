@@ -78,6 +78,7 @@ Deno.serve(async (req) => {
     const overall: any[] = [];
 
     const startedAtMs = new Date(startedAt).getTime();
+    let budgetExceeded = false;
 
     for (const [workspace_id, wsTargets] of byWs.entries()) {
       const results: any[] = [];
@@ -85,6 +86,16 @@ Deno.serve(async (req) => {
       let cancelled = false;
 
       for (let i = 0; i < wsTargets.length; i++) {
+        // Time-budget guard: stop taking new targets, mark remainder as deferred,
+        // and re-invoke self at the end to pick them up.
+        if (Date.now() - startedAtMs > TIME_BUDGET_MS) {
+          budgetExceeded = true;
+          for (let j = i; j < wsTargets.length; j++) {
+            results.push({ target_id: wsTargets[j].id, name: wsTargets[j].name, status: 'deferred', posts_found: 0 });
+          }
+          break;
+        }
+
         const t = wsTargets[i];
 
         // Check cancellation flag before each target
