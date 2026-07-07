@@ -279,32 +279,23 @@ export function ContactList({
     setShowAddDialog(false);
     toast.success(`Imported ${createdIds.length} profiles — enriching in background`);
 
-    (async () => {
-      const CONCURRENCY = 2;
-      let cursor = 0;
-      const workers = Array.from({ length: Math.min(CONCURRENCY, createdIds.length) }, async () => {
-        while (cursor < createdIds.length) {
-          const id = createdIds[cursor++];
-          try {
-            await supabase.functions.invoke('enrich-engagement-target', { body: { target_id: id } });
-          } catch (err) {
-            console.error('Bulk enrich failed for', id, err);
-          }
-          try {
-            await supabase.functions.invoke('fetch-target-posts', {
-              body: { workspace_id: currentWorkspace.id, target_id: id },
-            });
-          } catch (err) {
-            console.error('Bulk fetch-posts failed for', id, err);
-          }
-        }
-      });
-      await Promise.all(workers);
-      queryClient.invalidateQueries({ queryKey: ['engagement-posts'] });
-      queryClient.invalidateQueries({ queryKey: ['engagement-targets'] });
-      queryClient.invalidateQueries({ queryKey: ['target-counts'] });
-      window.dispatchEvent(new Event('focus'));
-    })();
+    // Kick off server-side bulk enrichment. Returns immediately; processing
+    // continues in the edge function even if the tab is closed.
+    if (createdIds.length > 0) {
+      supabase.functions
+        .invoke('bulk-enrich-targets', {
+          body: { workspace_id: currentWorkspace.id, target_ids: createdIds },
+        })
+        .catch((err) => console.error('bulk-enrich-targets invoke failed', err));
+
+      // Refresh UI a few times so users see profiles fill in.
+      const refresh = () => {
+        queryClient.invalidateQueries({ queryKey: ['engagement-posts'] });
+        queryClient.invalidateQueries({ queryKey: ['engagement-targets'] });
+        queryClient.invalidateQueries({ queryKey: ['target-counts'] });
+      };
+      [5000, 15000, 45000, 120000].forEach((ms) => setTimeout(refresh, ms));
+    }
   }, [bulkUrls, currentWorkspace, publisher.id, createTarget]);
 
   // ⋮ Retry-failed actions
