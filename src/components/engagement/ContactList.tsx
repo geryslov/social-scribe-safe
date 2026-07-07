@@ -377,15 +377,51 @@ export function ContactList({
   const activeTargets = targets.filter((t) => t.is_active);
   const allAutoLike = activeTargets.length > 0 && activeTargets.every((t) => t.auto_like);
   const [bulkAutoLiking, setBulkAutoLiking] = useState(false);
+
+  const kickAutoLike = useCallback(async (targetId: string) => {
+    if (!currentWorkspace) return null;
+    const { data, error } = await supabase.functions.invoke('auto-like-target-posts', {
+      body: {
+        workspace_id: currentWorkspace.id,
+        target_id: targetId,
+        trigger: 'toggle_all',
+      },
+    });
+    if (error) throw error;
+    return data as { success?: boolean; attempted?: number; liked?: number; failed?: number } | null;
+  }, [currentWorkspace]);
+
   const handleToggleAllAutoLike = async (checked: boolean) => {
     if (activeTargets.length === 0) return;
+    const changedTargets = activeTargets.filter((t) => t.auto_like !== checked);
+    if (changedTargets.length === 0) return;
+
     setBulkAutoLiking(true);
     try {
       await Promise.all(
-        activeTargets
-          .filter((t) => t.auto_like !== checked)
+        changedTargets
           .map((t) => updateTarget.mutateAsync({ id: t.id, updates: { auto_like: checked } })),
       );
+
+      if (checked) {
+        const kicked = await Promise.allSettled(changedTargets.map((t) => kickAutoLike(t.id)));
+        const liked = kicked.reduce((sum, r) => (
+          r.status === 'fulfilled' ? sum + Number(r.value?.liked || 0) : sum
+        ), 0);
+        const failed = kicked.filter((r) => r.status === 'rejected').length
+          + kicked.reduce((sum, r) => (
+            r.status === 'fulfilled' ? sum + Number(r.value?.failed || 0) : sum
+          ), 0);
+        if (failed > 0) {
+          toast.warning(`Auto-like enabled · ${liked} liked · ${failed} failed`);
+        } else {
+          toast.success(liked > 0
+            ? `Auto-like enabled · ${liked} post${liked === 1 ? '' : 's'} liked`
+            : `Auto-like enabled for ${changedTargets.length} profile${changedTargets.length === 1 ? '' : 's'}`);
+        }
+        return;
+      }
+
       toast.success(checked ? `Auto-like enabled for ${activeTargets.length} profiles` : `Auto-like disabled for ${activeTargets.length} profiles`);
     } finally {
       setBulkAutoLiking(false);
