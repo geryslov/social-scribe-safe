@@ -231,10 +231,36 @@ Deno.serve(async (req) => {
       } catch (err) {
         console.error('comment-engagement loop failed for workspace', workspace_id, err);
       }
+      // If we blew the time budget, stop starting new workspaces too.
+      if (budgetExceeded) break;
+    }
+
+    // If we deferred any targets, chain a re-trigger (fire-and-forget) so the
+    // next invocation picks up where we left off. Only meaningful for cron runs
+    // (or on-demand runs without a specific workspace).
+    let rechained = false;
+    if (budgetExceeded) {
+      try {
+        const nextBody: Record<string, unknown> = { trigger: `${trigger}_continue` };
+        if (onlyWorkspaceId) nextBody.workspace_id = onlyWorkspaceId;
+        // Fire and forget — do not await, so this response can return promptly.
+        fetch(`${SUPABASE_URL}/functions/v1/sync-all-engagement-targets`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${SERVICE_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(nextBody),
+        }).catch((err) => console.error('re-trigger failed:', err));
+        rechained = true;
+        console.log('sync-all-engagement-targets: time budget hit, re-triggered self');
+      } catch (err) {
+        console.error('failed to schedule re-trigger:', err);
+      }
     }
 
     return new Response(
-      JSON.stringify({ success: true, workspaces: overall }),
+      JSON.stringify({ success: true, workspaces: overall, rechained }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     );
   } catch (error: unknown) {
