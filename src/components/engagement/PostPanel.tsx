@@ -293,7 +293,24 @@ export function PostPanel({ target, publisher, isAdmin, onCleared }: PostPanelPr
             }
             setAutoLikeCapReached(false);
           }
-          updateTarget.mutate({ id: target.id, updates: { auto_like: checked } });
+          updateTarget.mutate(
+            { id: target.id, updates: { auto_like: checked } },
+            {
+              onSuccess: () => {
+                // Kick the server-side auto-liker immediately so it works even
+                // if the user closes the panel or the client-side loop misses.
+                if (checked && currentWorkspace) {
+                  supabase.functions.invoke('auto-like-target-posts', {
+                    body: {
+                      workspace_id: currentWorkspace.id,
+                      target_id: target.id,
+                      trigger: 'toggle',
+                    },
+                  }).catch((e) => console.warn('auto-like kick failed:', e));
+                }
+              },
+            },
+          );
         }}
       />
 
