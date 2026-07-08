@@ -213,6 +213,17 @@ export function ContactList({
     return folderScope;
   }, [folderScope]);
 
+  const refreshEngagementData = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['engagement-posts'] });
+    queryClient.invalidateQueries({ queryKey: ['engagement-targets'] });
+    queryClient.invalidateQueries({ queryKey: ['target-counts'] });
+  }, [queryClient]);
+
+  const scheduleEngagementRefreshes = useCallback((delays: number[]) => {
+    refreshEngagementData();
+    delays.forEach((ms) => setTimeout(refreshEngagementData, ms));
+  }, [refreshEngagementData]);
+
   // Auto-fetch after adding a target
   const handleAdd = useCallback(() => {
     if (!newUrl.trim() || !currentWorkspace) return;
@@ -286,17 +297,20 @@ export function ContactList({
         .invoke('bulk-enrich-targets', {
           body: { workspace_id: currentWorkspace.id, target_ids: createdIds },
         })
-        .catch((err) => console.error('bulk-enrich-targets invoke failed', err));
-
-      // Refresh UI a few times so users see profiles fill in.
-      const refresh = () => {
-        queryClient.invalidateQueries({ queryKey: ['engagement-posts'] });
-        queryClient.invalidateQueries({ queryKey: ['engagement-targets'] });
-        queryClient.invalidateQueries({ queryKey: ['target-counts'] });
-      };
-      [5000, 15000, 45000, 120000].forEach((ms) => setTimeout(refresh, ms));
+        .then(({ data, error }) => {
+          if (error || data?.error) {
+            console.error('bulk-enrich-targets invoke failed', error || data?.error);
+            toast.error(data?.error || error?.message || 'Failed to start enrichment');
+            return;
+          }
+          scheduleEngagementRefreshes([5000, 15000, 45000, 120000, 240000]);
+        })
+        .catch((err) => {
+          console.error('bulk-enrich-targets invoke failed', err);
+          toast.error('Failed to start enrichment');
+        });
     }
-  }, [bulkUrls, currentWorkspace, publisher.id, createTarget]);
+  }, [bulkUrls, currentWorkspace, publisher.id, createTarget, defaultFolderId, scheduleEngagementRefreshes]);
 
   // ⋮ Retry-failed actions (uses fast batched edge function)
   const [reEnriching, setReEnriching] = useState(false);
@@ -310,19 +324,15 @@ export function ContactList({
     setReEnriching(true);
     toast.info(`Enriching ${missing.length} profile${missing.length === 1 ? '' : 's'} in background…`);
     try {
-      await supabase.functions.invoke('bulk-enrich-targets', {
+      const { data, error } = await supabase.functions.invoke('bulk-enrich-targets', {
         body: {
           workspace_id: currentWorkspace.id,
           target_ids: missing.map((t) => t.id),
         },
       });
-      toast.success(`Queued ${missing.length} profiles — results will appear as they process`);
-      const refresh = () => {
-        queryClient.invalidateQueries({ queryKey: ['engagement-posts'] });
-        queryClient.invalidateQueries({ queryKey: ['engagement-targets'] });
-        queryClient.invalidateQueries({ queryKey: ['target-counts'] });
-      };
-      [10000, 30000, 90000, 240000].forEach((ms) => setTimeout(refresh, ms));
+      if (error || data?.error) throw new Error(data?.error || error?.message || 'Failed to start enrichment');
+      toast.success(`Queued ${data?.queued ?? missing.length} profiles — results will appear as they process`);
+      scheduleEngagementRefreshes([5000, 15000, 30000, 90000, 240000]);
     } catch (err) {
       console.error('bulk-enrich-targets failed', err);
       toast.error('Failed to start enrichment');
@@ -1053,7 +1063,7 @@ function TargetRow({
           <span className="font-display font-semibold text-[13px] leading-tight truncate">
             {target.name}
           </span>
-          {target.enrichment_status === 'pending' && (
+          {(target.enrichment_status === 'pending' || target.enrichment_status === 'processing') && (
             <Loader2 className="h-3 w-3 animate-spin text-primary/60 flex-shrink-0" />
           )}
         </div>
