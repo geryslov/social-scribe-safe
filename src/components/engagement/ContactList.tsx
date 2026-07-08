@@ -298,36 +298,37 @@ export function ContactList({
     }
   }, [bulkUrls, currentWorkspace, publisher.id, createTarget]);
 
-  // ⋮ Retry-failed actions
+  // ⋮ Retry-failed actions (uses fast batched edge function)
   const [reEnriching, setReEnriching] = useState(false);
   const handleReEnrichMissing = async () => {
-    if (reEnriching) return;
+    if (reEnriching || !currentWorkspace) return;
     const missing = targets.filter((t) => t.enrichment_status !== 'succeeded');
     if (missing.length === 0) {
       toast.info('All profiles already enriched');
       return;
     }
     setReEnriching(true);
-    toast.info(`Re-enriching ${missing.length} profile${missing.length === 1 ? '' : 's'}…`);
-    const CONCURRENCY = 2;
-    let idx = 0;
-    let done = 0;
-    let failed = 0;
-    const worker = async () => {
-      while (idx < missing.length) {
-        const i = idx++;
-        try {
-          await enrichTarget.mutateAsync(missing[i].id);
-        } catch {
-          failed++;
-        }
-        done++;
-      }
-    };
-    await Promise.all(Array.from({ length: CONCURRENCY }, worker));
-    setReEnriching(false);
-    if (failed > 0) toast.warning(`Re-enriched ${done - failed}/${missing.length}. ${failed} failed.`);
-    else toast.success(`Re-enriched ${done} profile${done === 1 ? '' : 's'}`);
+    toast.info(`Enriching ${missing.length} profile${missing.length === 1 ? '' : 's'} in background…`);
+    try {
+      await supabase.functions.invoke('bulk-enrich-targets', {
+        body: {
+          workspace_id: currentWorkspace.id,
+          target_ids: missing.map((t) => t.id),
+        },
+      });
+      toast.success(`Queued ${missing.length} profiles — results will appear as they process`);
+      const refresh = () => {
+        queryClient.invalidateQueries({ queryKey: ['engagement-posts'] });
+        queryClient.invalidateQueries({ queryKey: ['engagement-targets'] });
+        queryClient.invalidateQueries({ queryKey: ['target-counts'] });
+      };
+      [10000, 30000, 90000, 240000].forEach((ms) => setTimeout(refresh, ms));
+    } catch (err) {
+      console.error('bulk-enrich-targets failed', err);
+      toast.error('Failed to start enrichment');
+    } finally {
+      setReEnriching(false);
+    }
   };
 
   const [resyncing, setResyncing] = useState(false);
