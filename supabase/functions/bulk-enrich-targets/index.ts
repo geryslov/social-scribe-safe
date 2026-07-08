@@ -116,16 +116,26 @@ async function processBatch(
   targets: Array<{ id: string; linkedin_url: string }>,
   apifyToken: string,
 ) {
+  const markBatchFailed = async (reason: string) => {
+    console.error('[bulk-enrich]', reason);
+    const { error } = await supabase
+      .from('engagement_targets')
+      .update({ enrichment_status: 'failed', enriched_at: new Date().toISOString() })
+      .eq('workspace_id', workspace_id)
+      .in('id', targets.map((t) => t.id));
+    if (error) console.error('[bulk-enrich] failed to mark batch failed:', error.message);
+  };
+
   const urls = targets.map((t) => normaliseProfileUrl(t.linkedin_url));
   const runId = await startBatchRun(urls, apifyToken);
   if (!runId) {
-    console.error('[bulk-enrich] batch start failed for', targets.length, 'targets');
+    await markBatchFailed(`batch start failed for ${targets.length} targets`);
     return;
   }
   console.log(`[bulk-enrich] batch run ${runId} started for ${targets.length} targets`);
   const datasetId = await pollRun(runId, apifyToken);
   if (!datasetId) {
-    console.error('[bulk-enrich] batch run', runId, 'failed');
+    await markBatchFailed(`batch run ${runId} failed`);
     return;
   }
   const items = await fetchDataset(datasetId, apifyToken);
@@ -174,9 +184,10 @@ async function processBatch(
       }).filter((r) => r.linkedin_post_url);
 
       if (rows.length > 0) {
-        await supabase
+        const { error } = await supabase
           .from('engagement_posts')
           .upsert(rows, { onConflict: 'target_id,linkedin_post_urn', ignoreDuplicates: false });
+        if (error) console.error('[bulk-enrich] post upsert failed for target', target.id, error.message);
       }
     }
 
@@ -202,7 +213,12 @@ async function processBatch(
       }
       if (typeof author.name === 'string' && author.name.length > 2) update.name = author.name;
     }
-    await supabase.from('engagement_targets').update(update).eq('id', target.id);
+    const { error } = await supabase
+      .from('engagement_targets')
+      .update(update)
+      .eq('workspace_id', workspace_id)
+      .eq('id', target.id);
+    if (error) console.error('[bulk-enrich] target update failed for', target.id, error.message);
   }
 }
 
@@ -297,10 +313,12 @@ Deno.serve(async (req) => {
     }
 
     // Mark as processing
-    await supabase
+    const { error: processingError } = await supabase
       .from('engagement_targets')
       .update({ enrichment_status: 'processing' })
+      .eq('workspace_id', workspace_id)
       .in('id', list.map((t) => t.id));
+    if (processingError) throw processingError;
 
     // @ts-ignore EdgeRuntime is available in Supabase Edge runtime
     EdgeRuntime.waitUntil(processAll(workspace_id, list, batchSize, parallelBatches, keyRow.api_key_encrypted as string));

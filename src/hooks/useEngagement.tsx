@@ -28,7 +28,7 @@ export interface EngagementTarget {
   auto_like: boolean;
   last_fetched_at: string | null;
   last_seen_at: string | null;
-  enrichment_status: 'pending' | 'succeeded' | 'failed' | null;
+  enrichment_status: 'pending' | 'processing' | 'succeeded' | 'failed' | null;
   enriched_at: string | null;
   created_at: string;
 }
@@ -171,7 +171,7 @@ export function useEngagementTargets(publisherId: string | null) {
     // Poll while any target is mid-enrichment so the UI updates when Apify finishes
     refetchInterval: (query) => {
       const data = query.state.data as EngagementTarget[] | undefined;
-      return data?.some((t) => t.enrichment_status === 'pending') ? 4000 : false;
+      return data?.some((t) => t.enrichment_status === 'pending' || t.enrichment_status === 'processing') ? 4000 : false;
     },
   });
 
