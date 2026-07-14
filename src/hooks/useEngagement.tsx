@@ -188,7 +188,7 @@ export function useEngagementTargets(publisherId: string | null) {
     mutationFn: async (data: { publisher_id: string; name?: string; linkedin_url: string; headline?: string; notes?: string; folder_id?: string | null; skipEnrich?: boolean }) => {
       if (!currentWorkspace) throw new Error('No workspace selected');
       const match = data.linkedin_url.match(/linkedin\.com\/in\/([^/?#]+)/);
-      const username = match ? match[1] : null;
+      const username = match ? match[1].toLowerCase() : null;
       const fallbackName = (data.name && data.name.trim()) || username || data.linkedin_url;
 
       const { data: result, error } = await (supabase as any)
@@ -296,9 +296,11 @@ export function useEngagementTargets(publisherId: string | null) {
       const seen = new Set<string>();
       const rows = data.urls
         .map((url) => {
-          const username = url.match(/linkedin\.com\/in\/([^/?#]+)/)?.[1] ?? null;
-          if (!username || seen.has(username.toLowerCase())) return null;
-          seen.add(username.toLowerCase());
+          // Username, not URL, is the profile's identity — the same person turns
+          // up pasted as both http:// and https://, which are distinct strings.
+          const username = url.match(/linkedin\.com\/in\/([^/?#]+)/)?.[1]?.toLowerCase() ?? null;
+          if (!username || seen.has(username)) return null;
+          seen.add(username);
           return {
             workspace_id: currentWorkspace.id,
             publisher_id: data.publisher_id,
@@ -315,11 +317,11 @@ export function useEngagementTargets(publisherId: string | null) {
       if (rows.length === 0) return { ids: [] as string[], skipped: data.urls.length };
 
       // Re-importing an existing list is a no-op rather than a duplicate: the
-      // unique constraint on (workspace_id, publisher_id, linkedin_url) absorbs it.
+      // unique constraint on (workspace_id, publisher_id, linkedin_username) absorbs it.
       const { data: result, error } = await (supabase as any)
         .from('engagement_targets')
         .upsert(rows, {
-          onConflict: 'workspace_id,publisher_id,linkedin_url',
+          onConflict: 'workspace_id,publisher_id,linkedin_username',
           ignoreDuplicates: true,
         })
         .select('id');
