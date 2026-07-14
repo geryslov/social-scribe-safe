@@ -31,6 +31,7 @@ export interface EngagementTarget {
   enrichment_status: 'pending' | 'processing' | 'succeeded' | 'failed' | null;
   enriched_at: string | null;
   created_at: string;
+  updated_at: string | null;
 }
 
 export interface EngagementPost {
@@ -168,10 +169,18 @@ export function useEngagementTargets(publisherId: string | null) {
       return data as EngagementTarget[];
     },
     enabled: !!currentWorkspace && !!publisherId,
-    // Poll while any target is mid-enrichment so the UI updates when Apify finishes
+    // Poll while any target is mid-enrichment so the UI updates when Apify finishes.
+    // Bounded by updated_at: a row stranded by a dead invocation would otherwise
+    // keep this tab polling every 4s indefinitely.
     refetchInterval: (query) => {
       const data = query.state.data as EngagementTarget[] | undefined;
-      return data?.some((t) => t.enrichment_status === 'pending' || t.enrichment_status === 'processing') ? 4000 : false;
+      const cutoff = Date.now() - 15 * 60 * 1000;
+      const active = data?.some(
+        (t) =>
+          (t.enrichment_status === 'pending' || t.enrichment_status === 'processing') &&
+          new Date(t.updated_at ?? t.created_at).getTime() > cutoff,
+      );
+      return active ? 4000 : false;
     },
   });
 
@@ -276,6 +285,54 @@ export function useEngagementTargets(publisherId: string | null) {
     onError: (error) => {
       toast.error('Failed to remove target: ' + error.message);
     },
+  });
+
+  // Bulk import: one round-trip for the whole paste. Inserting per-URL meant a
+  // 200-profile list spent ~200 sequential requests before enrichment even started.
+  const bulkCreateTargets = useMutation({
+    mutationFn: async (data: { publisher_id: string; urls: string[]; folder_id?: string | null }) => {
+      if (!currentWorkspace) throw new Error('No workspace selected');
+
+      const seen = new Set<string>();
+      const rows = data.urls
+        .map((url) => {
+          const username = url.match(/linkedin\.com\/in\/([^/?#]+)/)?.[1] ?? null;
+          if (!username || seen.has(username.toLowerCase())) return null;
+          seen.add(username.toLowerCase());
+          return {
+            workspace_id: currentWorkspace.id,
+            publisher_id: data.publisher_id,
+            folder_id: data.folder_id ?? null,
+            name: username.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
+            linkedin_url: url,
+            linkedin_username: username,
+            enrichment_status: 'pending',
+            created_by: user?.id || null,
+          };
+        })
+        .filter(Boolean);
+
+      if (rows.length === 0) return { ids: [] as string[], skipped: data.urls.length };
+
+      // Re-importing an existing list is a no-op rather than a duplicate: the
+      // unique constraint on (workspace_id, publisher_id, linkedin_url) absorbs it.
+      const { data: result, error } = await (supabase as any)
+        .from('engagement_targets')
+        .upsert(rows, {
+          onConflict: 'workspace_id,publisher_id,linkedin_url',
+          ignoreDuplicates: true,
+        })
+        .select('id');
+      if (error) throw error;
+
+      const ids = ((result ?? []) as { id: string }[]).map((r) => r.id);
+      return { ids, skipped: data.urls.length - ids.length };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['engagement-targets'] });
+      queryClient.invalidateQueries({ queryKey: ['target-counts'] });
+    },
+    onError: (e: Error) => toast.error('Import failed: ' + e.message),
   });
 
   const bulkDeleteTargets = useMutation({
@@ -391,7 +448,7 @@ export function useEngagementTargets(publisherId: string | null) {
   });
 
 
-  return { targets, isLoading, createTarget, deleteTarget, bulkDeleteTargets, bulkReassignTargets, markSeen, enrichTarget, updateTarget, bulkUpdatePublisherTargets };
+  return { targets, isLoading, createTarget, bulkCreateTargets, deleteTarget, bulkDeleteTargets, bulkReassignTargets, markSeen, enrichTarget, updateTarget, bulkUpdatePublisherTargets };
 }
 
 // ---------------------------------------------------------------------------
