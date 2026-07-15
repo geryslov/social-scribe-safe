@@ -611,6 +611,12 @@ function ActivityDashboard({
   const hasCompletedEngagement = totalLikes7d + totalComments7d > 0;
   const hasChartActivity = totalLikes7d + totalComments7d + totalPosts7d + totalChecks7d > 0;
 
+  const queuePending = targets.filter((t) => t.enrichment_status === 'pending').length;
+  const queueProcessing = targets.filter((t) => t.enrichment_status === 'processing').length;
+  const queueSucceeded = targets.filter((t) => t.enrichment_status === 'succeeded').length;
+  const queueFailed = targets.filter((t) => t.enrichment_status === 'failed').length;
+  const queueTotal = targets.length;
+
   return (
     <div className="space-y-6">
       {/* System status bar */}
@@ -623,6 +629,19 @@ function ActivityDashboard({
         <div className="h-4 w-px bg-[#E5E7ED]" />
         <StatusChip icon={<Clock className="h-3.5 w-3.5 text-[#667085]" />}
           label={<>Next sync in <b className="text-[#171923] font-semibold tabular-nums">{nextLabel}</b></>} />
+        <div className="h-4 w-px bg-[#E5E7ED]" />
+        <StatusChip
+          icon={queueProcessing > 0 ? <Loader2 className="h-3.5 w-3.5 animate-spin text-[#7C3AED]" /> : <Clock className="h-3.5 w-3.5 text-[#667085]" />}
+          label={
+            <>
+              <b className="text-[#171923] font-semibold">{queueTotal}</b> in queue
+              {queuePending > 0 && <span className="text-[#667085] ml-1">{queuePending} pending</span>}
+              {queueProcessing > 0 && <span className="text-[#7C3AED] ml-1">{queueProcessing} processing</span>}
+              {queueFailed > 0 && <span className="text-[#B42318] ml-1">{queueFailed} failed</span>}
+              {queueSucceeded > 0 && queuePending === 0 && queueProcessing === 0 && queueFailed === 0 && <span className="text-emerald-600 ml-1">{queueSucceeded} ready</span>}
+            </>
+          }
+        />
         <div className="flex-1" />
         <div className="flex items-center gap-2 text-xs text-[#667085]">
           <span>Daily auto-like usage</span>
