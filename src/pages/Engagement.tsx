@@ -563,13 +563,36 @@ function ActivityDashboard({
   const minsUntil = Math.max(0, Math.floor((nextSync.getTime() - Date.now()) / 60_000));
   const nextLabel = minsUntil > 60 ? `${Math.floor(minsUntil / 60)}h ${minsUntil % 60}m` : `${minsUntil}m`;
 
+  // For the "All discovered" tab, show every fetched contact — even ones with
+  // no posts in the current 7-day window. Other tabs stay post-driven.
+  const allRows: ReviewRow[] = useMemo(() => {
+    const byId = new Map(rows.map((r) => [r.id, r]));
+    const merged: ReviewRow[] = activeTargets.map((t: any) => {
+      const existing = byId.get(t.id);
+      if (existing) return existing;
+      return {
+        id: t.id,
+        name: t.name || 'Unknown',
+        avatar_url: t.avatar_url ?? null,
+        title: t.title ?? null,
+        company: t.company_name ?? null,
+        linkedin_url: t.linkedin_url ?? null,
+        new_posts: 0,
+        last_post_at: t.last_seen_at || t.last_fetched_at || null,
+        priority: 'low',
+        posts: [],
+      };
+    });
+    for (const r of rows) if (!activeTargets.some((t: any) => t.id === r.id)) merged.push(r);
+    return merged;
+  }, [rows, activeTargets]);
+
   const filteredRows = useMemo(() => {
-    let out = rows;
+    let out = queueTab === 'all' ? allRows : rows;
     const q = query.trim().toLowerCase();
     if (q) out = out.filter((r) => r.name.toLowerCase().includes(q) || (r.company || '').toLowerCase().includes(q));
     if (queueTab === 'engaged') out = out.filter((r) => r.posts.some((p) => p.is_liked || p.is_commented));
     if (queueTab === 'review') out = out.filter((r) => r.posts.some((p) => !p.is_liked && !p.is_commented));
-    // 'all' and 'dismissed' — dismissed not tracked yet, show empty later
     if (queueTab === 'dismissed') out = [];
     if (sort === 'new_posts') out = [...out].sort((a, b) => b.new_posts - a.new_posts);
     else if (sort === 'recent') out = [...out].sort((a, b) => (b.last_post_at || '').localeCompare(a.last_post_at || ''));
@@ -578,7 +601,7 @@ function ActivityDashboard({
       return pr[b.priority] - pr[a.priority] || b.new_posts - a.new_posts;
     });
     return out;
-  }, [rows, query, queueTab, sort]);
+  }, [rows, allRows, query, queueTab, sort]);
 
   const hasCompletedEngagement = totalLikes7d + totalComments7d > 0;
   const hasChartActivity = totalLikes7d + totalComments7d + totalPosts7d + totalChecks7d > 0;
