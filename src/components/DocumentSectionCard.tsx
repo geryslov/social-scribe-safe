@@ -324,10 +324,15 @@ export function DocumentSectionCard({
                 variant="ghost"
                 size="sm"
                 className="h-7 px-2 text-xs gap-1 hover:bg-[#0077b5]/10 hover:text-[#0077b5]"
-                onClick={() => setShowLinkedInModal(true)}
+                onClick={handlePushClick}
+                disabled={isPreparingPush}
                 title="Push to LinkedIn"
               >
-                <Linkedin className="h-3.5 w-3.5" />
+                {isPreparingPush ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Linkedin className="h-3.5 w-3.5" />
+                )}
                 Push
               </Button>
             )}
