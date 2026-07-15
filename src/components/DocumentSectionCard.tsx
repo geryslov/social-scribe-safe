@@ -70,6 +70,8 @@ export function DocumentSectionCard({
   const [redoLength, setRedoLength] = useState('medium');
   const [redoOpen, setRedoOpen] = useState(false);
   const [isAssigning, setIsAssigning] = useState(false);
+  const [isPreparingPush, setIsPreparingPush] = useState(false);
+  const [linkedPostId, setLinkedPostId] = useState<string | null>(null);
   const [editorMinHeight, setEditorMinHeight] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const contentRef = useRef<HTMLParagraphElement>(null);
@@ -146,9 +148,11 @@ export function DocumentSectionCard({
     }
   };
 
-  // Build a Post-like object for the LinkedIn publish modal
+  // Build a Post-like object for the LinkedIn publish modal.
+  // `id` must be a real posts.id so the edge function can update the row
+  // (same flow as publishing from Active Posts). We resolve it in handlePushClick.
   const postForPublish: Post = {
-    id: section.id,
+    id: linkedPostId || section.id,
     content: section.content,
     publisherName: assignedPublisher?.name || '',
     publisherRole: assignedPublisher?.role || '',
@@ -157,8 +161,40 @@ export function DocumentSectionCard({
     status: 'scheduled',
   };
 
+  const handlePushClick = async () => {
+    if (!assignedPublisher) return;
+    setIsPreparingPush(true);
+    try {
+      // Ensure a matching posts row exists (creates a draft if needed).
+      // Re-assigning the publisher runs the find-or-create logic in useDocuments
+      // that keeps the linked post row in sync with the current section content.
+      if (onAssignToPosts) {
+        await onAssignToPosts(section.id);
+      }
+      const { data: postRow, error } = await supabase
+        .from('posts')
+        .select('id')
+        .eq('document_id', section.documentId)
+        .eq('content', section.content)
+        .maybeSingle();
+      if (error) throw error;
+      if (!postRow?.id) {
+        toast.error('Could not link this section to a post');
+        return;
+      }
+      setLinkedPostId(postRow.id);
+      setShowLinkedInModal(true);
+    } catch (e) {
+      console.error('Prepare push failed:', e);
+      toast.error('Failed to prepare LinkedIn publish');
+    } finally {
+      setIsPreparingPush(false);
+    }
+  };
+
   const handlePublishSuccess = (linkedinPostUrl?: string) => {
     queryClient.invalidateQueries({ queryKey: ['posts'] });
+    queryClient.invalidateQueries({ queryKey: ['document-posts'] });
     if (linkedinPostUrl) {
       toast.success('Published to LinkedIn!', {
         action: {
@@ -288,10 +324,15 @@ export function DocumentSectionCard({
                 variant="ghost"
                 size="sm"
                 className="h-7 px-2 text-xs gap-1 hover:bg-[#0077b5]/10 hover:text-[#0077b5]"
-                onClick={() => setShowLinkedInModal(true)}
+                onClick={handlePushClick}
+                disabled={isPreparingPush}
                 title="Push to LinkedIn"
               >
-                <Linkedin className="h-3.5 w-3.5" />
+                {isPreparingPush ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Linkedin className="h-3.5 w-3.5" />
+                )}
                 Push
               </Button>
             )}
