@@ -449,14 +449,18 @@ function ActivityDashboard({
       if (post.target_name) row.profilesWithNew.add(post.target_name);
     }
 
+    const targetIdSet = new Set(activeTargets.map((t) => t.id));
     for (const run of syncRuns) {
       const key = localDayKey(new Date(run.started_at));
       const row = byKey.get(key);
       if (!row) continue;
+      const details = Array.isArray((run as any).details) ? (run as any).details : [];
+      const scoped = details.filter((d: any) => d && targetIdSet.has(d.target_id));
+      if (scoped.length === 0) continue;
       row.recordedRuns += 1;
-      row.runNewPosts += run.new_posts || 0;
-      row.failed += run.failed || 0;
-      row.skipped += run.skipped || 0;
+      row.runNewPosts += scoped.reduce((s: number, d: any) => s + (Number(d.posts_found) || 0), 0);
+      row.failed += scoped.filter((d: any) => d.status === 'failed').length;
+      row.skipped += scoped.filter((d: any) => d.status === 'skipped_cooldown').length;
     }
 
     return rows.map((row) => ({
@@ -464,6 +468,7 @@ function ActivityDashboard({
       profilesWithNew: [...row.profilesWithNew],
     }));
   }, [activeTargets, discovered, syncRuns]);
+
 
   // Build 7-day series for the activity chart
   const activitySeries = useMemo(() => {
