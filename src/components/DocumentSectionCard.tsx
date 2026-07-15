@@ -70,6 +70,8 @@ export function DocumentSectionCard({
   const [redoLength, setRedoLength] = useState('medium');
   const [redoOpen, setRedoOpen] = useState(false);
   const [isAssigning, setIsAssigning] = useState(false);
+  const [isPreparingPush, setIsPreparingPush] = useState(false);
+  const [linkedPostId, setLinkedPostId] = useState<string | null>(null);
   const [editorMinHeight, setEditorMinHeight] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const contentRef = useRef<HTMLParagraphElement>(null);
