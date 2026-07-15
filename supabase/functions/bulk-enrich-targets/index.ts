@@ -191,11 +191,13 @@ async function processBatch(
       }
     }
 
-    // Update target profile
+    // Update target profile. A target the actor returned nothing for (deleted or
+    // private profile) fails on its own — it no longer drags its 19 batch-mates
+    // down with it.
     const update: Record<string, unknown> = {
       last_fetched_at: new Date().toISOString(),
       linkedin_username: uname,
-      enrichment_status: 'succeeded',
+      enrichment_status: tItems.length > 0 ? 'succeeded' : 'failed',
       enriched_at: new Date().toISOString(),
     };
     if (tItems.length > 0) {
@@ -222,7 +224,12 @@ async function processBatch(
   }
 }
 
-async function processAll(
+// Process exactly one wave (parallelBatches batches, running concurrently), then
+// hand the remainder to a fresh invocation. A wave is bounded by pollRun's 240s
+// ceiling, which keeps every invocation clear of the edge runtime's wall-clock
+// limit. Trying to drain the whole list in one invocation meant a large import
+// got killed mid-flight, stranding its targets in `processing` forever.
+async function processWave(
   workspace_id: string,
   targets: Array<{ id: string; linkedin_url: string }>,
   batchSize: number,
@@ -231,26 +238,69 @@ async function processAll(
 ) {
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
-  // Chunk into batches
-  const batches: Array<typeof targets> = [];
-  for (let i = 0; i < targets.length; i += batchSize) {
-    batches.push(targets.slice(i, i + batchSize));
+  const wave: Array<typeof targets> = [];
+  for (let i = 0; i < targets.length && wave.length < parallelBatches; i += batchSize) {
+    wave.push(targets.slice(i, i + batchSize));
   }
-  console.log(`[bulk-enrich] ${targets.length} targets → ${batches.length} batches of ${batchSize}, ${parallelBatches} parallel`);
+  const consumed = wave.reduce((n, b) => n + b.length, 0);
+  const remaining = targets.slice(consumed);
 
-  let cursor = 0;
-  const workers = Array.from({ length: Math.min(parallelBatches, batches.length) }, async () => {
-    while (cursor < batches.length) {
-      const idx = cursor++;
+  console.log(`[bulk-enrich] wave: ${consumed} targets in ${wave.length} batches, ${remaining.length} deferred`);
+
+  await Promise.all(
+    wave.map(async (batch, idx) => {
       try {
-        await processBatch(supabase, workspace_id, batches[idx], apifyToken);
+        await processBatch(supabase, workspace_id, batch, apifyToken);
       } catch (e) {
         console.error(`[bulk-enrich] batch ${idx} error:`, e);
       }
-    }
+    }),
+  );
+
+  if (remaining.length === 0) {
+    console.log('[bulk-enrich] all targets done');
+    return;
+  }
+
+  const res = await fetch(`${SUPABASE_URL}/functions/v1/bulk-enrich-targets`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
+    },
+    body: JSON.stringify({
+      workspace_id,
+      target_ids: remaining.map((t) => t.id),
+      batch_size: batchSize,
+      parallel_batches: parallelBatches,
+    }),
   });
-  await Promise.all(workers);
-  console.log(`[bulk-enrich] all ${targets.length} targets done`);
+  if (!res.ok) {
+    console.error('[bulk-enrich] chain invoke failed:', res.status, await res.text().catch(() => ''));
+    await supabase
+      .from('engagement_targets')
+      .update({ enrichment_status: 'pending' })
+      .eq('workspace_id', workspace_id)
+      .in('id', remaining.map((t) => t.id));
+  }
+}
+
+// Targets left `processing` by an invocation that died (deploy, timeout, crash)
+// are otherwise never retried, and the client polls them every 4s forever.
+async function resetStaleProcessing(
+  supabase: ReturnType<typeof createClient>,
+  workspace_id: string,
+) {
+  const cutoff = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+  const { data, error } = await supabase
+    .from('engagement_targets')
+    .update({ enrichment_status: 'failed', enriched_at: new Date().toISOString() })
+    .eq('workspace_id', workspace_id)
+    .eq('enrichment_status', 'processing')
+    .lt('updated_at', cutoff)
+    .select('id');
+  if (error) console.error('[bulk-enrich] stale sweep failed:', error.message);
+  else if (data?.length) console.log(`[bulk-enrich] swept ${data.length} stale processing targets`);
 }
 
 Deno.serve(async (req) => {
@@ -271,6 +321,8 @@ Deno.serve(async (req) => {
     }
 
     const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
+
+    await resetStaleProcessing(supabase, workspace_id);
 
     let query = supabase
       .from('engagement_targets')
@@ -321,7 +373,7 @@ Deno.serve(async (req) => {
     if (processingError) throw processingError;
 
     // @ts-ignore EdgeRuntime is available in Supabase Edge runtime
-    EdgeRuntime.waitUntil(processAll(workspace_id, list, batchSize, parallelBatches, keyRow.api_key_encrypted as string));
+    EdgeRuntime.waitUntil(processWave(workspace_id, list, batchSize, parallelBatches, keyRow.api_key_encrypted as string));
 
     return new Response(JSON.stringify({ success: true, queued: list.length, batches: Math.ceil(list.length / batchSize) }), {
       status: 202, headers: { ...corsHeaders, 'Content-Type': 'application/json' },

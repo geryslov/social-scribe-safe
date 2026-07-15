@@ -352,7 +352,8 @@ Deno.serve(async (req) => {
     if (profile.company_name) update.company_name = profile.company_name;
     if (profile.headline) update.headline = profile.headline;
     if (avatarUrl) update.avatar_url = avatarUrl;
-    if (profile.username && !target.linkedin_username) update.linkedin_username = profile.username;
+    // Lowercase: linkedin_username carries the uniqueness constraint.
+    if (profile.username && !target.linkedin_username) update.linkedin_username = profile.username.toLowerCase();
 
     // Overwrite name if user didn't enter a meaningful one (empty, equals URL, or equals username)
     const userName = (target.name || '').trim();

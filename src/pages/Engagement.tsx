@@ -1546,7 +1546,7 @@ function AddProfileDialog({
   onOpenChange: (o: boolean) => void;
   publisher: Publisher;
 }) {
-  const { createTarget } = useEngagementTargets(publisher.id);
+  const { createTarget, bulkCreateTargets } = useEngagementTargets(publisher.id);
   const [mode, setMode] = useState<'single' | 'bulk'>('single');
   const [url, setUrl] = useState('');
   const [name, setName] = useState('');
@@ -1587,40 +1587,32 @@ function AddProfileDialog({
     }
     setImporting(true);
     setProgress({ done: 0, total: urls.length });
-    const insertedIds: string[] = [];
-    for (let i = 0; i < urls.length; i++) {
-      try {
-        const res = await createTarget.mutateAsync({
-          publisher_id: publisher.id,
-          linkedin_url: urls[i],
-          skipEnrich: true,
-        });
-        if (res?.id) insertedIds.push(res.id);
-      } catch (err) {
-        console.error('Bulk add failed for', urls[i], err);
-      }
-      setProgress({ done: i + 1, total: urls.length });
-    }
-    setImporting(false);
-    toast.success(`Added ${insertedIds.length} of ${urls.length} profiles`);
 
-    // Kick off enrichment + post fetching in the background, throttled
-    (async () => {
-      for (const id of insertedIds) {
-        try {
-          await supabase.functions.invoke('enrich-engagement-target', { body: { target_id: id } });
-        } catch (err) {
-          console.error('Bulk enrich failed for', id, err);
-        }
-        try {
-          await supabase.functions.invoke('fetch-target-posts', {
-            body: { workspace_id: publisher.workspace_id, target_id: id },
-          });
-        } catch (err) {
-          console.error('Bulk fetch-posts failed for', id, err);
-        }
-      }
-    })();
+    let insertedIds: string[] = [];
+    try {
+      const res = await bulkCreateTargets.mutateAsync({
+        publisher_id: publisher.id,
+        urls,
+      });
+      insertedIds = res.ids;
+    } catch (err) {
+      console.error('Bulk add failed', err);
+      setImporting(false);
+      return;
+    }
+    setProgress({ done: urls.length, total: urls.length });
+    setImporting(false);
+    toast.success(`Added ${insertedIds.length} of ${urls.length} profiles — enriching in background`);
+
+    // Server-side batched enrichment. The old path invoked enrich + fetch-posts
+    // once per target from the browser, so closing the tab killed it partway.
+    if (insertedIds.length > 0) {
+      supabase.functions
+        .invoke('bulk-enrich-targets', {
+          body: { workspace_id: publisher.workspace_id, target_ids: insertedIds },
+        })
+        .catch((err) => console.error('bulk-enrich-targets invoke failed', err));
+    }
 
     reset();
     onOpenChange(false);

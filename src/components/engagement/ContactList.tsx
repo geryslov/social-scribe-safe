@@ -66,7 +66,7 @@ export function ContactList({
   const { currentWorkspace } = useWorkspace();
   const queryClient = useQueryClient();
   const {
-    targets, isLoading, createTarget, enrichTarget, updateTarget,
+    targets, isLoading, createTarget, bulkCreateTargets, enrichTarget, updateTarget,
     bulkDeleteTargets, bulkReassignTargets,
   } = useEngagementTargets(publisher.id);
   const { folders, createFolder, renameFolder, deleteFolder, moveTargetsToFolder } = useEngagementFolders(publisher.id);
@@ -267,28 +267,30 @@ export function ContactList({
     setBulkImporting(true);
     setBulkProgress({ done: 0, total: urls.length });
 
-    const createdIds: string[] = [];
-    for (let i = 0; i < urls.length; i++) {
-      const url = urls[i];
-      const match = url.match(/linkedin\.com\/in\/([^/?#]+)/);
-      const name = match?.[1]?.replace(/-/g, ' ')?.replace(/\b\w/g, (c) => c.toUpperCase()) || 'Unknown';
-      try {
-        const row = await createTarget.mutateAsync({
-          publisher_id: publisher.id,
-          name,
-          linkedin_url: url,
-          folder_id: defaultFolderId,
-          skipEnrich: true,
-        });
-        if (row?.id) createdIds.push(row.id);
-      } catch { /* skip duplicates */ }
-      setBulkProgress({ done: i + 1, total: urls.length });
+    let createdIds: string[] = [];
+    let skipped = 0;
+    try {
+      const res = await bulkCreateTargets.mutateAsync({
+        publisher_id: publisher.id,
+        urls,
+        folder_id: defaultFolderId,
+      });
+      createdIds = res.ids;
+      skipped = res.skipped;
+    } catch {
+      setBulkImporting(false);
+      return;
     }
+    setBulkProgress({ done: urls.length, total: urls.length });
 
     setBulkImporting(false);
     setBulkUrls('');
     setShowAddDialog(false);
-    toast.success(`Imported ${createdIds.length} profiles — enriching in background`);
+    toast.success(
+      skipped > 0
+        ? `Imported ${createdIds.length} profiles (${skipped} already tracked) — enriching in background`
+        : `Imported ${createdIds.length} profiles — enriching in background`
+    );
 
     // Kick off server-side bulk enrichment. Returns immediately; processing
     // continues in the edge function even if the tab is closed.
@@ -310,7 +312,7 @@ export function ContactList({
           toast.error('Failed to start enrichment');
         });
     }
-  }, [bulkUrls, currentWorkspace, publisher.id, createTarget, defaultFolderId, scheduleEngagementRefreshes]);
+  }, [bulkUrls, currentWorkspace, publisher.id, bulkCreateTargets, defaultFolderId, scheduleEngagementRefreshes]);
 
   // ⋮ Retry-failed actions (uses fast batched edge function)
   const [reEnriching, setReEnriching] = useState(false);

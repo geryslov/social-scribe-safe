@@ -338,7 +338,8 @@ Deno.serve(async (req) => {
     }
 
     // --- Extract profile data from first post's author info ---
-    const username = target.linkedin_url.match(/linkedin\.com\/in\/([^/?#]+)/)?.[1] || null;
+    // Lowercase: linkedin_username carries the uniqueness constraint.
+    const username = target.linkedin_url.match(/linkedin\.com\/in\/([^/?#]+)/)?.[1]?.toLowerCase() || null;
     const targetUpdate: Record<string, unknown> = {
       last_fetched_at: new Date().toISOString(),
       linkedin_username: username,
