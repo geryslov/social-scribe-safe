@@ -1,10 +1,13 @@
 // =============================================================================
 // sync-all-engagement-targets
 //
-// Cron job: iterate engagement_targets across workspaces where auto-sync is
-// enabled and invoke fetch-target-posts for each, subject to COOLDOWN_HOURS so
-// a target is re-scraped at most once per cooldown window. Records a summary row
-// per workspace in engagement_sync_runs.
+// Cron/manual entry point. Groups eligible engagement_targets per workspace and
+// invokes fetch-target-posts-batch (one Apify run per BATCH_SIZE targets)
+// instead of firing one Apify run per target.
+//
+// A time budget guards the edge-function timeout; when hit, we re-invoke self
+// with `trigger: cron_continue` (or `manual_continue`) so remaining workspaces
+// pick up on the next hop.
 // =============================================================================
 
 const corsHeaders = {
@@ -12,17 +15,16 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Daily cadence. fetch-target-posts now fetches incrementally (only posts newer
-// than a target's last_fetched_at), and harvestapi bills per post returned, so a
-// daily check of a profile with nothing new returns nothing and costs ~nothing.
-// That makes frequency cheap again: cost scales with posts actually published,
-// not with how often we check. 20h keeps a target eligible on the next daily run.
+// Daily cadence. fetch-target-posts-batch bills per post returned (harvestapi),
+// and unchanged profiles return nothing → cost scales with new posts, not with
+// how often we check. 20h keeps a target eligible on the next daily run.
 const COOLDOWN_HOURS = 20;
-const BETWEEN_TARGETS_MS = 1500;
+const BETWEEN_BATCHES_MS = 500;
 const BETWEEN_AUTOLIKE_MS = 2000;
-// Stop processing new targets after this many ms and re-invoke self to continue.
-// Edge functions cap around ~150s; leave headroom for the in-flight fetch + summary insert.
 const TIME_BUDGET_MS = 110_000;
+// Must match BATCH_SIZE in fetch-target-posts-batch — used only for chunking
+// the target list at this layer for progress reporting / cancellation.
+const BATCH_SIZE = 40;
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -37,7 +39,6 @@ Deno.serve(async (req) => {
     const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
 
-    // Optional: trigger a single workspace on demand
     let onlyWorkspaceId: string | null = null;
     let trigger = 'cron';
     if (req.method === 'POST') {
@@ -48,7 +49,6 @@ Deno.serve(async (req) => {
       } catch (_) { /* no body */ }
     }
 
-    // Find workspaces with auto-sync enabled (default: enabled if no row)
     const { data: settings } = await supabase
       .from('workspace_engagement_settings')
       .select('workspace_id, auto_sync_enabled');
@@ -74,37 +74,52 @@ Deno.serve(async (req) => {
     const cutoff = Date.now() - COOLDOWN_HOURS * 60 * 60 * 1000;
     const byWs = new Map<string, any[]>();
     for (const t of targets || []) {
-      if (trigger === 'cron' && disabled.has(t.workspace_id)) continue;
+      if (trigger.startsWith('cron') && disabled.has(t.workspace_id)) continue;
       const arr = byWs.get(t.workspace_id) || [];
       arr.push(t);
       byWs.set(t.workspace_id, arr);
     }
 
     const startedAt = new Date().toISOString();
-    const overall: any[] = [];
-
     const startedAtMs = new Date(startedAt).getTime();
+    const overall: any[] = [];
     let budgetExceeded = false;
 
     for (const [workspace_id, wsTargets] of byWs.entries()) {
+      // Split into eligible (past cooldown, or manual) and skipped
+      const eligible: any[] = [];
       const results: any[] = [];
+      for (const t of wsTargets) {
+        if (trigger.startsWith('cron') && t.last_fetched_at && new Date(t.last_fetched_at).getTime() > cutoff) {
+          results.push({ target_id: t.id, name: t.name, status: 'skipped_cooldown', posts_found: 0 });
+        } else {
+          eligible.push(t);
+        }
+      }
+
       let newPosts = 0;
       let cancelled = false;
 
-      for (let i = 0; i < wsTargets.length; i++) {
-        // Time-budget guard: stop taking new targets, mark remainder as deferred,
-        // and re-invoke self at the end to pick them up.
+      // Process eligible targets in batches
+      const chunks: any[][] = [];
+      for (let i = 0; i < eligible.length; i += BATCH_SIZE) {
+        chunks.push(eligible.slice(i, i + BATCH_SIZE));
+      }
+
+      const autoLikeTargets: string[] = [];
+
+      for (let ci = 0; ci < chunks.length; ci++) {
         if (Date.now() - startedAtMs > TIME_BUDGET_MS) {
           budgetExceeded = true;
-          for (let j = i; j < wsTargets.length; j++) {
-            results.push({ target_id: wsTargets[j].id, name: wsTargets[j].name, status: 'deferred', posts_found: 0 });
+          for (let j = ci; j < chunks.length; j++) {
+            for (const t of chunks[j]) {
+              results.push({ target_id: t.id, name: t.name, status: 'deferred', posts_found: 0 });
+            }
           }
           break;
         }
 
-        const t = wsTargets[i];
-
-        // Check cancellation flag before each target
+        // Check cancellation flag before each batch
         const { data: settingsRow } = await supabase
           .from('workspace_engagement_settings')
           .select('sync_cancel_requested_at')
@@ -115,67 +130,74 @@ Deno.serve(async (req) => {
           : 0;
         if (cancelAt >= startedAtMs) {
           cancelled = true;
-          // Mark this and all remaining targets as cancelled
-          for (let j = i; j < wsTargets.length; j++) {
-            results.push({ target_id: wsTargets[j].id, name: wsTargets[j].name, status: 'cancelled', posts_found: 0 });
+          for (let j = ci; j < chunks.length; j++) {
+            for (const t of chunks[j]) {
+              results.push({ target_id: t.id, name: t.name, status: 'cancelled', posts_found: 0 });
+            }
           }
           break;
         }
 
-        if (trigger === 'cron' && t.last_fetched_at && new Date(t.last_fetched_at).getTime() > cutoff) {
-          results.push({ target_id: t.id, name: t.name, status: 'skipped_cooldown', posts_found: 0 });
-          continue;
-        }
+        const chunk = chunks[ci];
+        const target_ids = chunk.map((t) => t.id);
+
         try {
-          const res = await fetch(`${SUPABASE_URL}/functions/v1/fetch-target-posts`, {
+          const res = await fetch(`${SUPABASE_URL}/functions/v1/fetch-target-posts-batch`, {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${SERVICE_KEY}`,
               'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ workspace_id: t.workspace_id, target_id: t.id }),
+            body: JSON.stringify({ workspace_id, target_ids }),
           });
           const body = await res.json().catch(() => ({}));
-          const ok = res.ok && body.success;
-          const found = Number(body?.posts_found || 0);
-          if (ok) newPosts += found;
-          results.push({
-            target_id: t.id,
-            name: t.name,
-            status: ok ? 'synced' : 'failed',
-            posts_found: found,
-            detail: body?.error || body?.message || (ok ? undefined : `HTTP ${res.status}`),
+          const batchDetails: any[] = body?.details || [];
+          const byId = new Map<string, any>();
+          for (const d of batchDetails) byId.set(d.target_id, d);
+
+          for (const t of chunk) {
+            const d = byId.get(t.id);
+            if (d) {
+              results.push(d);
+              if (d.status === 'synced') {
+                newPosts += Number(d.posts_found || 0);
+                if (t.auto_like) autoLikeTargets.push(t.id);
+              }
+            } else {
+              results.push({ target_id: t.id, name: t.name, status: 'failed', posts_found: 0, detail: body?.error || `HTTP ${res.status}` });
+            }
+          }
+        } catch (err) {
+          for (const t of chunk) {
+            results.push({
+              target_id: t.id,
+              name: t.name,
+              status: 'failed',
+              posts_found: 0,
+              detail: err instanceof Error ? err.message : String(err),
+            });
+          }
+        }
+
+        await sleep(BETWEEN_BATCHES_MS);
+      }
+
+      // Fire auto-like for successfully synced targets (fire-and-forget-ish per target)
+      for (const target_id of autoLikeTargets) {
+        try {
+          await fetch(`${SUPABASE_URL}/functions/v1/auto-like-target-posts`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${SERVICE_KEY}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ workspace_id, target_id, trigger }),
           });
         } catch (err) {
-          results.push({
-            target_id: t.id,
-            name: t.name,
-            status: 'failed',
-            posts_found: 0,
-            detail: err instanceof Error ? err.message : String(err),
-          });
+          console.error('auto-like invoke failed for target', target_id, err);
         }
-
-        // If auto_like is on for this target, run the server-side liker.
-        // Only when the fetch succeeded (otherwise there's nothing new to like).
-        const lastResult = results[results.length - 1];
-        if (t.auto_like && lastResult?.status === 'synced') {
-          try {
-            await fetch(`${SUPABASE_URL}/functions/v1/auto-like-target-posts`, {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${SERVICE_KEY}`,
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({ workspace_id: t.workspace_id, target_id: t.id, trigger }),
-            });
-          } catch (err) {
-            console.error('auto-like invoke failed for target', t.id, err);
-          }
-          await sleep(BETWEEN_AUTOLIKE_MS);
-        }
-
-        await sleep(BETWEEN_TARGETS_MS);
+        await sleep(BETWEEN_AUTOLIKE_MS);
+        if (Date.now() - startedAtMs > TIME_BUDGET_MS) { budgetExceeded = true; break; }
       }
 
       const summary = {
@@ -184,6 +206,7 @@ Deno.serve(async (req) => {
         skipped: results.filter((r) => r.status === 'skipped_cooldown').length,
         failed: results.filter((r) => r.status === 'failed').length,
         cancelled: results.filter((r) => r.status === 'cancelled').length,
+        deferred: results.filter((r) => r.status === 'deferred').length,
         new_posts: newPosts,
       };
 
@@ -200,7 +223,6 @@ Deno.serve(async (req) => {
         details: results,
       });
 
-      // Clear the cancel flag if this run honored it
       if (cancelled) {
         await supabase
           .from('workspace_engagement_settings')
@@ -211,8 +233,7 @@ Deno.serve(async (req) => {
       overall.push({ workspace_id, summary });
       console.log('sync workspace done:', workspace_id, summary);
 
-      // After posts sync, refresh comment-engagement (reactions + replies on our comments)
-      // for every publisher that has engagement targets in this workspace.
+      // Refresh comment engagement per publisher
       try {
         const { data: pubRows } = await supabase
           .from('engagement_targets')
@@ -232,24 +253,21 @@ Deno.serve(async (req) => {
           } catch (err) {
             console.error('comment-engagement refresh failed for publisher', publisher_id, err);
           }
-          await sleep(800);
+          await sleep(400);
+          if (Date.now() - startedAtMs > TIME_BUDGET_MS) { budgetExceeded = true; break; }
         }
       } catch (err) {
         console.error('comment-engagement loop failed for workspace', workspace_id, err);
       }
-      // If we blew the time budget, stop starting new workspaces too.
+
       if (budgetExceeded) break;
     }
 
-    // If we deferred any targets, chain a re-trigger (fire-and-forget) so the
-    // next invocation picks up where we left off. Only meaningful for cron runs
-    // (or on-demand runs without a specific workspace).
     let rechained = false;
     if (budgetExceeded) {
       try {
         const nextBody: Record<string, unknown> = { trigger: `${trigger}_continue` };
         if (onlyWorkspaceId) nextBody.workspace_id = onlyWorkspaceId;
-        // Fire and forget — do not await, so this response can return promptly.
         fetch(`${SUPABASE_URL}/functions/v1/sync-all-engagement-targets`, {
           method: 'POST',
           headers: {
