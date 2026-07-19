@@ -29,10 +29,12 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   FileText, BarChart3, FolderKanban, Sparkles, MessageSquareHeart,
   ShieldCheck, HelpCircle, PanelLeftClose, PanelLeftOpen,
-  Search, Bell, RefreshCw, Loader2, ChevronDown, Check,
+  Search, Bell, RefreshCw, Loader2, ChevronDown, ChevronRight, Check,
   Heart, MessageCircle, TrendingUp, AlertTriangle, ArrowRight,
   ExternalLink, MoreHorizontal, Filter, ArrowUpDown, Rows3, Rows2,
   Clock, CheckCircle2, XCircle, EyeOff, BookmarkPlus, Users, Plus, UserPlus,
