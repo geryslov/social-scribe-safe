@@ -33,3 +33,7 @@ verify_jwt = false
 [functions.sync-all-publishers]
 verify_jwt = false
 
+
+[functions.structure-post]
+verify_jwt = false
+
