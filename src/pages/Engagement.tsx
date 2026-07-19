@@ -1644,3 +1644,441 @@ function AddProfileDialog({
   );
 }
 
+/* ============================================================================
+ * Today table — one row per profile, all counts scoped to "today"
+ * ==========================================================================*/
+
+type TodayRow = {
+  id: string;
+  name: string;
+  avatar_url: string | null;
+  linkedin_url: string | null;
+  checkStatus: 'synced' | 'failed' | 'skipped' | 'pending' | 'not_checked';
+  checkedAt: string | null; // ISO
+  newPosts: number;
+  liked: number;
+  commented: number;
+  actionFailures: number;
+  failureReason: string | null;
+};
+
+function TodayTable({
+  publisher, targets, discovered, likes, comments, syncRuns,
+}: {
+  publisher: Publisher;
+  targets: EngagementTarget[];
+  discovered: DiscoveredPost[];
+  likes: import('@/hooks/useEngagementActivity').AutoLikeRun[];
+  comments: any[];
+  syncRuns: import('@/hooks/useEngagementActivity').EngagementSyncRunFull[];
+}) {
+  const todayStart = useMemo(() => {
+    const d = new Date(); d.setHours(0, 0, 0, 0); return d.getTime();
+  }, []);
+  const todayKey = useMemo(() => localDayKey(new Date()), []);
+  const today = new Date();
+
+  const rows: TodayRow[] = useMemo(() => {
+    const targetIdSet = new Set(targets.map((t) => t.id));
+
+    // Latest today-status per target from sync runs (dedup: 5 failed hops = 1)
+    const latestStatus = new Map<string, { status: string; ts: number }>();
+    for (const run of syncRuns) {
+      const key = localDayKey(new Date(run.started_at));
+      if (key !== todayKey) continue;
+      const details = Array.isArray((run as any).details) ? (run as any).details : [];
+      const ts = new Date(run.started_at).getTime();
+      for (const d of details) {
+        if (!d || !targetIdSet.has(d.target_id)) continue;
+        const prev = latestStatus.get(d.target_id);
+        if (!prev || ts > prev.ts) latestStatus.set(d.target_id, { status: d.status, ts });
+      }
+    }
+
+    // New posts per target (today)
+    const newPostsByTarget = new Map<string, number>();
+    // post id → target id (needed for attributing comments to a target)
+    const postTarget = new Map<string, string>();
+    for (const p of discovered) {
+      postTarget.set(p.id, p.target_id);
+      const t = new Date(p.created_at).getTime();
+      if (t < todayStart) continue;
+      newPostsByTarget.set(p.target_id, (newPostsByTarget.get(p.target_id) || 0) + 1);
+    }
+
+    // Likes today per target
+    const likedByTarget = new Map<string, number>();
+    const failByTarget = new Map<string, number>();
+    const failReason = new Map<string, string>();
+    for (const l of likes) {
+      const t = new Date(l.run_at).getTime();
+      if (t < todayStart) continue;
+      if (!l.target_id) continue;
+      if (l.status === 'liked') likedByTarget.set(l.target_id, (likedByTarget.get(l.target_id) || 0) + 1);
+      else if (l.status === 'failed') {
+        failByTarget.set(l.target_id, (failByTarget.get(l.target_id) || 0) + 1);
+        if (l.error_message && !failReason.has(l.target_id)) failReason.set(l.target_id, l.error_message);
+      }
+    }
+
+    // Comments today per target (join via post_id → target_id)
+    const commentedByTarget = new Map<string, string[]>();
+    for (const c of comments) {
+      if (!c.posted_at) continue;
+      const t = new Date(c.posted_at).getTime();
+      if (t < todayStart) continue;
+      const tgt = c.post_id ? postTarget.get(c.post_id) : null;
+      if (!tgt) continue;
+      const arr = commentedByTarget.get(tgt) || [];
+      arr.push(c.id);
+      commentedByTarget.set(tgt, arr);
+    }
+
+    return targets.map((t): TodayRow => {
+      const checkedToday =
+        !!t.last_fetched_at && localDayKey(new Date(t.last_fetched_at)) === todayKey;
+      const runStatus = latestStatus.get(t.id)?.status;
+      let checkStatus: TodayRow['checkStatus'] = 'not_checked';
+      if (checkedToday) checkStatus = 'synced';
+      else if (runStatus === 'failed') checkStatus = 'failed';
+      else if (runStatus === 'skipped_cooldown') checkStatus = 'skipped';
+      else if (runStatus === 'synced') checkStatus = 'synced';
+      else if ((t as any).enrichment_status === 'processing' || (t as any).enrichment_status === 'pending') checkStatus = 'pending';
+
+      return {
+        id: t.id,
+        name: t.name || 'Unknown',
+        avatar_url: (t as any).avatar_url ?? null,
+        linkedin_url: (t as any).linkedin_url ?? null,
+        checkStatus,
+        checkedAt: t.last_fetched_at ?? null,
+        newPosts: newPostsByTarget.get(t.id) || 0,
+        liked: likedByTarget.get(t.id) || 0,
+        commented: (commentedByTarget.get(t.id) || []).length,
+        actionFailures: failByTarget.get(t.id) || 0,
+        failureReason: failReason.get(t.id) || null,
+      };
+    });
+  }, [targets, discovered, likes, comments, syncRuns, todayStart, todayKey]);
+
+  // Default sort: new posts first, then failed check, then alphabetical
+  const sorted = useMemo(() => {
+    return [...rows].sort((a, b) => {
+      if (b.newPosts !== a.newPosts) return b.newPosts - a.newPosts;
+      const failRank = (r: TodayRow) => (r.checkStatus === 'failed' ? 1 : 0);
+      if (failRank(b) !== failRank(a)) return failRank(b) - failRank(a);
+      return a.name.localeCompare(b.name);
+    });
+  }, [rows]);
+
+  const totals = useMemo(() => {
+    const syncedProfiles = rows.filter((r) => r.checkStatus === 'synced').length;
+    const failedProfiles = rows.filter((r) => r.checkStatus === 'failed').length;
+    return {
+      syncedProfiles,
+      failedProfiles,
+      totalProfiles: rows.length,
+      newPosts: rows.reduce((s, r) => s + r.newPosts, 0),
+      liked: rows.reduce((s, r) => s + r.liked, 0),
+      commented: rows.reduce((s, r) => s + r.commented, 0),
+      actionFailures: rows.reduce((s, r) => s + r.actionFailures, 0),
+    };
+  }, [rows]);
+
+  const [expanded, setExpanded] = useState(false);
+  const visible = expanded ? sorted : sorted.slice(0, 12);
+
+  return (
+    <TooltipProvider delayDuration={200}>
+      <section className="rounded-[14px] border border-[#E5E7ED] bg-white overflow-hidden">
+        <div className="px-5 py-3.5 border-b border-[#E5E7ED] flex items-center justify-between gap-3 flex-wrap">
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-sm font-semibold text-[#171923]">Today</h2>
+              <span className="text-[11px] text-[#667085] tabular-nums">
+                {today.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
+              </span>
+            </div>
+            <p className="text-xs text-[#667085] mt-0.5">
+              What happened for <b className="text-[#171923] font-semibold">{publisher.name}</b> today. Every number is scoped to today only.
+            </p>
+          </div>
+        </div>
+
+        {/* Column header */}
+        <div role="row" className="grid grid-cols-[minmax(0,1.4fr)_140px_100px_90px_110px_60px] gap-3 px-5 h-9 items-center bg-[#F7F8FB] border-b border-[#E5E7ED] text-[11px] uppercase tracking-wider text-[#667085] font-medium">
+          <div>Profile</div>
+          <MetricHeader label="Checked" tip="Whether today's sync fetched this profile's posts. ✓ with the sync time, ✗ if the fetch failed, — if not yet checked today." />
+          <MetricHeader label="New posts" tip="Posts by this profile that landed in your DB today (since 00:00 local)." align="right" />
+          <MetricHeader label="Liked" tip="Likes YOU (auto or manual) performed on this profile's posts today." align="right" />
+          <MetricHeader label="Commented" tip="Comments you posted on this profile's posts today." align="right" />
+          <MetricHeader label="⚠" tip="Action failures today (a like or comment errored). Hover the row for the reason." align="right" />
+        </div>
+
+        {rows.length === 0 ? (
+          <div className="p-10 text-center text-sm text-[#667085]">
+            No profiles tracked for this publisher yet.
+          </div>
+        ) : (
+          <>
+            <div className="divide-y divide-[#E5E7ED]">
+              {visible.map((r) => (
+                <TodayTableRow key={r.id} row={r} />
+              ))}
+            </div>
+
+            {/* Totals row */}
+            <div className="grid grid-cols-[minmax(0,1.4fr)_140px_100px_90px_110px_60px] gap-3 px-5 h-11 items-center bg-[#FBFAFF] border-t-2 border-[#E4DAFB] text-xs">
+              <div className="font-semibold text-[#171923]">Totals</div>
+              <TotalCell
+                text={`${totals.syncedProfiles}/${totals.totalProfiles}`}
+                sub={totals.failedProfiles > 0 ? `${totals.failedProfiles} failed` : undefined}
+                subTone="danger"
+                tip={`Profiles checked today. Scope: today (since 00:00 your time). ${totals.failedProfiles > 0 ? `${totals.failedProfiles} failed sync${totals.failedProfiles === 1 ? '' : 's'}.` : ''}`}
+              />
+              <TotalCell text={String(totals.newPosts)} tip="Total new posts across all profiles. Scope: today." align="right" />
+              <TotalCell text={String(totals.liked)} tip="Total likes you performed today. Scope: today." align="right" />
+              <TotalCell text={String(totals.commented)} tip="Total comments you posted today. Scope: today." align="right" />
+              <TotalCell text={String(totals.actionFailures)} tip="Total action failures today. Scope: today." align="right" tone={totals.actionFailures > 0 ? 'danger' : 'muted'} />
+            </div>
+
+            {sorted.length > 12 && (
+              <div className="px-5 py-3 border-t border-[#E5E7ED] text-center">
+                <button
+                  type="button"
+                  onClick={() => setExpanded((v) => !v)}
+                  className="text-xs font-medium text-[#7C3AED] hover:text-[#6D28D9]"
+                >
+                  {expanded ? `Show top 12` : `Show all ${sorted.length} profiles`}
+                </button>
+              </div>
+            )}
+          </>
+        )}
+      </section>
+    </TooltipProvider>
+  );
+}
+
+function MetricHeader({ label, tip, align }: { label: string; tip: string; align?: 'right' }) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <div className={cn('cursor-help', align === 'right' && 'text-right')}>{label}</div>
+      </TooltipTrigger>
+      <TooltipContent side="top" className="max-w-[280px] text-xs">{tip}</TooltipContent>
+    </Tooltip>
+  );
+}
+
+function TotalCell({
+  text, sub, subTone, tip, align, tone,
+}: { text: string; sub?: string; subTone?: 'danger'; tip: string; align?: 'right'; tone?: 'danger' | 'muted' }) {
+  const toneClass = tone === 'danger' ? 'text-[#B42318]' : tone === 'muted' ? 'text-[#667085]' : 'text-[#171923]';
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <div className={cn('cursor-help font-semibold tabular-nums', toneClass, align === 'right' && 'text-right')}>
+          {text}
+          {sub && <span className={cn('ml-1.5 text-[11px] font-medium', subTone === 'danger' ? 'text-[#B42318]' : 'text-[#667085]')}>· {sub}</span>}
+        </div>
+      </TooltipTrigger>
+      <TooltipContent side="top" className="max-w-[280px] text-xs">{tip}</TooltipContent>
+    </Tooltip>
+  );
+}
+
+function TodayTableRow({ row }: { row: TodayRow }) {
+  const initials = row.name.split(' ').map((s) => s[0]).slice(0, 2).join('').toUpperCase();
+  const checkedTime = row.checkedAt ? new Date(row.checkedAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }) : null;
+
+  return (
+    <div role="row" className="grid grid-cols-[minmax(0,1.4fr)_140px_100px_90px_110px_60px] gap-3 px-5 py-2.5 items-center hover:bg-[#FBFAFF]">
+      <div className="flex items-center gap-2.5 min-w-0">
+        <div className="h-7 w-7 rounded-full bg-[#F4F0FF] text-[#7C3AED] flex items-center justify-center flex-shrink-0 text-[11px] font-semibold overflow-hidden">
+          {row.avatar_url ? <img src={row.avatar_url} alt="" className="h-full w-full object-cover" /> : initials || '?'}
+        </div>
+        <div className="min-w-0">
+          <div className="text-sm font-medium text-[#171923] truncate">{row.name}</div>
+          {row.linkedin_url && (
+            <a href={row.linkedin_url} target="_blank" rel="noreferrer" className="text-[11px] text-[#667085] hover:text-[#7C3AED] truncate inline-flex items-center gap-1">
+              LinkedIn <ExternalLink className="h-2.5 w-2.5" />
+            </a>
+          )}
+        </div>
+      </div>
+
+      {/* Checked column */}
+      <div>
+        {row.checkStatus === 'synced' && (
+          <span className="inline-flex items-center gap-1.5 text-xs text-[#027A48]">
+            <CheckCircle2 className="h-3.5 w-3.5" />
+            <span className="tabular-nums">{checkedTime || 'today'}</span>
+          </span>
+        )}
+        {row.checkStatus === 'failed' && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="inline-flex items-center gap-1.5 text-xs text-[#B42318] cursor-help">
+                <XCircle className="h-3.5 w-3.5" /> failed
+              </span>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="max-w-[280px] text-xs">
+              Today's sync errored for this profile. Try Manual sync in the header.
+            </TooltipContent>
+          </Tooltip>
+        )}
+        {row.checkStatus === 'skipped' && (
+          <span className="inline-flex items-center gap-1.5 text-xs text-[#667085]">
+            <Clock className="h-3.5 w-3.5" /> skipped
+          </span>
+        )}
+        {row.checkStatus === 'pending' && (
+          <span className="inline-flex items-center gap-1.5 text-xs text-[#7C3AED]">
+            <Loader2 className="h-3.5 w-3.5 animate-spin" /> queued
+          </span>
+        )}
+        {row.checkStatus === 'not_checked' && (
+          <span className="text-xs text-[#B0B5C0]">—</span>
+        )}
+      </div>
+
+      {/* New posts */}
+      <div className="text-right text-sm tabular-nums">
+        {row.newPosts > 0 ? <b className="text-[#171923]">{row.newPosts}</b> : <span className="text-[#B0B5C0]">—</span>}
+      </div>
+      {/* Liked */}
+      <div className="text-right text-sm tabular-nums">
+        {row.liked > 0 ? <span className="text-[#171923]">{row.liked}</span> : <span className="text-[#B0B5C0]">—</span>}
+      </div>
+      {/* Commented */}
+      <div className="text-right text-sm tabular-nums">
+        {row.commented > 0 ? <span className="text-[#171923]">{row.commented}</span> : <span className="text-[#B0B5C0]">—</span>}
+      </div>
+      {/* Failures */}
+      <div className="text-right text-sm tabular-nums">
+        {row.actionFailures > 0 ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="text-[#B42318] cursor-help">{row.actionFailures}</span>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="max-w-[280px] text-xs">
+              {row.failureReason || `${row.actionFailures} action failure${row.actionFailures === 1 ? '' : 's'} today.`}
+            </TooltipContent>
+          </Tooltip>
+        ) : (
+          <span className="text-[#B0B5C0]">—</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ============================================================================
+ * Details — 7-day timeline + 7-day chart + all-time strip (collapsed)
+ * ==========================================================================*/
+function EngageDetails({
+  dailySyncRows, latestRunStartedAt, activitySeries, totals7d, allTime,
+}: {
+  dailySyncRows: DailySyncRow[];
+  latestRunStartedAt: string | null;
+  activitySeries: { label: string; date: Date; likes: number; comments: number; posts: number; checked: number }[];
+  totals7d: { posts: number; likes: number; comments: number; checks: number };
+  allTime: { posts: number; profiles: number; likedToday: number; dailyCap: number };
+}) {
+  const [open, setOpen] = useState(false);
+  const hasChartActivity = totals7d.posts + totals7d.likes + totals7d.comments + totals7d.checks > 0;
+
+  return (
+    <TooltipProvider delayDuration={200}>
+      <Collapsible open={open} onOpenChange={setOpen} className="rounded-[14px] border border-[#E5E7ED] bg-white overflow-hidden">
+        <CollapsibleTrigger asChild>
+          <button
+            type="button"
+            className="w-full flex items-center justify-between px-5 py-3 text-left hover:bg-[#FBFAFF] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#7C3AED]/40"
+          >
+            <div className="flex items-center gap-2">
+              {open ? <ChevronDown className="h-4 w-4 text-[#667085]" /> : <ChevronRight className="h-4 w-4 text-[#667085]" />}
+              <span className="text-sm font-semibold text-[#171923]">Details</span>
+              <span className="text-xs text-[#667085]">7-day history, activity chart, all-time totals</span>
+            </div>
+            <div className="text-xs text-[#667085] tabular-nums flex items-center gap-4">
+              <span>Posts stored: <b className="text-[#171923] font-semibold">{allTime.posts}</b></span>
+              <span>Tracked: <b className="text-[#171923] font-semibold">{allTime.profiles}</b></span>
+              <span>Auto-like: <b className="text-[#171923] font-semibold">{allTime.likedToday}/{allTime.dailyCap}</b></span>
+            </div>
+          </button>
+        </CollapsibleTrigger>
+
+        <CollapsibleContent className="border-t border-[#E5E7ED]">
+          <div className="p-5 space-y-5">
+            {/* All-time strip */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <MetricTile label="Posts stored (all-time)" value={String(allTime.posts)} scope="all-time" />
+              <MetricTile label="Profiles being tracked" value={String(allTime.profiles)} scope="all-time" />
+              <MetricTile label="Auto-like usage today" value={`${allTime.likedToday} / ${allTime.dailyCap}`} scope="today" />
+            </div>
+
+            {/* Post-sync history */}
+            <DailySyncTimeline rows={dailySyncRows} latestRunStartedAt={latestRunStartedAt} />
+
+            {/* Engagement activity chart */}
+            <section className="rounded-[14px] border border-[#E5E7ED] bg-white overflow-hidden">
+              <div className="px-5 py-3 border-b border-[#E5E7ED] flex items-center justify-between gap-3 flex-wrap">
+                <div>
+                  <h3 className="text-sm font-semibold text-[#171923]">Your engagement</h3>
+                  <p className="text-xs text-[#667085] mt-0.5">Last 7 days</p>
+                </div>
+                <div className="flex items-center gap-4 text-xs">
+                  <LegendItem color="#10B981" label="New posts" value={totals7d.posts} />
+                  <LegendItem color="#7C3AED" label="Likes" value={totals7d.likes} />
+                  <LegendItem color="#06B6D4" label="Comments" value={totals7d.comments} />
+                  <LegendItem muted label="Checks" value={totals7d.checks} />
+                </div>
+              </div>
+              {hasChartActivity ? (
+                <ActivitySpark series={activitySeries} />
+              ) : (
+                <div className="p-8 text-center text-sm text-[#667085]">
+                  No engagement activity in the last 7 days.
+                </div>
+              )}
+            </section>
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
+    </TooltipProvider>
+  );
+}
+
+function MetricTile({ label, value, scope }: { label: string; value: string; scope: 'today' | '7d' | 'all-time' }) {
+  const scopeText =
+    scope === 'today' ? 'Scope: today (since 00:00 your time).'
+      : scope === '7d' ? 'Scope: last 7 days.'
+      : 'Scope: all-time in this workspace.';
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <div className="rounded-[10px] border border-[#E5E7ED] bg-[#FBFAFF] p-4 cursor-help">
+          <div className="text-[11px] uppercase tracking-wider text-[#667085] font-medium">{label}</div>
+          <div className="mt-1.5 text-xl font-semibold tabular-nums text-[#171923]">{value}</div>
+        </div>
+      </TooltipTrigger>
+      <TooltipContent side="top" className="max-w-[280px] text-xs">
+        Counts {label.toLowerCase()}. {scopeText}
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
+function LegendItem({ color, muted, label, value }: { color?: string; muted?: boolean; label: string; value: number }) {
+  return (
+    <div className={cn('inline-flex items-center gap-1.5', muted ? 'text-[#667085]' : 'text-[#3F4657]')}>
+      {color && <span className="h-2 w-2 rounded-full" style={{ background: color }} />}
+      <span>{label}</span>
+      <span className="tabular-nums font-semibold text-[#171923]">{value}</span>
+    </div>
+  );
+}
+
+
