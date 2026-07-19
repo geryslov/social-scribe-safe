@@ -378,6 +378,9 @@ type DailySyncRow = {
   runNewPosts: number;
   failed: number;
   skipped: number;
+  syncedNames: string[];
+  failedNames: string[];
+  skippedNames: string[];
 };
 
 function ActivityDashboard({
