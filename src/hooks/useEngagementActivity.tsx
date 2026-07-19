@@ -70,7 +70,7 @@ export function useEngagementSyncRuns(limit = 20) {
       return (data || []) as EngagementSyncRunFull[];
     },
     enabled: !!currentWorkspace,
-    refetchInterval: 60_000,
+    refetchInterval: 5_000,
   });
 }
 
