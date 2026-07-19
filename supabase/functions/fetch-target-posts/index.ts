@@ -60,10 +60,11 @@ async function startApifyRun(
   profileUrl: string,
   apifyToken: string,
   maxPosts: number,
+  postedLimitDate: string | null,
 ): Promise<string | null> {
   const url = `${APIFY_BASE}/acts/${APIFY_ACTOR}/runs?token=${apifyToken}`;
 
-  console.log('Starting Apify run for:', profileUrl);
+  console.log('Starting Apify run for:', profileUrl, 'since:', postedLimitDate ?? '(all)');
 
   const res = await fetch(url, {
     method: 'POST',
@@ -71,6 +72,10 @@ async function startApifyRun(
     body: JSON.stringify({
       targetUrls: [profileUrl],
       maxPosts,
+      // Only extract posts newer than this date. harvestapi bills per post
+      // returned, so an incremental fetch means an unchanged profile returns
+      // nothing and costs ~nothing — instead of re-billing the same posts.
+      ...(postedLimitDate ? { postedLimitDate } : {}),
       scrapeReactions: false,
       scrapeComments: false,
       includeReposts: true,
@@ -253,7 +258,7 @@ Deno.serve(async (req) => {
     // --- Fetch the target ---
     const { data: target, error: targetErr } = await supabase
       .from('engagement_targets')
-      .select('id, linkedin_url, linkedin_username, workspace_id')
+      .select('id, linkedin_url, linkedin_username, workspace_id, last_fetched_at')
       .eq('id', target_id)
       .eq('workspace_id', workspace_id)
       .single();
@@ -284,8 +289,16 @@ Deno.serve(async (req) => {
     const apifyToken = keyRow.api_key_encrypted;
     const profileUrl = normaliseProfileUrl(target.linkedin_url);
 
+    // Incremental window: on repeat fetches, only pull posts published since we
+    // last looked. On a target's first-ever fetch (no last_fetched_at) backfill
+    // the last 30 days so a new contact still gets recent history.
+    const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+    const postedLimitDate = target.last_fetched_at
+      ? new Date(target.last_fetched_at).toISOString()
+      : new Date(Date.now() - THIRTY_DAYS_MS).toISOString();
+
     // --- Step 1: Start the Apify run ---
-    const runId = await startApifyRun(profileUrl, apifyToken, 2);
+    const runId = await startApifyRun(profileUrl, apifyToken, 5, postedLimitDate);
     if (!runId) {
       return new Response(
         JSON.stringify({ success: false, error: 'Failed to start Apify run. Check your API token.' }),

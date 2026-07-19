@@ -74,7 +74,11 @@ async function startBatchRun(urls: string[], token: string): Promise<string | nu
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       targetUrls: urls,
-      maxPosts: 2,
+      maxPosts: 5,
+      // Import-time backfill: only the last 30 days of posts. harvestapi bills
+      // per post returned, so bounding the window keeps a bulk import from
+      // paying to scrape years of history per profile.
+      postedLimit: 'month',
       scrapeReactions: false,
       scrapeComments: false,
       includeReposts: true,

@@ -12,12 +12,12 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// harvestapi bills per POST extracted ($1.50-2 / 1k), not per run, so the only
-// lever on the Apify bill is how often we re-scrape. At 18h every target was
-// re-fetched daily — scraping the same 2 posts over and over for people who
-// rarely post. 72h (every 3 days) cuts posts-scraped, and therefore cost, ~3x.
-// Raise further (e.g. 168 = weekly) to cut proportionally more.
-const COOLDOWN_HOURS = 72;
+// Daily cadence. fetch-target-posts now fetches incrementally (only posts newer
+// than a target's last_fetched_at), and harvestapi bills per post returned, so a
+// daily check of a profile with nothing new returns nothing and costs ~nothing.
+// That makes frequency cheap again: cost scales with posts actually published,
+// not with how often we check. 20h keeps a target eligible on the next daily run.
+const COOLDOWN_HOURS = 20;
 const BETWEEN_TARGETS_MS = 1500;
 const BETWEEN_AUTOLIKE_MS = 2000;
 // Stop processing new targets after this many ms and re-invoke self to continue.
