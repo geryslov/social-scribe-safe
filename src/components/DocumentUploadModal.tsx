@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { Upload, FileText, X, Plus, Sparkles, Loader2, Globe, Paperclip, PenLine, Wand2, ChevronDown, ChevronUp, Link2, GitMerge, Layers, Check } from 'lucide-react';
+import { Upload, FileText, X, Plus, Sparkles, Loader2, Globe, Paperclip, PenLine, Wand2, ChevronDown, ChevronUp, Link2, GitMerge, Layers, Check, AlignLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -60,6 +60,12 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate, 
   const [isParsingRef, setIsParsingRef] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [selectedPublisherIds, setSelectedPublisherIds] = useState<string[]>([]);
+  const [isStructuring, setIsStructuring] = useState(false);
+  const [structureSuggestion, setStructureSuggestion] = useState<{
+    structured: string;
+    changes: Array<{ type: string; note: string }>;
+    hook_note: string;
+  } | null>(null);
   const refFileInputRef = useRef<HTMLInputElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -97,6 +103,8 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate, 
     setAiPostCount('4-6');
     setShowAdvanced(false);
     setSelectedPublisherIds([]);
+    setStructureSuggestion(null);
+    setIsStructuring(false);
   };
 
   const handleClose = () => {
@@ -290,6 +298,53 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate, 
       }
       abortControllerRef.current = null;
     }
+  };
+
+  // Structural edit: restructures the pasted text for readability without
+  // changing what it says. Uses the selected publisher's voice profile so the
+  // result still sounds like them.
+  const handleStructure = async () => {
+    if (!content.trim()) {
+      toast.error('Paste or write some content first');
+      return;
+    }
+    setIsStructuring(true);
+    setStructureSuggestion(null);
+    try {
+      const publisher = publishers.find((p) => p.id === selectedPublisherIds[0]);
+      const { data, error } = await supabase.functions.invoke('structure-post', {
+        body: {
+          content: content.trim(),
+          voice_profile: (publisher as any)?.voice_profile || undefined,
+          publisher_name: publisher?.name || undefined,
+        },
+      });
+      if (error || !data?.success) {
+        toast.error(data?.error || error?.message || 'Could not analyze the content');
+        return;
+      }
+      if (!data.structured || data.structured.trim() === content.trim()) {
+        toast.success('The structure already reads well — no changes suggested');
+        return;
+      }
+      setStructureSuggestion({
+        structured: data.structured,
+        changes: Array.isArray(data.changes) ? data.changes : [],
+        hook_note: data.hook_note || '',
+      });
+    } catch (err) {
+      console.error('structure-post failed:', err);
+      toast.error('Could not analyze the content');
+    } finally {
+      setIsStructuring(false);
+    }
+  };
+
+  const applyStructure = () => {
+    if (!structureSuggestion) return;
+    setContent(structureSuggestion.structured);
+    setStructureSuggestion(null);
+    toast.success('Structure applied');
   };
 
   const handleSave = () => {
@@ -822,7 +877,28 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate, 
               </div>
 
               <div>
-                <label className="text-sm font-medium mb-1.5 block">Content</label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-sm font-medium">Content</label>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-xs gap-1.5"
+                    onClick={handleStructure}
+                    disabled={isStructuring || !content.trim()}
+                  >
+                    {isStructuring ? (
+                      <>
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        Reading…
+                      </>
+                    ) : (
+                      <>
+                        <AlignLeft className="h-3.5 w-3.5" />
+                        Improve structure
+                      </>
+                    )}
+                  </Button>
+                </div>
                 <Textarea
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
@@ -830,6 +906,59 @@ export function DocumentUploadModal({ open, onOpenChange, onSave, showAiCreate, 
                   className="min-h-48 resize-none"
                 />
               </div>
+
+              {structureSuggestion && (
+                <div className="rounded-lg border border-primary/30 bg-primary/5 overflow-hidden animate-fade-in">
+                  <div className="flex items-center justify-between px-3 py-2 border-b border-primary/20">
+                    <span className="text-xs font-medium text-primary flex items-center gap-1.5">
+                      <AlignLeft className="h-3.5 w-3.5" />
+                      Suggested structure
+                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 text-xs"
+                        onClick={() => setStructureSuggestion(null)}
+                      >
+                        Dismiss
+                      </Button>
+                      <Button size="sm" className="h-7 text-xs gap-1" onClick={applyStructure}>
+                        <Check className="h-3.5 w-3.5" />
+                        Apply
+                      </Button>
+                    </div>
+                  </div>
+
+                  {structureSuggestion.hook_note && (
+                    <p className="px-3 pt-2.5 text-[11px] text-muted-foreground">
+                      <span className="font-medium text-foreground">Opening: </span>
+                      {structureSuggestion.hook_note}
+                    </p>
+                  )}
+
+                  {structureSuggestion.changes.length > 0 && (
+                    <ul className="px-3 pt-2 space-y-1">
+                      {structureSuggestion.changes.map((c, i) => (
+                        <li key={i} className="text-[11px] text-muted-foreground flex gap-1.5">
+                          <span className="shrink-0 px-1.5 rounded bg-primary/10 text-primary font-medium">
+                            {c.type}
+                          </span>
+                          <span>{c.note}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+
+                  <div className="p-3">
+                    <div className="max-h-64 overflow-y-auto rounded-md bg-background border border-border p-3">
+                      <p className="text-sm whitespace-pre-wrap text-foreground">
+                        {structureSuggestion.structured}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
