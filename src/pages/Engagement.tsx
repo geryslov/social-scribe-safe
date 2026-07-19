@@ -621,156 +621,31 @@ function ActivityDashboard({
 
   return (
     <div className="space-y-6">
-      {/* System status bar */}
-      <div className="rounded-[14px] border border-[#E5E7ED] bg-white px-4 py-3 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
-        <StatusChip icon={<CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />}
-          label={<><b className="text-[#171923] font-semibold">{profilesChecked}</b> of <b className="text-[#171923] font-semibold">{totalProfiles}</b> profiles checked <span className="text-[#667085]">{latestSyncLabel}</span></>} />
-        <div className="h-4 w-px bg-[#E5E7ED]" />
-        <StatusChip icon={<Sparkles className="h-3.5 w-3.5 text-[#7C3AED]" />}
-          label={<><b className="text-[#171923] font-semibold">{totalPosts}</b> total posts · <b className="text-[#171923] font-semibold">{newPostsYesterday}</b> new yesterday</>} />
-        <div className="h-4 w-px bg-[#E5E7ED]" />
-        <StatusChip icon={<Clock className="h-3.5 w-3.5 text-[#667085]" />}
-          label={<>Next sync in <b className="text-[#171923] font-semibold tabular-nums">{nextLabel}</b></>} />
-        <div className="h-4 w-px bg-[#E5E7ED]" />
-        <StatusChip
-          icon={queueProcessing > 0 ? <Loader2 className="h-3.5 w-3.5 animate-spin text-[#7C3AED]" /> : <Clock className="h-3.5 w-3.5 text-[#667085]" />}
-          label={
-            <>
-              <b className="text-[#171923] font-semibold">{queueTotal}</b> in queue
-              {queuePending > 0 && <span className="text-[#667085] ml-1">{queuePending} pending</span>}
-              {queueProcessing > 0 && <span className="text-[#7C3AED] ml-1">{queueProcessing} processing</span>}
-              {queueFailed > 0 && <span className="text-[#B42318] ml-1">{queueFailed} failed</span>}
-              {queueSucceeded > 0 && queuePending === 0 && queueProcessing === 0 && queueFailed === 0 && <span className="text-emerald-600 ml-1">{queueSucceeded} ready</span>}
-            </>
-          }
-        />
-        <div className="flex-1" />
-        <div className="flex items-center gap-2 text-xs text-[#667085]">
-          <span>Daily auto-like usage</span>
-          <div className="w-32 h-1.5 rounded-full bg-[#EEF0F5] overflow-hidden" aria-label="Daily usage" role="progressbar" aria-valuenow={likedToday} aria-valuemin={0} aria-valuemax={DAILY_CAP}>
-            <div
-              className={cn('h-full rounded-full transition-all', likedToday >= DAILY_CAP ? 'bg-[#7C3AED]' : 'bg-[#7C3AED]/70')}
-              style={{ width: `${Math.min(100, (likedToday / DAILY_CAP) * 100)}%` }}
-            />
-          </div>
-          <span className="tabular-nums font-semibold text-[#171923]">{likedToday} of {DAILY_CAP}</span>
-        </div>
-      </div>
+      {/* Today table — the ONE source of truth for what happened today. */}
+      <TodayTable
+        publisher={publisher}
+        targets={activeTargets}
+        discovered={discovered}
+        likes={likes}
+        comments={comments}
+        syncRuns={syncRuns}
+      />
 
-      {/* Smart summary */}
-      {totalPosts > 0 && (
-        <div className="rounded-[14px] border border-[#E5E7ED] bg-gradient-to-br from-white to-[#FBFAFF] p-5">
-          <div className="flex items-start gap-4">
-            <div className="h-10 w-10 rounded-lg bg-[#F4F0FF] text-[#7C3AED] flex items-center justify-center flex-shrink-0">
-              <Sparkles className="h-5 w-5" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-sm text-[#171923] leading-relaxed">
-                <b>{totalPosts} total posts</b> across <b>{profilesWithNew} profiles</b> · <b>{newPostsYesterday}</b> new yesterday.
-                {!hasCompletedEngagement && <> No engagement actions have been completed today.</>}
-              </div>
-              <div className="mt-3 flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => document.getElementById('review-queue')?.scrollIntoView({ behavior: 'smooth' })}
-                  className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md bg-[#7C3AED] hover:bg-[#6D28D9] text-white text-xs font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED]/40"
-                >
-                  Review priority posts <ArrowRight className="h-3 w-3" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => document.getElementById('daily-syncs')?.scrollIntoView({ behavior: 'smooth' })}
-                  className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md border border-[#E5E7ED] bg-white hover:bg-[#F7F8FB] text-xs font-medium text-[#171923] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED]/40"
-                >
-                  View details
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Everything else lives in a collapsed Details section. */}
+      <EngageDetails
+        dailySyncRows={dailySyncRows}
+        latestRunStartedAt={syncRuns[0]?.started_at ?? null}
+        activitySeries={activitySeries}
+        totals7d={{ posts: totalPosts7d, likes: totalLikes7d, comments: totalComments7d, checks: totalChecks7d }}
+        allTime={{
+          posts: totalPosts,
+          profiles: totalProfiles,
+          likedToday,
+          dailyCap: DAILY_CAP,
+        }}
+      />
 
-      {/* KPI cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <TotalPostsCard
-          total={totalPosts}
-          newYesterday={newPostsYesterday}
-          profileCount={profilesWithNew}
-          posts={discovered}
-          yesterdayStart={yesterdayStart}
-          yesterdayEnd={yesterdayEnd}
-        />
-        <LikesCompletedCard likes={likes} />
-        <KpiCard label="Comments completed" value={commentedToday} sub="today" icon={<MessageCircle className="h-4 w-4" />} />
-        <KpiCard
-          label="Failures"
-          value={failedToday}
-          sub={failedToday === 0 ? 'no issues detected' : 'need attention'}
-          icon={<AlertTriangle className="h-4 w-4" />}
-          warn={failedToday > 0}
-        />
-      </div>
 
-      <DailySyncTimeline rows={dailySyncRows} latestRunStartedAt={syncRuns[0]?.started_at ?? null} />
-
-      {/* Activity chart / empty state */}
-      <section className="rounded-[14px] border border-[#E5E7ED] bg-white overflow-hidden" aria-label="Engagement activity">
-        <div className="px-5 py-3 border-b border-[#E5E7ED] flex items-center justify-between gap-3 flex-wrap">
-          <div>
-            <h2 className="text-sm font-semibold text-[#171923]">Engagement activity</h2>
-            <p className="text-xs text-[#667085] mt-0.5">Last 7 days</p>
-          </div>
-          <div className="flex items-center gap-4 text-xs">
-            <div className="inline-flex items-center gap-1.5 text-[#3F4657]">
-              <span className="h-2 w-2 rounded-full bg-[#10B981]" />
-              <span>New posts</span>
-              <span className="tabular-nums font-semibold text-[#171923]">{totalPosts7d}</span>
-            </div>
-            <div className="inline-flex items-center gap-1.5 text-[#3F4657]">
-              <span className="h-2 w-2 rounded-full bg-[#7C3AED]" />
-              <span>Likes</span>
-              <span className="tabular-nums font-semibold text-[#171923]">{totalLikes7d}</span>
-            </div>
-            <div className="inline-flex items-center gap-1.5 text-[#3F4657]">
-              <span className="h-2 w-2 rounded-full bg-[#06B6D4]" />
-              <span>Comments</span>
-              <span className="tabular-nums font-semibold text-[#171923]">{totalComments7d}</span>
-            </div>
-            <div className="hidden sm:inline-flex items-center gap-1.5 text-[#667085]">
-              <span>Checks</span>
-              <span className="tabular-nums font-semibold text-[#171923]">{totalChecks7d}</span>
-            </div>
-          </div>
-        </div>
-        {hasChartActivity ? (
-          <ActivitySpark series={activitySeries} />
-        ) : (
-          <div className="p-8 flex flex-col items-center text-center">
-            <div className="h-12 w-12 rounded-xl bg-[#F4F0FF] text-[#7C3AED] flex items-center justify-center mb-3">
-              <BarChart3 className="h-6 w-6" />
-            </div>
-            <h3 className="text-sm font-semibold text-[#171923]">No engagement activity yet</h3>
-            <p className="text-sm text-[#667085] mt-1 max-w-md">
-              Nothing has been liked or commented on during this period. <b className="text-[#171923]">{totalPosts}</b> posts are ready to review (<b className="text-[#171923]">{newPostsYesterday}</b> new yesterday).
-            </p>
-            <div className="mt-4 flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => document.getElementById('review-queue')?.scrollIntoView({ behavior: 'smooth' })}
-                className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg bg-[#7C3AED] hover:bg-[#6D28D9] text-white text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED]/40"
-              >
-                Review new posts
-              </button>
-              <button
-                type="button"
-                className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg border border-[#E5E7ED] bg-white hover:bg-[#F7F8FB] text-sm font-medium text-[#171923] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED]/40"
-              >
-                Configure engagement rules
-              </button>
-            </div>
-          </div>
-        )}
-      </section>
 
       {/* Review queue */}
       <section id="review-queue" className="rounded-[14px] border border-[#E5E7ED] bg-white overflow-hidden">
