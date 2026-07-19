@@ -153,10 +153,19 @@ function PageHeader({
   onSelectPublisher: (id: string) => void;
   onOpenFirstReview: () => void;
 }) {
-  const { runNow } = useEngagementSync();
+  const { runNow, stop, lastRun } = useEngagementSync();
   const { data: discovered = [] } = useDiscoveredPosts(publisher?.id ?? null, 7);
   const reviewCount = discovered.filter((p) => !p.is_liked && !p.is_commented).length;
   const [addOpen, setAddOpen] = useState(false);
+
+  // A sync is considered "active" for 3 minutes after its latest run started
+  // (chained hops keep re-triggering every ~2 min, so this covers the whole chain).
+  const syncActive = useMemo(() => {
+    if (runNow.isPending) return true;
+    if (!lastRun?.started_at) return false;
+    const ageMs = Date.now() - new Date(lastRun.started_at).getTime();
+    return ageMs < 3 * 60 * 1000;
+  }, [runNow.isPending, lastRun?.started_at]);
 
   const runSync = () => {
     if (!publisher) return;
@@ -182,6 +191,18 @@ function PageHeader({
         </div>
 
         <div className="flex items-center gap-2">
+          {syncActive && lastRun && (
+            <div className="inline-flex items-center gap-2 h-9 px-3 rounded-lg border border-[#E4DAFB] bg-[#FBFAFF] text-xs text-[#3F4657]">
+              <Loader2 className="h-3.5 w-3.5 animate-spin text-[#7C3AED]" />
+              <span className="tabular-nums">
+                <b className="text-[#171923]">{lastRun.synced}</b>
+                {' / '}
+                <span className="text-[#667085]">{lastRun.total_targets}</span>
+                {lastRun.failed > 0 && <span className="text-[#B42318] ml-1">· {lastRun.failed} failed</span>}
+                {lastRun.new_posts > 0 && <span className="text-[#027A48] ml-1">· {lastRun.new_posts} new</span>}
+              </span>
+            </div>
+          )}
           <button
             type="button"
             onClick={() => setAddOpen(true)}
@@ -191,15 +212,27 @@ function PageHeader({
             <UserPlus className="h-3.5 w-3.5" />
             Add profile
           </button>
-          <button
-            type="button"
-            onClick={runSync}
-            disabled={runNow.isPending}
-            className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg border border-[#E5E7ED] bg-white hover:bg-[#F7F8FB] active:bg-[#EEF0F5] text-sm font-medium text-[#171923] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED]/40 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {runNow.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
-            Manual sync
-          </button>
+          {syncActive ? (
+            <button
+              type="button"
+              onClick={() => stop.mutate()}
+              disabled={stop.isPending}
+              className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg border border-[#FEC7C7] bg-white hover:bg-[#FEF3F2] active:bg-[#FEE4E2] text-sm font-medium text-[#B42318] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B42318]/40 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {stop.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <span className="h-2.5 w-2.5 rounded-sm bg-[#B42318]" />}
+              Stop sync
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={runSync}
+              disabled={runNow.isPending}
+              className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg border border-[#E5E7ED] bg-white hover:bg-[#F7F8FB] active:bg-[#EEF0F5] text-sm font-medium text-[#171923] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED]/40 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {runNow.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+              Manual sync
+            </button>
+          )}
           <button
             type="button"
             onClick={onOpenFirstReview}
