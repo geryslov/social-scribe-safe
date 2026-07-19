@@ -70,7 +70,8 @@ export function useEngagementSync() {
       return data as EngagementSyncRun | null;
     },
     enabled: !!currentWorkspace,
-    refetchInterval: 30_000,
+    // Poll fast so the header progress pill updates while a chained sync runs.
+    refetchInterval: 5_000,
   });
 
   const toggle = useMutation({
