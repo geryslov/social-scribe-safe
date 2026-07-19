@@ -433,6 +433,9 @@ function ActivityDashboard({
         runNewPosts: 0,
         failed: 0,
         skipped: 0,
+        // target_id -> latest status this day, so a target that failed 5 hops
+        // in a chained sync counts as ONE failure, not 5.
+        statusByTarget: new Map<string, { status: string; name: string; ts: number }>(),
       };
     });
     const byKey = new Map(rows.map((row) => [row.key, row]));
@@ -453,6 +456,7 @@ function ActivityDashboard({
     }
 
     const targetIdSet = new Set(activeTargets.map((t) => t.id));
+    const targetNameById = new Map(activeTargets.map((t) => [t.id, t.name || 'Unknown']));
     for (const run of syncRuns) {
       const key = localDayKey(new Date(run.started_at));
       const row = byKey.get(key);
@@ -462,14 +466,45 @@ function ActivityDashboard({
       if (scoped.length === 0) continue;
       row.recordedRuns += 1;
       row.runNewPosts += scoped.reduce((s: number, d: any) => s + (Number(d.posts_found) || 0), 0);
-      row.failed += scoped.filter((d: any) => d.status === 'failed').length;
-      row.skipped += scoped.filter((d: any) => d.status === 'skipped_cooldown').length;
+      const ts = new Date(run.started_at).getTime();
+      for (const d of scoped) {
+        const prev = row.statusByTarget.get(d.target_id);
+        if (!prev || ts > prev.ts) {
+          row.statusByTarget.set(d.target_id, {
+            status: d.status,
+            name: d.name || targetNameById.get(d.target_id) || 'Unknown',
+            ts,
+          });
+        }
+      }
     }
 
-    return rows.map((row) => ({
-      ...row,
-      profilesWithNew: [...row.profilesWithNew],
-    }));
+    return rows.map((row) => {
+      const syncedNames: string[] = [];
+      const failedNames: string[] = [];
+      const skippedNames: string[] = [];
+      for (const entry of row.statusByTarget.values()) {
+        if (entry.status === 'synced') syncedNames.push(entry.name);
+        else if (entry.status === 'failed') failedNames.push(entry.name);
+        else if (entry.status === 'skipped_cooldown') skippedNames.push(entry.name);
+      }
+      return {
+        key: row.key,
+        label: row.label,
+        date: row.date,
+        checked: row.checked,
+        total: row.total,
+        newPosts: row.newPosts,
+        profilesWithNew: [...row.profilesWithNew],
+        recordedRuns: row.recordedRuns,
+        runNewPosts: row.runNewPosts,
+        failed: failedNames.length,
+        skipped: skippedNames.length,
+        syncedNames: syncedNames.sort(),
+        failedNames: failedNames.sort(),
+        skippedNames: skippedNames.sort(),
+      };
+    });
   }, [activeTargets, discovered, syncRuns]);
 
 
