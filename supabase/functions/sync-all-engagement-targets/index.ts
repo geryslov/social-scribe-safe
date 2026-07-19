@@ -1,9 +1,10 @@
 // =============================================================================
 // sync-all-engagement-targets
 //
-// Daily cron job: iterate engagement_targets across workspaces where auto-sync
-// is enabled and invoke fetch-target-posts for each. Records a summary row per
-// workspace in engagement_sync_runs.
+// Cron job: iterate engagement_targets across workspaces where auto-sync is
+// enabled and invoke fetch-target-posts for each, subject to COOLDOWN_HOURS so
+// a target is re-scraped at most once per cooldown window. Records a summary row
+// per workspace in engagement_sync_runs.
 // =============================================================================
 
 const corsHeaders = {
@@ -11,7 +12,12 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const COOLDOWN_HOURS = 18;
+// harvestapi bills per POST extracted ($1.50-2 / 1k), not per run, so the only
+// lever on the Apify bill is how often we re-scrape. At 18h every target was
+// re-fetched daily — scraping the same 2 posts over and over for people who
+// rarely post. 72h (every 3 days) cuts posts-scraped, and therefore cost, ~3x.
+// Raise further (e.g. 168 = weekly) to cut proportionally more.
+const COOLDOWN_HOURS = 72;
 const BETWEEN_TARGETS_MS = 1500;
 const BETWEEN_AUTOLIKE_MS = 2000;
 // Stop processing new targets after this many ms and re-invoke self to continue.
