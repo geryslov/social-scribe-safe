@@ -988,8 +988,31 @@ function DailySyncTimeline({ rows, latestRunStartedAt }: { rows: DailySyncRow[];
                 <div className="flex items-center gap-3 text-xs text-[#3F4657] flex-wrap">
                   <span className="tabular-nums"><b className="text-[#171923]">{row.newPosts}</b> new post{row.newPosts === 1 ? '' : 's'}</span>
                   <span className="tabular-nums text-[#667085]">{statusText}</span>
-                  {row.failed > 0 && <span className="text-[#B42318] tabular-nums">{row.failed} failed</span>}
-                  {row.skipped > 0 && <span className="text-[#667085] tabular-nums">{row.skipped} skipped</span>}
+                  <ProfileListPopover
+                    trigger={<span className="tabular-nums text-[#027A48] hover:underline cursor-pointer">{row.syncedNames.length} synced</span>}
+                    title={`Synced on ${row.date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`}
+                    names={row.syncedNames}
+                    tone="success"
+                    empty="No profiles synced this day."
+                  />
+                  {row.failed > 0 && (
+                    <ProfileListPopover
+                      trigger={<span className="text-[#B42318] tabular-nums hover:underline cursor-pointer">{row.failed} failed</span>}
+                      title={`Failed on ${row.date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`}
+                      names={row.failedNames}
+                      tone="danger"
+                      empty="No failures."
+                    />
+                  )}
+                  {row.skipped > 0 && (
+                    <ProfileListPopover
+                      trigger={<span className="text-[#667085] tabular-nums hover:underline cursor-pointer">{row.skipped} skipped</span>}
+                      title={`Skipped (cooldown) on ${row.date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`}
+                      names={row.skippedNames}
+                      tone="muted"
+                      empty="Nothing skipped."
+                    />
+                  )}
                 </div>
                 <div className="h-1.5 rounded-full bg-[#EEF0F5] overflow-hidden">
                   <div className="h-full rounded-full bg-[#7C3AED] transition-all" style={{ width: `${percent}%` }} />
@@ -1015,6 +1038,36 @@ function DailySyncTimeline({ rows, latestRunStartedAt }: { rows: DailySyncRow[];
         })}
       </div>
     </section>
+  );
+}
+
+function ProfileListPopover({
+  trigger, title, names, tone, empty,
+}: { trigger: React.ReactNode; title: string; names: string[]; tone: 'success' | 'danger' | 'muted'; empty: string }) {
+  const toneColor = tone === 'success' ? 'text-[#027A48]' : tone === 'danger' ? 'text-[#B42318]' : 'text-[#667085]';
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button type="button" className="focus-visible:outline-none">{trigger}</button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-[300px] p-0">
+        <div className="px-4 py-3 border-b border-[#E5E7ED]">
+          <div className={cn('text-sm font-semibold', toneColor)}>{title}</div>
+          <div className="text-xs text-[#667085] mt-0.5">{names.length} profile{names.length === 1 ? '' : 's'}</div>
+        </div>
+        <div className="max-h-[320px] overflow-y-auto">
+          {names.length === 0 ? (
+            <div className="p-4 text-xs text-[#667085] text-center">{empty}</div>
+          ) : (
+            <ul className="divide-y divide-[#E5E7ED]">
+              {names.map((n, i) => (
+                <li key={`${n}-${i}`} className="px-4 py-2 text-sm text-[#171923]">{n}</li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }
 
