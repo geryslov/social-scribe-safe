@@ -1796,6 +1796,20 @@ function TodayTable({
   comments: any[];
   syncRuns: import('@/hooks/useEngagementActivity').EngagementSyncRunFull[];
 }) {
+  const { isAdmin } = useAuth();
+  const { deleteTarget, bulkDeleteTargets } = useEngagementTargets(publisher.id);
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [confirmBulk, setConfirmBulk] = useState(false);
+  const toggleSelected = (id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+  const exitSelection = () => { setSelectionMode(false); setSelected(new Set()); setConfirmBulk(false); };
+
   const todayStart = useMemo(() => {
     const d = new Date(); d.setHours(0, 0, 0, 0); return d.getTime();
   }, []);
