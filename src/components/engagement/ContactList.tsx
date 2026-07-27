@@ -67,7 +67,7 @@ export function ContactList({
   const queryClient = useQueryClient();
   const {
     targets, isLoading, createTarget, bulkCreateTargets, enrichTarget, updateTarget,
-    bulkDeleteTargets, bulkReassignTargets,
+    bulkDeleteTargets, bulkReassignTargets, deleteTarget,
   } = useEngagementTargets(publisher.id);
   const { folders, createFolder, renameFolder, deleteFolder, moveTargetsToFolder } = useEngagementFolders(publisher.id);
   const { publishers } = usePublishers();
@@ -491,6 +491,21 @@ export function ContactList({
               >
                 <Plus className="h-4 w-4" />
               </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className={cn(
+                  'h-8 px-2 text-xs font-medium flex-shrink-0',
+                  selectionMode
+                    ? 'bg-amber-50 text-amber-700 hover:bg-amber-100'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted',
+                )}
+                onClick={() => (selectionMode ? exitSelectionMode() : setSelectionMode(true))}
+                title={selectionMode ? 'Done managing' : 'Select and remove profiles'}
+              >
+                <CheckSquare className="h-3.5 w-3.5 mr-1.5" />
+                {selectionMode ? 'Done' : 'Manage'}
+              </Button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
@@ -504,13 +519,6 @@ export function ContactList({
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
                   <DropdownMenuLabel className="text-xs">List actions</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={() => (selectionMode ? exitSelectionMode() : setSelectionMode(true))}
-                  >
-                    <CheckSquare className="h-3.5 w-3.5 mr-2" />
-                    {selectionMode ? 'Cancel selection' : 'Select multiple'}
-                  </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <div className="px-2 py-1.5 flex items-center justify-between gap-2">
                     <span className="inline-flex items-center gap-1.5 text-xs">
@@ -737,6 +745,7 @@ export function ContactList({
                     isFetching={fetchingTargetId === target.id}
                     isChecked={selectedIds.has(target.id)}
                     selectionMode={selectionMode}
+                    isAdmin={isAdmin}
                     fresh={freshCounts[target.id] || 0}
                     done={doneCounts[target.id] || 0}
                     onClick={() => {
@@ -745,6 +754,7 @@ export function ContactList({
                     }}
                     onToggleSelect={() => toggleSelected(target.id)}
                     onRetryEnrich={() => enrichTarget.mutate(target.id)}
+                    onDelete={(id) => deleteTarget.mutate(id)}
                     queueMode
                   />
                 ))}
@@ -781,6 +791,7 @@ export function ContactList({
                         isFetching={fetchingTargetId === target.id}
                         isChecked={selectedIds.has(target.id)}
                         selectionMode={selectionMode}
+                        isAdmin={isAdmin}
                         fresh={freshCounts[target.id] || 0}
                         done={doneCounts[target.id] || 0}
                         onClick={() => {
@@ -789,6 +800,7 @@ export function ContactList({
                         }}
                         onToggleSelect={() => toggleSelected(target.id)}
                         onRetryEnrich={() => enrichTarget.mutate(target.id)}
+                        onDelete={(id) => deleteTarget.mutate(id)}
                       />
                     </div>
                   );
@@ -1004,17 +1016,19 @@ interface TargetRowProps {
   isFetching: boolean;
   isChecked: boolean;
   selectionMode: boolean;
+  isAdmin: boolean;
   fresh: number;
   done: number;
   queueMode?: boolean;
   onClick: () => void;
   onToggleSelect: () => void;
   onRetryEnrich: () => void;
+  onDelete: (id: string) => void;
 }
 
 function TargetRow({
-  target, isSelected, isFetching, isChecked, selectionMode,
-  fresh, done, queueMode, onClick, onToggleSelect, onRetryEnrich,
+  target, isSelected, isFetching, isChecked, selectionMode, isAdmin,
+  fresh, done, queueMode, onClick, onToggleSelect, onRetryEnrich, onDelete,
 }: TargetRowProps) {
   const initials = target.name
     .split(' ')
@@ -1022,6 +1036,7 @@ function TargetRow({
     .join('')
     .slice(0, 2)
     .toUpperCase();
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   return (
     <button
@@ -1101,6 +1116,39 @@ function TargetRow({
         )}
         {!queueMode && fresh > 0 && (
           <span className="h-1.5 w-1.5 rounded-full bg-amber-500" title={`${fresh} fresh`} />
+        )}
+        {isAdmin && !selectionMode && (
+          <span
+            role="button"
+            tabIndex={0}
+            title={confirmDelete ? 'Click again to remove' : 'Remove profile'}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (confirmDelete) {
+                onDelete(target.id);
+                setConfirmDelete(false);
+              } else {
+                setConfirmDelete(true);
+                setTimeout(() => setConfirmDelete(false), 3000);
+              }
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.stopPropagation();
+                e.preventDefault();
+                e.currentTarget.click();
+              }
+            }}
+            className={cn(
+              'inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded transition-colors',
+              confirmDelete
+                ? 'text-destructive bg-destructive/10'
+                : 'text-muted-foreground/50 hover:text-destructive hover:bg-destructive/5',
+            )}
+          >
+            <Trash2 className="h-3 w-3" />
+            {confirmDelete ? 'Confirm?' : ''}
+          </span>
         )}
         {target.last_fetched_at && (
           <span className="text-[10px] text-muted-foreground/40 tabular-nums">
