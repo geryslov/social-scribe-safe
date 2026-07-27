@@ -37,7 +37,7 @@ import {
   Search, Bell, RefreshCw, Loader2, ChevronDown, ChevronRight, Check,
   Heart, MessageCircle, TrendingUp, AlertTriangle, ArrowRight,
   ExternalLink, MoreHorizontal, Filter, ArrowUpDown, Rows3, Rows2,
-  Clock, CheckCircle2, XCircle, EyeOff, BookmarkPlus, Users, Plus, UserPlus,
+  Clock, CheckCircle2, XCircle, EyeOff, BookmarkPlus, Users, Plus, UserPlus, Trash2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -1796,6 +1796,20 @@ function TodayTable({
   comments: any[];
   syncRuns: import('@/hooks/useEngagementActivity').EngagementSyncRunFull[];
 }) {
+  const { isAdmin } = useAuth();
+  const { deleteTarget, bulkDeleteTargets } = useEngagementTargets(publisher.id);
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [confirmBulk, setConfirmBulk] = useState(false);
+  const toggleSelected = (id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+  const exitSelection = () => { setSelectionMode(false); setSelected(new Set()); setConfirmBulk(false); };
+
   const todayStart = useMemo(() => {
     const d = new Date(); d.setHours(0, 0, 0, 0); return d.getTime();
   }, []);
@@ -1912,6 +1926,10 @@ function TodayTable({
   const [expanded, setExpanded] = useState(false);
   const visible = expanded ? sorted : sorted.slice(0, 12);
 
+  const gridCls = isAdmin
+    ? 'grid grid-cols-[36px_minmax(0,1.4fr)_140px_100px_90px_110px_60px_44px] gap-3 px-5'
+    : 'grid grid-cols-[minmax(0,1.4fr)_140px_100px_90px_110px_60px] gap-3 px-5';
+
   return (
     <TooltipProvider delayDuration={200}>
       <section className="rounded-[14px] border border-[#E5E7ED] bg-white overflow-hidden">
@@ -1927,16 +1945,80 @@ function TodayTable({
               What happened for <b className="text-[#171923] font-semibold">{publisher.name}</b> today. Every number is scoped to today only.
             </p>
           </div>
+          {isAdmin && (
+            <div className="flex items-center gap-2">
+              {selectionMode && selected.size > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (confirmBulk) {
+                      const ids = Array.from(selected);
+                      bulkDeleteTargets.mutate(ids, {
+                        onSuccess: () => {
+                          toast.success(`Removed ${ids.length} profile${ids.length === 1 ? '' : 's'}`);
+                          exitSelection();
+                        },
+                        onError: (e: any) => toast.error(e?.message || 'Failed to remove'),
+                      });
+                    } else {
+                      setConfirmBulk(true);
+                      setTimeout(() => setConfirmBulk(false), 3000);
+                    }
+                  }}
+                  disabled={bulkDeleteTargets.isPending}
+                  className={cn(
+                    'inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-medium border transition-colors',
+                    confirmBulk
+                      ? 'bg-[#B42318] text-white border-[#B42318] hover:bg-[#912117]'
+                      : 'bg-white text-[#B42318] border-[#FDA29B] hover:bg-[#FEF3F2]',
+                  )}
+                >
+                  {bulkDeleteTargets.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                  {confirmBulk ? `Confirm delete ${selected.size}?` : `Delete ${selected.size}`}
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => (selectionMode ? exitSelection() : setSelectionMode(true))}
+                className={cn(
+                  'inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-medium border transition-colors',
+                  selectionMode
+                    ? 'bg-[#F4F0FF] text-[#7C3AED] border-[#DDD0FB]'
+                    : 'bg-white text-[#3F4657] border-[#E5E7ED] hover:bg-[#F7F8FB]',
+                )}
+                title={selectionMode ? 'Exit selection' : 'Select profiles to remove or manage'}
+              >
+                {selectionMode ? 'Done' : 'Manage'}
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Column header */}
-        <div role="row" className="grid grid-cols-[minmax(0,1.4fr)_140px_100px_90px_110px_60px] gap-3 px-5 h-9 items-center bg-[#F7F8FB] border-b border-[#E5E7ED] text-[11px] uppercase tracking-wider text-[#667085] font-medium">
+        <div role="row" className={cn(gridCls, 'h-9 items-center bg-[#F7F8FB] border-b border-[#E5E7ED] text-[11px] uppercase tracking-wider text-[#667085] font-medium')}>
+          {isAdmin && (
+            <div className="flex items-center">
+              {selectionMode && (
+                <input
+                  type="checkbox"
+                  aria-label="Select all"
+                  checked={selected.size > 0 && selected.size === sorted.length}
+                  onChange={(e) => {
+                    if (e.target.checked) setSelected(new Set(sorted.map((r) => r.id)));
+                    else setSelected(new Set());
+                  }}
+                  className="h-3.5 w-3.5 accent-[#7C3AED] cursor-pointer"
+                />
+              )}
+            </div>
+          )}
           <div>Profile</div>
           <MetricHeader label="Checked" tip="Whether today's sync fetched this profile's posts. ✓ with the sync time, ✗ if the fetch failed, — if not yet checked today." />
           <MetricHeader label="New posts" tip="Posts by this profile that landed in your DB today (since 00:00 local)." align="right" />
           <MetricHeader label="Liked" tip="Likes YOU (auto or manual) performed on this profile's posts today." align="right" />
           <MetricHeader label="Commented" tip="Comments you posted on this profile's posts today." align="right" />
           <MetricHeader label="⚠" tip="Action failures today (a like or comment errored). Hover the row for the reason." align="right" />
+          {isAdmin && <div />}
         </div>
 
         {rows.length === 0 ? (
@@ -1947,12 +2029,27 @@ function TodayTable({
           <>
             <div className="divide-y divide-[#E5E7ED]">
               {visible.map((r) => (
-                <TodayTableRow key={r.id} row={r} />
+                <TodayTableRow
+                  key={r.id}
+                  row={r}
+                  gridCls={gridCls}
+                  isAdmin={isAdmin}
+                  selectionMode={selectionMode}
+                  isSelected={selected.has(r.id)}
+                  onToggleSelect={() => toggleSelected(r.id)}
+                  onDelete={() =>
+                    deleteTarget.mutate(r.id, {
+                      onSuccess: () => toast.success(`Removed ${r.name}`),
+                      onError: (e: any) => toast.error(e?.message || 'Failed to remove'),
+                    })
+                  }
+                />
               ))}
             </div>
 
             {/* Totals row */}
-            <div className="grid grid-cols-[minmax(0,1.4fr)_140px_100px_90px_110px_60px] gap-3 px-5 h-11 items-center bg-[#FBFAFF] border-t-2 border-[#E4DAFB] text-xs">
+            <div className={cn(gridCls, 'h-11 items-center bg-[#FBFAFF] border-t-2 border-[#E4DAFB] text-xs')}>
+              {isAdmin && <div />}
               <div className="font-semibold text-[#171923]">Totals</div>
               <TotalCell
                 text={`${totals.syncedProfiles}/${totals.totalProfiles}`}
@@ -1964,6 +2061,7 @@ function TodayTable({
               <TotalCell text={String(totals.liked)} tip="Total likes you performed today. Scope: today." align="right" />
               <TotalCell text={String(totals.commented)} tip="Total comments you posted today. Scope: today." align="right" />
               <TotalCell text={String(totals.actionFailures)} tip="Total action failures today. Scope: today." align="right" tone={totals.actionFailures > 0 ? 'danger' : 'muted'} />
+              {isAdmin && <div />}
             </div>
 
             {sorted.length > 12 && (
@@ -1982,6 +2080,7 @@ function TodayTable({
       </section>
     </TooltipProvider>
   );
+
 }
 
 function MetricHeader({ label, tip, align }: { label: string; tip: string; align?: 'right' }) {
@@ -2012,12 +2111,42 @@ function TotalCell({
   );
 }
 
-function TodayTableRow({ row }: { row: TodayRow }) {
+function TodayTableRow({
+  row, gridCls, isAdmin, selectionMode, isSelected, onToggleSelect, onDelete,
+}: {
+  row: TodayRow;
+  gridCls: string;
+  isAdmin: boolean;
+  selectionMode: boolean;
+  isSelected: boolean;
+  onToggleSelect: () => void;
+  onDelete: () => void;
+}) {
   const initials = row.name.split(' ').map((s) => s[0]).slice(0, 2).join('').toUpperCase();
   const checkedTime = row.checkedAt ? new Date(row.checkedAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }) : null;
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   return (
-    <div role="row" className="grid grid-cols-[minmax(0,1.4fr)_140px_100px_90px_110px_60px] gap-3 px-5 py-2.5 items-center hover:bg-[#FBFAFF]">
+    <div
+      role="row"
+      className={cn(gridCls, 'py-2.5 items-center hover:bg-[#FBFAFF]', isSelected && 'bg-[#F4F0FF]')}
+      onClick={() => { if (selectionMode) onToggleSelect(); }}
+    >
+      {isAdmin && (
+        <div className="flex items-center">
+          {selectionMode && (
+            <input
+              type="checkbox"
+              aria-label={`Select ${row.name}`}
+              checked={isSelected}
+              onChange={onToggleSelect}
+              onClick={(e) => e.stopPropagation()}
+              className="h-3.5 w-3.5 accent-[#7C3AED] cursor-pointer"
+            />
+          )}
+        </div>
+      )}
+
       <div className="flex items-center gap-2.5 min-w-0">
         <div className="h-7 w-7 rounded-full bg-[#F4F0FF] text-[#7C3AED] flex items-center justify-center flex-shrink-0 text-[11px] font-semibold overflow-hidden">
           {row.avatar_url ? <img src={row.avatar_url} alt="" className="h-full w-full object-cover" /> : initials || '?'}
@@ -2094,8 +2223,44 @@ function TodayTableRow({ row }: { row: TodayRow }) {
           <span className="text-[#B0B5C0]">—</span>
         )}
       </div>
+      {isAdmin && (
+        <div className="flex items-center justify-end">
+          {!selectionMode && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  aria-label={`Remove ${row.name}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (confirmDelete) {
+                      onDelete();
+                      setConfirmDelete(false);
+                    } else {
+                      setConfirmDelete(true);
+                      setTimeout(() => setConfirmDelete(false), 3000);
+                    }
+                  }}
+                  className={cn(
+                    'inline-flex items-center justify-center h-7 w-7 rounded-md border transition-colors',
+                    confirmDelete
+                      ? 'bg-[#B42318] text-white border-[#B42318] hover:bg-[#912117]'
+                      : 'bg-white text-[#B42318] border-[#E5E7ED] hover:bg-[#FEF3F2] hover:border-[#FDA29B]',
+                  )}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="left" className="max-w-[240px] text-xs">
+                {confirmDelete ? 'Click again to confirm removal.' : `Remove ${row.name} from this publisher's Engage list.`}
+              </TooltipContent>
+            </Tooltip>
+          )}
+        </div>
+      )}
     </div>
   );
+
 }
 
 /* ============================================================================
