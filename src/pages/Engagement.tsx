@@ -2111,12 +2111,42 @@ function TotalCell({
   );
 }
 
-function TodayTableRow({ row }: { row: TodayRow }) {
+function TodayTableRow({
+  row, gridCls, isAdmin, selectionMode, isSelected, onToggleSelect, onDelete,
+}: {
+  row: TodayRow;
+  gridCls: string;
+  isAdmin: boolean;
+  selectionMode: boolean;
+  isSelected: boolean;
+  onToggleSelect: () => void;
+  onDelete: () => void;
+}) {
   const initials = row.name.split(' ').map((s) => s[0]).slice(0, 2).join('').toUpperCase();
   const checkedTime = row.checkedAt ? new Date(row.checkedAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }) : null;
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   return (
-    <div role="row" className="grid grid-cols-[minmax(0,1.4fr)_140px_100px_90px_110px_60px] gap-3 px-5 py-2.5 items-center hover:bg-[#FBFAFF]">
+    <div
+      role="row"
+      className={cn(gridCls, 'py-2.5 items-center hover:bg-[#FBFAFF]', isSelected && 'bg-[#F4F0FF]')}
+      onClick={() => { if (selectionMode) onToggleSelect(); }}
+    >
+      {isAdmin && (
+        <div className="flex items-center">
+          {selectionMode && (
+            <input
+              type="checkbox"
+              aria-label={`Select ${row.name}`}
+              checked={isSelected}
+              onChange={onToggleSelect}
+              onClick={(e) => e.stopPropagation()}
+              className="h-3.5 w-3.5 accent-[#7C3AED] cursor-pointer"
+            />
+          )}
+        </div>
+      )}
+
       <div className="flex items-center gap-2.5 min-w-0">
         <div className="h-7 w-7 rounded-full bg-[#F4F0FF] text-[#7C3AED] flex items-center justify-center flex-shrink-0 text-[11px] font-semibold overflow-hidden">
           {row.avatar_url ? <img src={row.avatar_url} alt="" className="h-full w-full object-cover" /> : initials || '?'}
