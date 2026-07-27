@@ -520,13 +520,6 @@ export function ContactList({
                 <DropdownMenuContent align="end" className="w-56">
                   <DropdownMenuLabel className="text-xs">List actions</DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={() => (selectionMode ? exitSelectionMode() : setSelectionMode(true))}
-                  >
-                    <CheckSquare className="h-3.5 w-3.5 mr-2" />
-                    {selectionMode ? 'Cancel selection' : 'Select multiple'}
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
                   <div className="px-2 py-1.5 flex items-center justify-between gap-2">
                     <span className="inline-flex items-center gap-1.5 text-xs">
                       <Zap className={cn('h-3 w-3', allAutoLike ? 'fill-amber-500 text-amber-500' : 'text-muted-foreground')} />
