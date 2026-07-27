@@ -1,4 +1,20 @@
-# CLAUDE.md — Social-Scribe-Safe (ThoughtOS)
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+Social-Scribe-Safe (ThoughtOS)
+
+## Commands
+```bash
+npm run dev        # Vite dev server on http://localhost:8080 (host ::)
+npm run build      # Production build
+npm run build:dev  # Build in development mode (unminified, with lovable-tagger)
+npm run lint       # ESLint (flat config, eslint.config.js)
+npm run preview    # Serve the production build locally
+```
+- Package manager: repo carries both `bun.lockb` and `package-lock.json`; `npm i` works. No test runner is configured — there are no unit/integration tests, so don't assume `npm test` exists.
+- Path alias: `@/` → `src/` (configured in `vite.config.ts` and `tsconfig`).
+- **Edge Functions are not run locally.** The Supabase CLI is not linked (see below). Deploy them via Lovable sync or the Supabase dashboard; there is no local `supabase functions serve` workflow set up.
 
 ## What This Is
 Multi-tenant LinkedIn thought leadership platform. Agency operators manage publishers (clients), generate AI-written posts, publish to LinkedIn, track analytics, and engage with other people's content.
@@ -41,6 +57,15 @@ Multi-tenant LinkedIn thought leadership platform. Agency operators manage publi
 | `fetch-comment-engagement` | Queries LinkedIn Social Metadata API for reactions + replies on posted comments. Batch support (10 at a time). |
 | `run-research` | Intelligence layer: Reddit + HN + Brave search → engagement-ranked feed |
 | `fetch-target-posts` | Apify: fetches LinkedIn posts from engagement targets (async run + poll). Filters out reposts. Also extracts profile data (avatar, title, company) from author info. |
+| `fetch-target-posts-batch` | Batched `fetch-target-posts`: runs the `harvestapi/linkedin-profile-posts` actor ONCE for up to BATCH_SIZE targets instead of one run per target. |
+| `bulk-enrich-targets` | Batched server-side enrichment + post fetch across many targets in one pass (avoids one Apify run per target). |
+| `sync-all-engagement-targets` | Cron/manual entry point: groups eligible engagement targets per workspace and drives the batched fetch/enrich pipeline. |
+| `sync-all-publishers` | Cron/manual entry point: iterates publishers and invokes `fetch-linkedin-posts` to refresh each publisher's own post analytics. |
+| `auto-like-target-posts` | Server-side auto-like loop for a target with `auto_like=true`; jittered spacing, honors the 30/day per-publisher cap. |
+| `classify-post` | Post-type classification agent (see "Comment Classification Agent"); caches result to `engagement_posts.post_metadata.classification`. |
+| `analyze-post` | Analyzes pasted/target post content via the Lovable AI gateway. |
+| `structure-post` | Structural/readability editing pass — restructures pasted or written text for LinkedIn. |
+| `validate-api-key` | Validates a third-party API token (apify / brave / scrapecreators) before it is stored in `workspace_api_keys`. |
 | `post-linkedin-comment` | Posts comments via LinkedIn Community Management API. Tries multiple URN variants. Updates engagement_comment status with dual-write (server + client fallback). |
 | `like-linkedin-post` | Likes posts via LinkedIn Reactions API |
 | `enrich-engagement-target` | Apify: enriches engagement target with profile data (name, title, company, avatar) |
