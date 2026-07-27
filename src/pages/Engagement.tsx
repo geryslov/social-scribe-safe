@@ -2223,8 +2223,44 @@ function TodayTableRow({
           <span className="text-[#B0B5C0]">—</span>
         )}
       </div>
+      {isAdmin && (
+        <div className="flex items-center justify-end">
+          {!selectionMode && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  aria-label={`Remove ${row.name}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (confirmDelete) {
+                      onDelete();
+                      setConfirmDelete(false);
+                    } else {
+                      setConfirmDelete(true);
+                      setTimeout(() => setConfirmDelete(false), 3000);
+                    }
+                  }}
+                  className={cn(
+                    'inline-flex items-center justify-center h-7 w-7 rounded-md border transition-colors',
+                    confirmDelete
+                      ? 'bg-[#B42318] text-white border-[#B42318] hover:bg-[#912117]'
+                      : 'bg-white text-[#B42318] border-[#E5E7ED] hover:bg-[#FEF3F2] hover:border-[#FDA29B]',
+                  )}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="left" className="max-w-[240px] text-xs">
+                {confirmDelete ? 'Click again to confirm removal.' : `Remove ${row.name} from this publisher's Engage list.`}
+              </TooltipContent>
+            </Tooltip>
+          )}
+        </div>
+      )}
     </div>
   );
+
 }
 
 /* ============================================================================
