@@ -1012,17 +1012,19 @@ interface TargetRowProps {
   isFetching: boolean;
   isChecked: boolean;
   selectionMode: boolean;
+  isAdmin: boolean;
   fresh: number;
   done: number;
   queueMode?: boolean;
   onClick: () => void;
   onToggleSelect: () => void;
   onRetryEnrich: () => void;
+  onDelete: (id: string) => void;
 }
 
 function TargetRow({
-  target, isSelected, isFetching, isChecked, selectionMode,
-  fresh, done, queueMode, onClick, onToggleSelect, onRetryEnrich,
+  target, isSelected, isFetching, isChecked, selectionMode, isAdmin,
+  fresh, done, queueMode, onClick, onToggleSelect, onRetryEnrich, onDelete,
 }: TargetRowProps) {
   const initials = target.name
     .split(' ')
@@ -1030,6 +1032,7 @@ function TargetRow({
     .join('')
     .slice(0, 2)
     .toUpperCase();
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   return (
     <button
@@ -1109,6 +1112,39 @@ function TargetRow({
         )}
         {!queueMode && fresh > 0 && (
           <span className="h-1.5 w-1.5 rounded-full bg-amber-500" title={`${fresh} fresh`} />
+        )}
+        {isAdmin && !selectionMode && (
+          <span
+            role="button"
+            tabIndex={0}
+            title={confirmDelete ? 'Click again to remove' : 'Remove profile'}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (confirmDelete) {
+                onDelete(target.id);
+                setConfirmDelete(false);
+              } else {
+                setConfirmDelete(true);
+                setTimeout(() => setConfirmDelete(false), 3000);
+              }
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.stopPropagation();
+                e.preventDefault();
+                e.currentTarget.click();
+              }
+            }}
+            className={cn(
+              'inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded transition-colors',
+              confirmDelete
+                ? 'text-destructive bg-destructive/10'
+                : 'text-muted-foreground/50 hover:text-destructive hover:bg-destructive/5',
+            )}
+          >
+            <Trash2 className="h-3 w-3" />
+            {confirmDelete ? 'Confirm?' : ''}
+          </span>
         )}
         {target.last_fetched_at && (
           <span className="text-[10px] text-muted-foreground/40 tabular-nums">
