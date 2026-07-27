@@ -67,7 +67,7 @@ export function ContactList({
   const queryClient = useQueryClient();
   const {
     targets, isLoading, createTarget, bulkCreateTargets, enrichTarget, updateTarget,
-    bulkDeleteTargets, bulkReassignTargets,
+    bulkDeleteTargets, bulkReassignTargets, deleteTarget,
   } = useEngagementTargets(publisher.id);
   const { folders, createFolder, renameFolder, deleteFolder, moveTargetsToFolder } = useEngagementFolders(publisher.id);
   const { publishers } = usePublishers();
