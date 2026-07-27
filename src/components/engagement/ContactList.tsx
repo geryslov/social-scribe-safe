@@ -491,6 +491,21 @@ export function ContactList({
               >
                 <Plus className="h-4 w-4" />
               </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className={cn(
+                  'h-8 px-2 text-xs font-medium flex-shrink-0',
+                  selectionMode
+                    ? 'bg-amber-50 text-amber-700 hover:bg-amber-100'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted',
+                )}
+                onClick={() => (selectionMode ? exitSelectionMode() : setSelectionMode(true))}
+                title={selectionMode ? 'Done managing' : 'Select and remove profiles'}
+              >
+                <CheckSquare className="h-3.5 w-3.5 mr-1.5" />
+                {selectionMode ? 'Done' : 'Manage'}
+              </Button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
