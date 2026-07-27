@@ -791,6 +791,7 @@ export function ContactList({
                         isFetching={fetchingTargetId === target.id}
                         isChecked={selectedIds.has(target.id)}
                         selectionMode={selectionMode}
+                        isAdmin={isAdmin}
                         fresh={freshCounts[target.id] || 0}
                         done={doneCounts[target.id] || 0}
                         onClick={() => {
@@ -799,6 +800,7 @@ export function ContactList({
                         }}
                         onToggleSelect={() => toggleSelected(target.id)}
                         onRetryEnrich={() => enrichTarget.mutate(target.id)}
+                        onDelete={(id) => deleteTarget.mutate(id)}
                       />
                     </div>
                   );
