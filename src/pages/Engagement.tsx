@@ -1364,6 +1364,119 @@ function QueueEmpty({ tab }: { tab: string }) {
   );
 }
 
+function CommentsQueueEmpty() {
+  return (
+    <div className="p-10 flex flex-col items-center text-center">
+      <div className="h-10 w-10 rounded-lg bg-[#F4F0FF] text-[#7C3AED] flex items-center justify-center mb-2">
+        <MessageCircle className="h-5 w-5" />
+      </div>
+      <h3 className="text-sm font-semibold text-[#171923]">No tracked comments yet</h3>
+      <p className="text-xs text-[#667085] mt-1 max-w-sm">
+        Run comment sync for a profile to see posts they commented on elsewhere.
+      </p>
+    </div>
+  );
+}
+
+function CommentsDiscoveryTable({
+  comments, onOpenTarget,
+}: {
+  comments: DiscoveredComment[];
+  onOpenTarget: (targetId: string) => void;
+}) {
+  return (
+    <div role="table" aria-label="Comments discovered from target profiles">
+      <div role="row" className="grid grid-cols-[minmax(180px,0.8fr)_minmax(0,1.7fr)_120px_140px] gap-4 px-5 h-9 items-center bg-[#F7F8FB] border-b border-[#E5E7ED] text-[11px] uppercase tracking-wider text-[#667085] font-medium">
+        <div>Profile</div>
+        <div>Commented on</div>
+        <div className="text-right">Reactions</div>
+        <div className="text-right">Action</div>
+      </div>
+      <div className="divide-y divide-[#E5E7ED]">
+        {comments.map((comment) => {
+          const parentUrl = comment.parent_post_url || comment.comment_url;
+          const targetName = comment.target_name || 'Unknown profile';
+          return (
+            <div
+              key={comment.id}
+              role="row"
+              className="grid grid-cols-[minmax(180px,0.8fr)_minmax(0,1.7fr)_120px_140px] gap-4 px-5 py-4 items-start hover:bg-[#FBFAFF] transition-colors"
+            >
+              <button
+                type="button"
+                onClick={() => onOpenTarget(comment.target_id)}
+                className="flex items-center gap-3 min-w-0 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED]/40 rounded-md"
+              >
+                <Avatar url={comment.target_avatar_url} name={targetName} size={36} />
+                <div className="min-w-0">
+                  <div className="text-sm font-medium text-[#171923] truncate">{targetName}</div>
+                  <div className="text-xs text-[#667085] truncate">
+                    {[comment.target_title, comment.target_company].filter(Boolean).join(' · ') || 'LinkedIn profile'}
+                  </div>
+                  {comment.commented_at && (
+                    <div className="text-[11px] text-[#667085] tabular-nums mt-0.5">
+                      commented {relativeTime(comment.commented_at)}
+                    </div>
+                  )}
+                </div>
+              </button>
+
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5 text-xs text-[#667085]">
+                  <MessageCircle className="h-3.5 w-3.5 text-[#7C3AED]" />
+                  <span className="truncate">
+                    {comment.parent_post_author_name ? `${comment.parent_post_author_name}'s post` : 'LinkedIn post'}
+                  </span>
+                </div>
+                {comment.parent_post_content && (
+                  <p className="mt-1 text-sm text-[#171923] leading-relaxed line-clamp-2">
+                    {comment.parent_post_content}
+                  </p>
+                )}
+                {comment.comment_text && (
+                  <div className="mt-2 rounded-md border-l-2 border-[#7C3AED] bg-[#FBFAFF] px-3 py-2">
+                    <div className="text-[10px] uppercase tracking-wider text-[#7C3AED] font-medium">
+                      {targetName} said
+                    </div>
+                    <p className="mt-0.5 text-xs text-[#3F4657] leading-relaxed line-clamp-3">
+                      {comment.comment_text}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              <div className="text-right text-xs text-[#171923] font-semibold tabular-nums">
+                {comment.reactions_count || 0}
+              </div>
+
+              <div className="flex items-center justify-end gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => onOpenTarget(comment.target_id)}
+                  className="inline-flex items-center gap-1 h-8 px-3 rounded-md bg-white border border-[#E5E7ED] hover:bg-[#F4F0FF] hover:border-[#E4DAFB] hover:text-[#7C3AED] text-xs font-medium text-[#171923] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED]/40"
+                >
+                  Review
+                </button>
+                {parentUrl && (
+                  <a
+                    href={parentUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center justify-center h-8 w-8 rounded-md border border-[#E5E7ED] bg-white hover:bg-[#F7F8FB] text-[#667085] hover:text-[#171923] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED]/40"
+                    aria-label="Open LinkedIn thread"
+                  >
+                    <ExternalLink className="h-3.5 w-3.5" />
+                  </a>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function QueueRow({
   row, density, onOpen, onComment,
 }: { row: ReviewRow; density: 'comfortable' | 'compact'; onOpen: () => void; onComment: (p: EngagementPost) => void }) {
