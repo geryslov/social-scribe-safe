@@ -291,6 +291,7 @@ Deno.serve(async (req) => {
       try {
         const nextBody: Record<string, unknown> = { trigger: `${trigger}_continue` };
         if (onlyWorkspaceId) nextBody.workspace_id = onlyWorkspaceId;
+        if (onlyPublisherId) nextBody.publisher_id = onlyPublisherId;
         fetch(`${SUPABASE_URL}/functions/v1/sync-all-engagement-targets`, {
           method: 'POST',
           headers: {
