@@ -657,6 +657,84 @@ export type Database = {
           },
         ]
       }
+      engagement_target_comments: {
+        Row: {
+          comment_metadata: Json
+          comment_text: string | null
+          comment_url: string | null
+          comment_urn: string | null
+          commented_at: string | null
+          created_at: string
+          dedup_key: string
+          id: string
+          parent_post_author_headline: string | null
+          parent_post_author_name: string | null
+          parent_post_author_url: string | null
+          parent_post_content: string | null
+          parent_post_published_at: string | null
+          parent_post_url: string | null
+          parent_post_urn: string | null
+          reactions_count: number
+          target_id: string
+          workspace_id: string
+        }
+        Insert: {
+          comment_metadata?: Json
+          comment_text?: string | null
+          comment_url?: string | null
+          comment_urn?: string | null
+          commented_at?: string | null
+          created_at?: string
+          dedup_key: string
+          id?: string
+          parent_post_author_headline?: string | null
+          parent_post_author_name?: string | null
+          parent_post_author_url?: string | null
+          parent_post_content?: string | null
+          parent_post_published_at?: string | null
+          parent_post_url?: string | null
+          parent_post_urn?: string | null
+          reactions_count?: number
+          target_id: string
+          workspace_id: string
+        }
+        Update: {
+          comment_metadata?: Json
+          comment_text?: string | null
+          comment_url?: string | null
+          comment_urn?: string | null
+          commented_at?: string | null
+          created_at?: string
+          dedup_key?: string
+          id?: string
+          parent_post_author_headline?: string | null
+          parent_post_author_name?: string | null
+          parent_post_author_url?: string | null
+          parent_post_content?: string | null
+          parent_post_published_at?: string | null
+          parent_post_url?: string | null
+          parent_post_urn?: string | null
+          reactions_count?: number
+          target_id?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "engagement_target_comments_target_id_fkey"
+            columns: ["target_id"]
+            isOneToOne: false
+            referencedRelation: "engagement_targets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "engagement_target_comments_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       engagement_targets: {
         Row: {
           auto_like: boolean
@@ -672,6 +750,7 @@ export type Database = {
           headline: string | null
           id: string
           is_active: boolean
+          last_comments_fetched_at: string | null
           last_fetched_at: string | null
           last_name: string | null
           linkedin_url: string
@@ -697,6 +776,7 @@ export type Database = {
           headline?: string | null
           id?: string
           is_active?: boolean
+          last_comments_fetched_at?: string | null
           last_fetched_at?: string | null
           last_name?: string | null
           linkedin_url: string
@@ -722,6 +802,7 @@ export type Database = {
           headline?: string | null
           id?: string
           is_active?: boolean
+          last_comments_fetched_at?: string | null
           last_fetched_at?: string | null
           last_name?: string | null
           linkedin_url?: string
