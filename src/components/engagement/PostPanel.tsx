@@ -29,7 +29,10 @@ import {
 import { cn } from '@/lib/utils';
 import { CommentComposer } from './CommentComposer';
 import { CommentEngagementPopover } from './CommentEngagementPopover';
-import { useEngagementTargets, EngagementComment } from '@/hooks/useEngagement';
+import { TargetCommentsFeed } from './TargetCommentsFeed';
+import { useEngagementTargets, EngagementComment, useFetchTargetComments } from '@/hooks/useEngagement';
+import { useTargetComments } from '@/hooks/useEngagementActivity';
+
 
 interface PostPanelProps {
   target: EngagementTarget | null;
