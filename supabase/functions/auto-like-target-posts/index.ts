@@ -99,8 +99,58 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Also auto-like the target's outbound comments (comments they left on
+    // other people's posts). Skips ones already liked (tracked in
+    // comment_metadata.is_liked).
+    let comments_attempted = 0, comments_liked = 0, comments_skipped_already = 0, comments_failed = 0;
+    if (!capReached) {
+      const { data: comments } = await supabase
+        .from('engagement_target_comments')
+        .select('id, comment_metadata, commented_at')
+        .eq('target_id', target_id)
+        .order('commented_at', { ascending: false })
+        .limit(MAX_POSTS_PER_RUN);
+
+      const cqueue = ((comments || []) as Array<{ id: string; comment_metadata: any }>)
+        .filter((c) => !c?.comment_metadata?.is_liked);
+
+      for (let i = 0; i < cqueue.length; i++) {
+        if (capReached) break;
+        const c = cqueue[i];
+        comments_attempted++;
+        try {
+          const res = await fetch(`${SUPABASE_URL}/functions/v1/like-linkedin-comment`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${SERVICE_KEY}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              workspace_id, publisher_id: target.publisher_id, comment_id: c.id,
+            }),
+          });
+          const body = await res.json().catch(() => ({}));
+          if (body?.cap_reached) {
+            capReached = true;
+          } else if (body?.success) {
+            if (body?.already_liked) comments_skipped_already++; else comments_liked++;
+          } else {
+            comments_failed++;
+          }
+        } catch (err) {
+          comments_failed++;
+          console.error('like-comment invoke failed:', err);
+        }
+
+        if (i < cqueue.length - 1 && !capReached) {
+          await sleep(jitter());
+        }
+      }
+    }
+
     return new Response(JSON.stringify({
       success: true, attempted, liked, skipped_already, cap_reached: capReached, failed,
+      comments_attempted, comments_liked, comments_skipped_already, comments_failed,
     }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
   } catch (e) {
