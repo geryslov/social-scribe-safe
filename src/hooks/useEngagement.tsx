@@ -121,6 +121,7 @@ export function useLikeComment() {
     },
     onError: (e: Error) => toast.error('Like failed: ' + e.message),
   });
+}
 
 export interface EngagementComment {
   id: string;
