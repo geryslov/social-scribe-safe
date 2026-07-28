@@ -40,11 +40,13 @@ Deno.serve(async (req) => {
     const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
 
     let onlyWorkspaceId: string | null = null;
+    let onlyPublisherId: string | null = null;
     let trigger = 'cron';
     if (req.method === 'POST') {
       try {
         const body = await req.json();
         onlyWorkspaceId = body?.workspace_id ?? null;
+        onlyPublisherId = body?.publisher_id ?? null;
         trigger = body?.trigger ?? (onlyWorkspaceId ? 'manual' : 'cron');
       } catch (_) { /* no body */ }
     }
@@ -61,6 +63,7 @@ Deno.serve(async (req) => {
       .select('id, workspace_id, publisher_id, name, last_fetched_at, auto_like, auto_sync')
       .neq('auto_sync', false);
     if (onlyWorkspaceId) targetsQuery = targetsQuery.eq('workspace_id', onlyWorkspaceId);
+    if (onlyPublisherId) targetsQuery = targetsQuery.eq('publisher_id', onlyPublisherId);
 
     const { data: targets, error } = await targetsQuery;
     if (error) {
@@ -288,6 +291,7 @@ Deno.serve(async (req) => {
       try {
         const nextBody: Record<string, unknown> = { trigger: `${trigger}_continue` };
         if (onlyWorkspaceId) nextBody.workspace_id = onlyWorkspaceId;
+        if (onlyPublisherId) nextBody.publisher_id = onlyPublisherId;
         fetch(`${SUPABASE_URL}/functions/v1/sync-all-engagement-targets`, {
           method: 'POST',
           headers: {
