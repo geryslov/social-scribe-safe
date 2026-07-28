@@ -39,6 +39,28 @@ export interface DiscoveredPost {
 }
 
 
+/** A comment a target left on someone else's post (their outbound activity). */
+export interface DiscoveredComment {
+  id: string;
+  target_id: string;
+  target_name: string | null;
+  target_avatar_url: string | null;
+  target_linkedin_url: string | null;
+  target_title: string | null;
+  target_company: string | null;
+  comment_url: string | null;
+  comment_text: string | null;
+  commented_at: string | null;
+  created_at: string;
+  reactions_count: number;
+  parent_post_url: string | null;
+  parent_post_author_name: string | null;
+  parent_post_author_headline: string | null;
+  parent_post_author_url: string | null;
+  parent_post_content: string | null;
+  parent_post_published_at: string | null;
+}
+
 export interface EngagementSyncRunFull {
   id: string;
   workspace_id: string;
@@ -138,6 +160,75 @@ export function useDiscoveredPosts(publisherId: string | null, days: number) {
 
     },
     enabled: !!currentWorkspace && !!publisherId,
+  });
+}
+
+/** Comments a publisher's targets left on other people's posts, last N days. */
+export function useDiscoveredComments(publisherId: string | null, days: number) {
+  const { currentWorkspace } = useWorkspace();
+  return useQuery({
+    queryKey: ['discovered-comments', currentWorkspace?.id, publisherId, days],
+    queryFn: async () => {
+      if (!currentWorkspace || !publisherId) return [] as DiscoveredComment[];
+      const since = new Date(Date.now() - days * 24 * 3600 * 1000).toISOString();
+      const { data: targets } = await (supabase as any)
+        .from('engagement_targets')
+        .select('id, name, avatar_url, linkedin_url, title, company_name')
+        .eq('publisher_id', publisherId)
+        .eq('workspace_id', currentWorkspace.id);
+      const targetMap = new Map<string, any>();
+      for (const t of (targets || []) as any[]) targetMap.set(t.id, t);
+      const targetIds = [...targetMap.keys()];
+      if (targetIds.length === 0) return [];
+      const { data, error } = await (supabase as any)
+        .from('engagement_target_comments')
+        .select('id, target_id, comment_url, comment_text, commented_at, created_at, reactions_count, parent_post_url, parent_post_author_name, parent_post_author_headline, parent_post_author_url, parent_post_content, parent_post_published_at')
+        .in('target_id', targetIds)
+        .gte('created_at', since)
+        .order('commented_at', { ascending: false })
+        .limit(500);
+      // Table may not exist yet (migration not deployed) — degrade to empty.
+      if (error) {
+        console.warn('discovered-comments query failed (table missing?):', error.message);
+        return [];
+      }
+      return ((data || []) as any[]).map((c) => {
+        const t = targetMap.get(c.target_id);
+        return {
+          ...c,
+          target_name: t?.name ?? null,
+          target_avatar_url: t?.avatar_url ?? null,
+          target_linkedin_url: t?.linkedin_url ?? null,
+          target_title: t?.title ?? null,
+          target_company: t?.company_name ?? null,
+        };
+      }) as DiscoveredComment[];
+    },
+    enabled: !!currentWorkspace && !!publisherId,
+  });
+}
+
+/** A single target's comments on other people's posts (for the review drawer). */
+export function useTargetComments(targetId: string | null) {
+  const { currentWorkspace } = useWorkspace();
+  return useQuery({
+    queryKey: ['target-comments', currentWorkspace?.id, targetId],
+    queryFn: async () => {
+      if (!currentWorkspace || !targetId) return [] as DiscoveredComment[];
+      const { data, error } = await (supabase as any)
+        .from('engagement_target_comments')
+        .select('id, target_id, comment_url, comment_text, commented_at, created_at, reactions_count, parent_post_url, parent_post_author_name, parent_post_author_headline, parent_post_author_url, parent_post_content, parent_post_published_at')
+        .eq('workspace_id', currentWorkspace.id)
+        .eq('target_id', targetId)
+        .order('commented_at', { ascending: false })
+        .limit(100);
+      if (error) {
+        console.warn('target-comments query failed (table missing?):', error.message);
+        return [];
+      }
+      return (data || []) as DiscoveredComment[];
+    },
+    enabled: !!currentWorkspace && !!targetId,
   });
 }
 

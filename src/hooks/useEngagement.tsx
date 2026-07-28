@@ -227,9 +227,19 @@ export function useEngagementTargets(publisherId: string | null) {
             });
           } catch (err) {
             console.error('Initial post fetch failed:', err);
+          }
+          // Also backfill their comments on other people's posts (outbound
+          // activity) so the merged feed has something to show on day one.
+          try {
+            await supabase.functions.invoke('fetch-target-comments', {
+              body: { workspace_id: currentWorkspace.id, target_id: result.id },
+            });
+          } catch (err) {
+            console.error('Initial comment fetch failed:', err);
           } finally {
             queryClient.invalidateQueries({ queryKey: ['engagement-targets'] });
             queryClient.invalidateQueries({ queryKey: ['discovered-posts'] });
+            queryClient.invalidateQueries({ queryKey: ['discovered-comments'] });
           }
         })();
       }
@@ -505,6 +515,34 @@ export function useFetchTargetPosts() {
       } else {
         toast.success(`Found ${data.posts_found} posts`);
       }
+    },
+    onError: (error) => {
+      toast.error('Fetch failed: ' + error.message);
+    },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Fetch a target's comments on OTHER people's posts (calls Edge Function)
+// ---------------------------------------------------------------------------
+
+export function useFetchTargetComments() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ workspace_id, target_id }: { workspace_id: string; target_id: string }) => {
+      const { data, error } = await supabase.functions.invoke('fetch-target-comments', {
+        body: { workspace_id, target_id },
+      });
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || 'Failed to fetch comments');
+      return data as { success: boolean; comments_found: number };
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['target-comments'] });
+      queryClient.invalidateQueries({ queryKey: ['discovered-comments'] });
+      queryClient.invalidateQueries({ queryKey: ['engagement-targets'] });
+      toast.success(`Found ${data.comments_found} comment${data.comments_found === 1 ? '' : 's'} on other posts`);
     },
     onError: (error) => {
       toast.error('Fetch failed: ' + error.message);

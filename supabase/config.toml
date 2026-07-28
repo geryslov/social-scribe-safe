@@ -37,3 +37,9 @@ verify_jwt = false
 [functions.structure-post]
 verify_jwt = false
 
+[functions.fetch-target-comments]
+verify_jwt = false
+
+[functions.fetch-target-comments-batch]
+verify_jwt = false
+

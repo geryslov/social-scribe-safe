@@ -7,7 +7,7 @@ import { useWorkspace } from '@/hooks/useWorkspace';
 import { useWorkspaces } from '@/hooks/useWorkspaces';
 import { useWorkspacePermissions } from '@/hooks/useWorkspacePermissions';
 import { usePublishers, Publisher } from '@/hooks/usePublishers';
-import { useEngagementTargets, EngagementTarget, useLikePost } from '@/hooks/useEngagement';
+import { useEngagementTargets, EngagementTarget, useLikePost, useFetchTargetComments } from '@/hooks/useEngagement';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
@@ -16,6 +16,7 @@ import { useEngagementSync, getNextScheduledSync } from '@/hooks/useEngagementSy
 import {
   useDiscoveredPosts, useAutoLikeHistory, usePublisherComments,
   useEngagementSyncRuns, DiscoveredPost,
+  useTargetComments, DiscoveredComment,
 } from '@/hooks/useEngagementActivity';
 import { CommentComposer } from '@/components/engagement/CommentComposer';
 import type { EngagementPost } from '@/hooks/useEngagement';
@@ -1367,6 +1368,28 @@ function ReviewDrawer({
   row, publisher, onClose, onOpenComment,
 }: { row: ReviewRow; publisher: Publisher | null; onClose: () => void; onOpenComment: (p: EngagementPost) => void }) {
   const likeMutation = useLikePost();
+  const { currentWorkspace } = useWorkspace();
+  const { data: targetComments = [] } = useTargetComments(row.id);
+  const fetchComments = useFetchTargetComments();
+
+  // Merge the target's own posts with their comments on other people's posts,
+  // newest first — the "activity" the user wants to react to.
+  type FeedItem =
+    | { kind: 'post'; ts: number; post: DiscoveredPost }
+    | { kind: 'comment'; ts: number; comment: DiscoveredComment };
+  const feed: FeedItem[] = [
+    ...row.posts.map((p): FeedItem => ({
+      kind: 'post',
+      ts: new Date(p.published_at || p.created_at || 0).getTime(),
+      post: p,
+    })),
+    ...targetComments.map((c): FeedItem => ({
+      kind: 'comment',
+      ts: new Date(c.commented_at || c.created_at || 0).getTime(),
+      comment: c,
+    })),
+  ].sort((a, b) => b.ts - a.ts);
+
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
@@ -1412,8 +1435,74 @@ function ReviewDrawer({
 
       {/* Post previews */}
       <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
-        <div className="text-[11px] uppercase tracking-wider text-[#667085] font-medium">Recent posts</div>
-        {row.posts.map((p) => (
+        <div className="flex items-center justify-between">
+          <div className="text-[11px] uppercase tracking-wider text-[#667085] font-medium">Recent activity</div>
+          <button
+            type="button"
+            disabled={!currentWorkspace || fetchComments.isPending}
+            onClick={() => currentWorkspace && fetchComments.mutate({ workspace_id: currentWorkspace.id, target_id: row.id })}
+            className="inline-flex items-center gap-1 h-6 px-2 rounded-md border border-[#E5E7ED] bg-white hover:bg-[#F7F8FB] text-[11px] font-medium text-[#667085] disabled:opacity-50"
+            title="Fetch this profile's recent comments on other people's posts"
+          >
+            {fetchComments.isPending
+              ? <Loader2 className="h-3 w-3 animate-spin" />
+              : <RefreshCw className="h-3 w-3" />}
+            Fetch comments
+          </button>
+        </div>
+        {feed.length === 0 && (
+          <p className="text-xs text-[#667085] py-2">No recent posts or comments for this profile yet.</p>
+        )}
+        {feed.map((item) => {
+          if (item.kind === 'comment') {
+            const c = item.comment;
+            return (
+              <article key={`c-${c.id}`} className="rounded-[14px] border border-[#E4DAFB] bg-[#FBFAFF] p-3.5">
+                <div className="flex items-center gap-2 text-[11px] text-[#667085]">
+                  <span className="inline-flex items-center gap-1 text-[#7C3AED] font-medium">
+                    <MessageCircle className="h-3 w-3" /> Commented
+                  </span>
+                  <span>·</span>
+                  <span className="tabular-nums" title={c.commented_at ? new Date(c.commented_at).toLocaleString() : undefined}>
+                    {c.commented_at ? relativeTime(c.commented_at) : '—'}
+                  </span>
+                  {c.reactions_count > 0 && (<><span>·</span><span className="tabular-nums">{c.reactions_count} reactions</span></>)}
+                  {c.parent_post_url && (
+                    <a href={c.parent_post_url} target="_blank" rel="noreferrer" className="ml-auto text-[#7C3AED] hover:underline inline-flex items-center gap-0.5">
+                      Open thread <ExternalLink className="h-3 w-3" />
+                    </a>
+                  )}
+                </div>
+                <p className="mt-1.5 text-[11px] text-[#667085]">
+                  on {c.parent_post_author_name ? <b className="text-[#3F4657] font-medium">{c.parent_post_author_name}</b> : 'someone'}&rsquo;s post
+                </p>
+                {/* What the target actually said */}
+                <p className="mt-1.5 text-sm text-[#171923] leading-relaxed">
+                  <span className="text-[#7C3AED]">&ldquo;</span>{c.comment_text || '—'}<span className="text-[#7C3AED]">&rdquo;</span>
+                </p>
+                {/* The post they commented on */}
+                {c.parent_post_content && (
+                  <div className="mt-2 rounded-md bg-white border border-[#E5E7ED] px-3 py-2">
+                    <p className="text-xs text-[#667085] leading-relaxed line-clamp-3">{c.parent_post_content}</p>
+                  </div>
+                )}
+                {c.parent_post_url && (
+                  <div className="mt-3">
+                    <a
+                      href={c.parent_post_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1 h-8 px-3 rounded-md bg-[#7C3AED] hover:bg-[#6D28D9] text-white text-xs font-medium"
+                    >
+                      <MessageCircle className="h-3.5 w-3.5" /> React on this thread
+                    </a>
+                  </div>
+                )}
+              </article>
+            );
+          }
+          const p = item.post;
+          return (
           <article key={p.id} className="rounded-[14px] border border-[#E5E7ED] bg-white p-3.5">
             <div className="flex items-center gap-2 text-[11px] text-[#667085]">
               <span className="tabular-nums" title={p.published_at ? new Date(p.published_at).toLocaleString() : undefined}>
@@ -1475,7 +1564,8 @@ function ReviewDrawer({
               </button>
             </div>
           </article>
-        ))}
+          );
+        })}
 
         {/* Activity history */}
         <div className="pt-4 border-t border-[#E5E7ED]">

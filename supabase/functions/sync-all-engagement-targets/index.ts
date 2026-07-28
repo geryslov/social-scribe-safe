@@ -98,6 +98,7 @@ Deno.serve(async (req) => {
       }
 
       let newPosts = 0;
+      let newComments = 0;
       let cancelled = false;
 
       // Process eligible targets in batches
@@ -179,6 +180,24 @@ Deno.serve(async (req) => {
           }
         }
 
+        // Fetch the same targets' comments on other people's posts, on the same
+        // cadence as posts. Non-fatal: a comment-fetch failure never fails the
+        // post sync — comments are supplementary activity.
+        try {
+          const cres = await fetch(`${SUPABASE_URL}/functions/v1/fetch-target-comments-batch`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${SERVICE_KEY}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ workspace_id, target_ids }),
+          });
+          const cbody = await cres.json().catch(() => ({}));
+          newComments += Number(cbody?.new_comments || 0);
+        } catch (err) {
+          console.error('fetch-target-comments-batch invoke failed:', err);
+        }
+
         await sleep(BETWEEN_BATCHES_MS);
       }
 
@@ -208,6 +227,7 @@ Deno.serve(async (req) => {
         cancelled: results.filter((r) => r.status === 'cancelled').length,
         deferred: results.filter((r) => r.status === 'deferred').length,
         new_posts: newPosts,
+        new_comments: newComments,
       };
 
       await supabase.from('engagement_sync_runs').insert({

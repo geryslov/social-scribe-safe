@@ -41,6 +41,8 @@ Multi-tenant LinkedIn thought leadership platform. Agency operators manage publi
 | `fetch-comment-engagement` | Queries LinkedIn Social Metadata API for reactions + replies on posted comments. Batch support (10 at a time). |
 | `run-research` | Intelligence layer: Reddit + HN + Brave search → engagement-ranked feed |
 | `fetch-target-posts` | Apify: fetches LinkedIn posts from engagement targets (async run + poll). Filters out reposts. Also extracts profile data (avatar, title, company) from author info. |
+| `fetch-target-comments` | Apify (`harvestapi/linkedin-profile-comments`): fetches a single target's comments on OTHER people's posts (their outbound comment activity). Stores comment + parent post into `engagement_target_comments`. Runs on target-add and via the manual "Fetch comments" button. |
+| `fetch-target-comments-batch` | Batched version: one Apify comments run per 40 profiles, attributes comments back to targets by commenter username. Invoked by `sync-all-engagement-targets` so comment activity refreshes on the same daily cadence as posts. |
 | `post-linkedin-comment` | Posts comments via LinkedIn Community Management API. Tries multiple URN variants. Updates engagement_comment status with dual-write (server + client fallback). |
 | `like-linkedin-post` | Likes posts via LinkedIn Reactions API |
 | `enrich-engagement-target` | Apify: enriches engagement target with profile data (name, title, company, avatar) |
@@ -71,6 +73,7 @@ Multi-tenant LinkedIn thought leadership platform. Agency operators manage publi
 - `engagement_targets` — People to monitor. Fields: name, linkedin_url, linkedin_username, headline, title, company_name, avatar_url, first_name, last_name, enrichment_status, enriched_at, last_seen_at, last_fetched_at, auto_like, is_active, folder_id (nullable FK to engagement_folders)
 - `engagement_posts` — Fetched LinkedIn posts from targets. Fields: linkedin_post_urn, linkedin_post_url, content, published_at, likes/comments/shares_count, is_commented, is_liked, liked_at, post_metadata JSONB
 - `engagement_comments` — Comments drafted/posted on target posts. Fields: comment_text, status (draft/posted/failed), linkedin_comment_urn, posted_at, error_message, reaction_count, reply_count, reactions_breakdown JSONB, engagement_fetched_at
+- `engagement_target_comments` — Comments a target left on OTHER people's posts (their outbound activity, distinct from `engagement_comments` which is what WE post). Fields: target_id, dedup_key (unique per target), comment_urn/comment_url/comment_text/commented_at, reactions_count, parent_post_url/urn/author_name/author_headline/author_url/content/published_at, comment_metadata JSONB. Surfaced in the Engagement review drawer as a merged post+comment activity feed. `engagement_targets.last_comments_fetched_at` tracks incremental fetches.
 
 ### Comment Classification Agent
 Two Edge Functions, one shared classification schema:
