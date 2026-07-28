@@ -43,3 +43,6 @@ verify_jwt = false
 [functions.fetch-target-comments-batch]
 verify_jwt = false
 
+[functions.like-linkedin-comment]
+verify_jwt = false
+
