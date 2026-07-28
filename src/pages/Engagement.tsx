@@ -194,7 +194,7 @@ function PageHeader({
   const runSync = () => {
     if (!publisher) return;
     window.dispatchEvent(new CustomEvent('engagement:sync-all', { detail: { publisherId: publisher.id } }));
-    runNow.mutate();
+    runNow.mutate(publisher.id);
     toast.info('Sync started…');
   };
 
