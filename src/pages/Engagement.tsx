@@ -919,7 +919,7 @@ function ActivityDashboard({
               </div>
               <div className="divide-y divide-[#E5E7ED]">
                 {filteredRows.map((r) => (
-                  <QueueRow key={r.id} row={r} density={density} onOpen={() => onOpenReview(r)} onComment={(p) => onOpenComment(p)} />
+                  <QueueRow key={r.id} row={r} density={density} onOpen={(filter) => onOpenReview(r, filter)} onComment={(p) => onOpenComment(p)} />
                 ))}
               </div>
             </div>
