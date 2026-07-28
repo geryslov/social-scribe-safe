@@ -51,22 +51,65 @@ Deno.serve(async (req) => {
 
     const { data: commentRow, error: cErr } = await supabase
       .from('engagement_target_comments')
-      .select('id, comment_urn, comment_url, parent_post_urn, comment_metadata')
+      .select('id, comment_urn, comment_url, parent_post_urn, parent_post_url, comment_metadata')
       .eq('id', comment_id).eq('workspace_id', workspace_id).single();
     if (cErr || !commentRow) {
       return new Response(JSON.stringify({ success: false, error: 'Comment not found' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    // Assemble candidate URNs. If we already have a canonical urn:li:comment:...
-    // use it; otherwise try to derive one from the URL.
-    const candidates: string[] = [];
-    if (commentRow.comment_urn) candidates.push(commentRow.comment_urn);
-    if (commentRow.comment_url) {
-      const m = commentRow.comment_url.match(/(urn:li:comment:[^\s"')]+)/);
-      if (m) candidates.push(m[1]);
+    const safeDecode = (value: string) => {
+      try {
+        return decodeURIComponent(value);
+      } catch {
+        return value;
+      }
+    };
+
+    const pushLinkedInUrnsFromText = (text: string | null | undefined, out: string[]) => {
+      if (!text) return;
+      const decoded = safeDecode(text);
+      const matches = decoded.match(/urn:li:(?:comment:\([^\s"')]+\)|activity:\d+|ugcPost:\d+|share:\d+)/g);
+      if (matches) out.push(...matches);
+    };
+
+    const numericIdFrom = (value: string | null | undefined): string | null => {
+      if (!value) return null;
+      return value.match(/\b(\d{10,})\b/)?.[1] ?? null;
+    };
+
+    const parentCandidates: string[] = [];
+    pushLinkedInUrnsFromText(commentRow.parent_post_urn, parentCandidates);
+    pushLinkedInUrnsFromText(commentRow.parent_post_url, parentCandidates);
+    const rawPost = ((commentRow.comment_metadata || {}) as Record<string, unknown>).raw as Record<string, unknown> | undefined;
+    const rawPostData = (rawPost?.post || {}) as Record<string, unknown>;
+    pushLinkedInUrnsFromText(typeof rawPostData.shareUrn === 'string' ? rawPostData.shareUrn : null, parentCandidates);
+    pushLinkedInUrnsFromText(typeof rawPostData.entityId === 'string' ? rawPostData.entityId : null, parentCandidates);
+    pushLinkedInUrnsFromText(typeof rawPostData.id === 'string' ? rawPostData.id : null, parentCandidates);
+    const parentNumeric = numericIdFrom(commentRow.parent_post_urn) || numericIdFrom(commentRow.parent_post_url);
+    if (parentNumeric) {
+      parentCandidates.push(`urn:li:activity:${parentNumeric}`);
+      parentCandidates.push(`urn:li:share:${parentNumeric}`);
+      parentCandidates.push(`urn:li:ugcPost:${parentNumeric}`);
     }
-    const tryUrns = [...new Set(candidates)].filter(Boolean);
+    const validParentUrns = [...new Set(parentCandidates)].filter((urn) =>
+      /^urn:li:(activity|share|ugcPost):\d+$/.test(urn),
+    );
+
+    // Assemble candidate URNs. Some Apify rows store only the numeric comment id;
+    // LinkedIn's reactions endpoint needs the full urn:li:comment:(parentUrn,id).
+    const candidates: string[] = [];
+    pushLinkedInUrnsFromText(commentRow.comment_urn, candidates);
+    pushLinkedInUrnsFromText(commentRow.comment_url, candidates);
+
+    const storedCommentId = numericIdFrom(commentRow.comment_urn) || numericIdFrom(commentRow.comment_url);
+    if (storedCommentId) {
+      for (const parentUrn of validParentUrns) {
+        candidates.push(`urn:li:comment:(${parentUrn},${storedCommentId})`);
+      }
+    }
+
+    const tryUrns = [...new Set(candidates)].filter((urn) => /^urn:li:comment:\(urn:li:(activity|share|ugcPost):\d+,\d+\)$/.test(urn));
     if (tryUrns.length === 0) {
       return new Response(JSON.stringify({ success: false, error: 'No comment URN available to like' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
