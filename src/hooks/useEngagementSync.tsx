@@ -99,10 +99,12 @@ export function useEngagementSync() {
   });
 
   const runNow = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (publisherId?: string | null) => {
       if (!currentWorkspace) throw new Error('No workspace');
+      const body: Record<string, unknown> = { workspace_id: currentWorkspace.id, trigger: 'manual' };
+      if (publisherId) body.publisher_id = publisherId;
       const { data, error } = await supabase.functions.invoke('sync-all-engagement-targets', {
-        body: { workspace_id: currentWorkspace.id, trigger: 'manual' },
+        body,
       });
       if (error) throw error;
       return data;
