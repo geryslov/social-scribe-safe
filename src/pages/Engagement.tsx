@@ -7,7 +7,7 @@ import { useWorkspace } from '@/hooks/useWorkspace';
 import { useWorkspaces } from '@/hooks/useWorkspaces';
 import { useWorkspacePermissions } from '@/hooks/useWorkspacePermissions';
 import { usePublishers, Publisher } from '@/hooks/usePublishers';
-import { useEngagementTargets, EngagementTarget, useLikePost, useFetchTargetComments } from '@/hooks/useEngagement';
+import { useEngagementTargets, EngagementTarget, useLikePost, useLikeComment, useFetchTargetComments } from '@/hooks/useEngagement';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
@@ -929,7 +929,7 @@ function ActivityDashboard({
         ) : filteredCommentRows.length === 0 ? (
           <CommentsQueueEmpty />
         ) : (
-          <CommentsDiscoveryTable comments={filteredCommentRows} onOpenTarget={openTargetFromComment} />
+          <CommentsDiscoveryTable comments={filteredCommentRows} publisherId={publisher.id} onOpenTarget={openTargetFromComment} />
         )}
       </section>
     </div>
@@ -1414,14 +1414,17 @@ function CommentsQueueEmpty() {
 }
 
 function CommentsDiscoveryTable({
-  comments, onOpenTarget,
+  comments, publisherId, onOpenTarget,
 }: {
   comments: DiscoveredComment[];
+  publisherId: string;
   onOpenTarget: (targetId: string) => void;
 }) {
+  const likeComment = useLikeComment();
+
   return (
     <div role="table" aria-label="Comments discovered from target profiles">
-      <div role="row" className="grid grid-cols-[minmax(180px,0.8fr)_minmax(0,1.7fr)_120px_140px] gap-4 px-5 h-9 items-center bg-[#F7F8FB] border-b border-[#E5E7ED] text-[11px] uppercase tracking-wider text-[#667085] font-medium">
+      <div role="row" className="grid grid-cols-[minmax(180px,0.8fr)_minmax(0,1.7fr)_120px_220px] gap-4 px-5 h-9 items-center bg-[#F7F8FB] border-b border-[#E5E7ED] text-[11px] uppercase tracking-wider text-[#667085] font-medium">
         <div>Profile</div>
         <div>Commented on</div>
         <div className="text-right">Reactions</div>
@@ -1435,7 +1438,7 @@ function CommentsDiscoveryTable({
             <div
               key={comment.id}
               role="row"
-              className="grid grid-cols-[minmax(180px,0.8fr)_minmax(0,1.7fr)_120px_140px] gap-4 px-5 py-4 items-start hover:bg-[#FBFAFF] transition-colors"
+              className="grid grid-cols-[minmax(180px,0.8fr)_minmax(0,1.7fr)_120px_220px] gap-4 px-5 py-4 items-start hover:bg-[#FBFAFF] transition-colors"
             >
               <button
                 type="button"
@@ -1485,6 +1488,12 @@ function CommentsDiscoveryTable({
               </div>
 
               <div className="flex items-center justify-end gap-1.5">
+                <CommentLikeButton
+                  comment={comment}
+                  publisherId={publisherId}
+                  isPending={likeComment.isPending}
+                  onLike={() => likeComment.mutate({ publisher_id: publisherId, comment_id: comment.id })}
+                />
                 <button
                   type="button"
                   onClick={() => onOpenTarget(comment.target_id)}
@@ -1629,6 +1638,7 @@ function ReviewDrawer({
   row, publisher, onClose, onOpenComment, initialFilter = 'all',
 }: { row: ReviewRow; publisher: Publisher | null; onClose: () => void; onOpenComment: (p: EngagementPost) => void; initialFilter?: 'all' | 'posts' | 'comments' }) {
   const likeMutation = useLikePost();
+  const likeComment = useLikeComment();
   const { currentWorkspace } = useWorkspace();
   const { data: targetComments = [] } = useTargetComments(row.id);
   const fetchComments = useFetchTargetComments();
@@ -1776,7 +1786,15 @@ function ReviewDrawer({
                   </div>
                 )}
                 {c.parent_post_url && (
-                  <div className="mt-3">
+                  <div className="mt-3 flex items-center gap-1.5 flex-wrap">
+                    {publisher && (
+                      <CommentLikeButton
+                        comment={c}
+                        publisherId={publisher.id}
+                        isPending={likeComment.isPending}
+                        onLike={() => likeComment.mutate({ publisher_id: publisher.id, comment_id: c.id })}
+                      />
+                    )}
                     <a
                       href={c.parent_post_url}
                       target="_blank"
@@ -1881,6 +1899,47 @@ function ReviewDrawer({
         </button>
       </div>
     </div>
+  );
+}
+
+function CommentLikeButton({
+  comment, publisherId, isPending, onLike,
+}: {
+  comment: DiscoveredComment;
+  publisherId: string;
+  isPending: boolean;
+  onLike: () => void;
+}) {
+  const isLiked = !!comment.comment_metadata?.is_liked;
+  const canLike = !!comment.comment_urn || (comment.comment_url?.includes('urn:li:comment:') ?? false);
+
+  return (
+    <button
+      type="button"
+      disabled={!publisherId || !canLike || isLiked || isPending}
+      onClick={onLike}
+      title={
+        !canLike
+          ? 'No comment ID captured yet — sync comments again to enable liking'
+          : isLiked
+          ? 'Already liked this comment'
+          : 'Like this comment on LinkedIn'
+      }
+      className={cn(
+        'inline-flex items-center gap-1 h-8 px-3 rounded-md text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED]/40',
+        isLiked
+          ? 'bg-rose-50 text-rose-600 border border-rose-200 cursor-default'
+          : 'bg-white border border-[#E5E7ED] hover:bg-[#F7F8FB] text-[#171923]',
+        (!canLike || isPending) && !isLiked && 'opacity-50 cursor-not-allowed',
+      )}
+    >
+      {isPending ? (
+        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+      ) : (
+        <Heart className={cn('h-3.5 w-3.5', isLiked && 'fill-rose-500 text-rose-500')} />
+      )}
+      {isLiked ? 'Liked comment' : 'Like comment'}
+    </button>
   );
 }
 
