@@ -1525,7 +1525,7 @@ function QueueRow({
     <div
       role="row"
       className={cn(
-        'grid grid-cols-[minmax(0,1fr)_120px_120px_160px_140px] gap-4 px-5 items-center hover:bg-[#F7F8FB] transition-colors group',
+        'grid grid-cols-[minmax(0,1fr)_110px_110px_110px_160px_140px] gap-4 px-5 items-center hover:bg-[#F7F8FB] transition-colors group',
         rowH,
       )}
     >
@@ -1540,8 +1540,20 @@ function QueueRow({
       </button>
 
       <div className="text-right">
-        <span className="inline-flex items-center h-6 px-2 rounded-full bg-[#F4F0FF] text-[#7C3AED] text-xs font-semibold tabular-nums">
+        <span className={cn(
+          'inline-flex items-center h-6 px-2 rounded-full text-xs font-semibold tabular-nums',
+          row.new_posts > 0 ? 'bg-[#F4F0FF] text-[#7C3AED]' : 'bg-[#F7F8FB] text-[#98A2B3]',
+        )}>
           {row.new_posts}
+        </span>
+      </div>
+
+      <div className="text-right">
+        <span className={cn(
+          'inline-flex items-center h-6 px-2 rounded-full text-xs font-semibold tabular-nums',
+          row.new_comments > 0 ? 'bg-[#E6F7F5] text-[#0E9F8E]' : 'bg-[#F7F8FB] text-[#98A2B3]',
+        )}>
+          {row.new_comments}
         </span>
       </div>
 
@@ -1552,8 +1564,9 @@ function QueueRow({
       </div>
 
       <div className="text-xs text-[#667085] tabular-nums">
-        {row.last_post_at ? relativeTime(row.last_post_at) : '—'}
+        {row.last_activity_at ? relativeTime(row.last_activity_at) : row.last_post_at ? relativeTime(row.last_post_at) : '—'}
       </div>
+
 
       <div className="flex items-center gap-1.5 justify-end">
         <button
