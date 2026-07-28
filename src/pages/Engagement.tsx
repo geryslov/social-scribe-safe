@@ -1514,7 +1514,7 @@ function CommentsDiscoveryTable({
 
 function QueueRow({
   row, density, onOpen, onComment,
-}: { row: ReviewRow; density: 'comfortable' | 'compact'; onOpen: () => void; onComment: (p: EngagementPost) => void }) {
+}: { row: ReviewRow; density: 'comfortable' | 'compact'; onOpen: (filter?: 'all' | 'posts' | 'comments') => void; onComment: (p: EngagementPost) => void }) {
   const rowH = density === 'compact' ? 'h-14' : 'h-[68px]';
   const priorityStyles: Record<ReviewRow['priority'], string> = {
     high: 'bg-[#F4F0FF] text-[#7C3AED] border-[#E4DAFB]',
