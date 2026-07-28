@@ -215,15 +215,15 @@ function PageHeader({
         </div>
 
         <div className="flex items-center gap-2">
-          {syncActive && lastRun && (
+          {syncActive && scopedRun && (
             <div className="inline-flex items-center gap-2 h-9 px-3 rounded-lg border border-[#E4DAFB] bg-[#FBFAFF] text-xs text-[#3F4657]">
               <Loader2 className="h-3.5 w-3.5 animate-spin text-[#7C3AED]" />
               <span className="tabular-nums">
-                <b className="text-[#171923]">{lastRun.synced}</b>
+                <b className="text-[#171923]">{scopedRun.synced}</b>
                 {' / '}
-                <span className="text-[#667085]">{lastRun.total_targets}</span>
-                {lastRun.failed > 0 && <span className="text-[#B42318] ml-1">· {lastRun.failed} failed</span>}
-                {lastRun.new_posts > 0 && <span className="text-[#027A48] ml-1">· {lastRun.new_posts} new</span>}
+                <span className="text-[#667085]">{scopedRun.total_targets}</span>
+                {scopedRun.failed > 0 && <span className="text-[#B42318] ml-1">· {scopedRun.failed} failed</span>}
+                {scopedRun.new_posts > 0 && <span className="text-[#027A48] ml-1">· {scopedRun.new_posts} new</span>}
               </span>
             </div>
           )}
