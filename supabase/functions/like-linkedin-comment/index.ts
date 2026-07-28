@@ -69,8 +69,20 @@ Deno.serve(async (req) => {
     const pushLinkedInUrnsFromText = (text: string | null | undefined, out: string[]) => {
       if (!text) return;
       const decoded = safeDecode(text);
-      const matches = decoded.match(/urn:li:(?:comment:\([^\s"')]+\)|activity:\d+|ugcPost:\d+|share:\d+)/g);
-      if (matches) out.push(...matches);
+      const matches = decoded.match(/urn:li:(?:comment:\((?:(?:urn:li:)?(?:activity|ugcPost|share):\d+),\d+\)|activity:\d+|ugcPost:\d+|share:\d+)/g);
+      if (matches) {
+        out.push(...matches.map((urn) =>
+          urn.replace(/^urn:li:comment:\(((?:activity|ugcPost|share):\d+),(\d+)\)$/,
+            'urn:li:comment:(urn:li:$1,$2)'),
+        ));
+      }
+      const activityMatches = decoded.match(/(?:activity-|activity%3A|activity:)(\d{10,})/g);
+      if (activityMatches) {
+        for (const match of activityMatches) {
+          const id = match.match(/(\d{10,})/)?.[1];
+          if (id) out.push(`urn:li:activity:${id}`);
+        }
+      }
     };
 
     const numericIdFrom = (value: string | null | undefined): string | null => {
@@ -81,13 +93,18 @@ Deno.serve(async (req) => {
     const parentCandidates: string[] = [];
     pushLinkedInUrnsFromText(commentRow.parent_post_urn, parentCandidates);
     pushLinkedInUrnsFromText(commentRow.parent_post_url, parentCandidates);
+    pushLinkedInUrnsFromText(commentRow.comment_url, parentCandidates);
     const rawPost = ((commentRow.comment_metadata || {}) as Record<string, unknown>).raw as Record<string, unknown> | undefined;
     const rawPostData = (rawPost?.post || {}) as Record<string, unknown>;
     pushLinkedInUrnsFromText(typeof rawPostData.shareUrn === 'string' ? rawPostData.shareUrn : null, parentCandidates);
     pushLinkedInUrnsFromText(typeof rawPostData.entityId === 'string' ? rawPostData.entityId : null, parentCandidates);
     pushLinkedInUrnsFromText(typeof rawPostData.id === 'string' ? rawPostData.id : null, parentCandidates);
-    const parentNumeric = numericIdFrom(commentRow.parent_post_urn) || numericIdFrom(commentRow.parent_post_url);
-    if (parentNumeric) {
+    const parentNumbers = [
+      numericIdFrom(commentRow.parent_post_url),
+      numericIdFrom(commentRow.parent_post_urn),
+      numericIdFrom(commentRow.comment_url),
+    ].filter((value): value is string => Boolean(value));
+    for (const parentNumeric of parentNumbers) {
       parentCandidates.push(`urn:li:activity:${parentNumeric}`);
       parentCandidates.push(`urn:li:share:${parentNumeric}`);
       parentCandidates.push(`urn:li:ugcPost:${parentNumeric}`);
