@@ -1755,6 +1755,7 @@ function ReviewDrawer({
         {feed.map((item) => {
           if (item.kind === 'comment') {
             const c = item.comment;
+            const commentUrl = c.parent_post_url || c.comment_url;
             return (
               <article key={`c-${c.id}`} className="rounded-[14px] border border-[#E4DAFB] bg-[#FBFAFF] p-3.5">
                 <div className="flex items-center gap-2 text-[11px] text-[#667085]">
@@ -1766,8 +1767,8 @@ function ReviewDrawer({
                     {c.commented_at ? relativeTime(c.commented_at) : '—'}
                   </span>
                   {c.reactions_count > 0 && (<><span>·</span><span className="tabular-nums">{c.reactions_count} reactions</span></>)}
-                  {c.parent_post_url && (
-                    <a href={c.parent_post_url} target="_blank" rel="noreferrer" className="ml-auto text-[#7C3AED] hover:underline inline-flex items-center gap-0.5">
+                  {commentUrl && (
+                    <a href={commentUrl} target="_blank" rel="noreferrer" className="ml-auto text-[#7C3AED] hover:underline inline-flex items-center gap-0.5">
                       Open thread <ExternalLink className="h-3 w-3" />
                     </a>
                   )}
@@ -1785,7 +1786,7 @@ function ReviewDrawer({
                     <p className="text-xs text-[#667085] leading-relaxed line-clamp-3">{c.parent_post_content}</p>
                   </div>
                 )}
-                {c.parent_post_url && (
+                {(publisher || commentUrl) && (
                   <div className="mt-3 flex items-center gap-1.5 flex-wrap">
                     {publisher && (
                       <CommentLikeButton
@@ -1795,14 +1796,16 @@ function ReviewDrawer({
                         onLike={() => likeComment.mutate({ publisher_id: publisher.id, comment_id: c.id })}
                       />
                     )}
-                    <a
-                      href={c.parent_post_url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center gap-1 h-8 px-3 rounded-md bg-[#7C3AED] hover:bg-[#6D28D9] text-white text-xs font-medium"
-                    >
-                      <MessageCircle className="h-3.5 w-3.5" /> React on this thread
-                    </a>
+                    {commentUrl && (
+                      <a
+                        href={commentUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 h-8 px-3 rounded-md bg-[#7C3AED] hover:bg-[#6D28D9] text-white text-xs font-medium"
+                      >
+                        <MessageCircle className="h-3.5 w-3.5" /> React on this thread
+                      </a>
+                    )}
                   </div>
                 )}
               </article>
