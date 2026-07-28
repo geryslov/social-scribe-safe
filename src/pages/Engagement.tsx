@@ -158,8 +158,29 @@ function PageHeader({
 }) {
   const { runNow, stop, lastRun } = useEngagementSync();
   const { data: discovered = [] } = useDiscoveredPosts(publisher?.id ?? null, 7);
+  const { targets: publisherTargets } = useEngagementTargets(publisher?.id ?? null);
   const reviewCount = discovered.filter((p) => !p.is_liked && !p.is_commented).length;
   const [addOpen, setAddOpen] = useState(false);
+
+  // Scope the header progress pill to the currently selected publisher so a
+  // workspace-wide sync run doesn't show "4/4" when this publisher only owns
+  // 1 of those targets.
+  const scopedRun = useMemo(() => {
+    if (!lastRun) return null;
+    const ids = new Set((publisherTargets ?? []).map((t) => t.id));
+    const entries: any[] = Array.isArray(lastRun.details) ? lastRun.details : [];
+    const mine = entries.filter((e) => e && ids.has(e.target_id));
+    // If the run has no per-target detail yet (just started), or none of the
+    // targets belong to this publisher, fall back to the raw run numbers so
+    // the pill still reflects that something is happening.
+    if (mine.length === 0) return lastRun;
+    return {
+      total_targets: mine.length,
+      synced: mine.filter((e) => e.status === 'synced').length,
+      failed: mine.filter((e) => e.status === 'failed').length,
+      new_posts: mine.reduce((a, e) => a + (Number(e.posts_found) || 0), 0),
+    };
+  }, [lastRun, publisherTargets]);
 
   // A sync is considered "active" for 3 minutes after its latest run started
   // (chained hops keep re-triggering every ~2 min, so this covers the whole chain).
