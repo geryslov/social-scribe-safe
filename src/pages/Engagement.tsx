@@ -448,7 +448,7 @@ function ActivityDashboard({
   publisher, onOpenReview, onOpenComment,
 }: {
   publisher: Publisher;
-  onOpenReview: (row: ReviewRow) => void;
+  onOpenReview: (row: ReviewRow, filter?: 'all' | 'posts' | 'comments') => void;
   onOpenComment: (post: EngagementPost) => void;
 }) {
   const { targets } = useEngagementTargets(publisher.id);
