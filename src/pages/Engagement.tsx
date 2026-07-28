@@ -56,7 +56,7 @@ export default function Engagement() {
   const [selectedPublisherId, setSelectedPublisherId] = useState<string | null>(null);
   
   const [tab, setTab] = useState<'overview' | 'activity' | 'rules' | 'history'>('activity');
-  const [reviewTarget, setReviewTarget] = useState<ReviewRow | null>(null);
+  const [reviewTarget, setReviewTarget] = useState<{ row: ReviewRow; filter: 'all' | 'posts' | 'comments' } | null>(null);
   const [composerPost, setComposerPost] = useState<EngagementPost | null>(null);
 
   useEffect(() => {
