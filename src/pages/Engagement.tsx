@@ -418,9 +418,12 @@ type ReviewRow = {
   company: string | null;
   linkedin_url: string | null;
   new_posts: number;
+  new_comments: number;
   last_post_at: string | null;
+  last_activity_at: string | null;
   priority: 'high' | 'medium' | 'low';
   posts: DiscoveredPost[];
+  comments: DiscoveredComment[];
 };
 
 type DailySyncRow = {
@@ -621,37 +624,64 @@ function ActivityDashboard({
     [discovered, yesterdayStart, yesterdayEnd],
   );
 
-  // Build review rows
+  // Build review rows — merges new posts AND new comments per profile
   const rows: ReviewRow[] = useMemo(() => {
     const byTarget = new Map<string, ReviewRow>();
-    for (const p of discovered) {
-      const existing = byTarget.get(p.target_id);
-      if (existing) {
-        existing.posts.push(p);
-        existing.new_posts++;
-        if (!existing.last_post_at || (p.created_at > existing.last_post_at)) existing.last_post_at = p.created_at;
-      } else {
-        byTarget.set(p.target_id, {
-          id: p.target_id,
-          name: p.target_name || 'Unknown',
-          avatar_url: p.target_avatar_url,
-          title: p.target_title,
-          company: p.target_company,
-          linkedin_url: p.target_linkedin_url,
-          new_posts: 1,
-          last_post_at: p.created_at,
+    const ensure = (target_id: string, seed: Partial<ReviewRow>): ReviewRow => {
+      let r = byTarget.get(target_id);
+      if (!r) {
+        r = {
+          id: target_id,
+          name: 'Unknown',
+          avatar_url: null,
+          title: null,
+          company: null,
+          linkedin_url: null,
+          new_posts: 0,
+          new_comments: 0,
+          last_post_at: null,
+          last_activity_at: null,
           priority: 'medium',
-          posts: [p],
-        });
+          posts: [],
+          comments: [],
+          ...seed,
+        };
+        byTarget.set(target_id, r);
       }
+      return r;
+    };
+    for (const p of discovered) {
+      const r = ensure(p.target_id, {
+        name: p.target_name || 'Unknown',
+        avatar_url: p.target_avatar_url,
+        title: p.target_title,
+        company: p.target_company,
+        linkedin_url: p.target_linkedin_url,
+      });
+      r.posts.push(p);
+      r.new_posts++;
+      if (!r.last_post_at || p.created_at > r.last_post_at) r.last_post_at = p.created_at;
+      if (!r.last_activity_at || p.created_at > r.last_activity_at) r.last_activity_at = p.created_at;
     }
-    // Compute priority from post reach
+    for (const c of discoveredComments) {
+      const r = ensure(c.target_id, {
+        name: c.target_name || 'Unknown',
+        avatar_url: c.target_avatar_url,
+        title: c.target_title,
+        company: c.target_company,
+        linkedin_url: c.target_linkedin_url,
+      });
+      r.comments.push(c);
+      r.new_comments++;
+      const ts = c.commented_at || c.created_at || null;
+      if (ts && (!r.last_activity_at || ts > r.last_activity_at)) r.last_activity_at = ts;
+    }
     for (const r of byTarget.values()) {
       const reach = r.posts.reduce((a, b) => a + (b.likes_count || 0) + (b.comments_count || 0) * 3, 0);
-      r.priority = reach > 100 ? 'high' : reach > 20 ? 'medium' : 'low';
+      r.priority = reach > 100 ? 'high' : reach > 20 || r.new_comments > 3 ? 'medium' : 'low';
     }
     return [...byTarget.values()];
-  }, [discovered]);
+  }, [discovered, discoveredComments]);
 
   const profilesWithNew = rows.length;
   const latestDailySync = useMemo(
@@ -680,9 +710,12 @@ function ActivityDashboard({
         company: t.company_name ?? null,
         linkedin_url: t.linkedin_url ?? null,
         new_posts: 0,
+        new_comments: 0,
         last_post_at: t.last_seen_at || t.last_fetched_at || null,
+        last_activity_at: t.last_seen_at || t.last_fetched_at || null,
         priority: 'low',
         posts: [],
+        comments: [],
       };
     });
     for (const r of rows) if (!activeTargets.some((t: any) => t.id === r.id)) merged.push(r);
@@ -694,13 +727,13 @@ function ActivityDashboard({
     const q = query.trim().toLowerCase();
     if (q) out = out.filter((r) => r.name.toLowerCase().includes(q) || (r.company || '').toLowerCase().includes(q));
     if (queueTab === 'engaged') out = out.filter((r) => r.posts.some((p) => p.is_liked || p.is_commented));
-    if (queueTab === 'review') out = out.filter((r) => r.posts.some((p) => !p.is_liked && !p.is_commented));
+    if (queueTab === 'review') out = out.filter((r) => r.new_posts > 0 || r.new_comments > 0);
     if (queueTab === 'dismissed') out = [];
-    if (sort === 'new_posts') out = [...out].sort((a, b) => b.new_posts - a.new_posts);
-    else if (sort === 'recent') out = [...out].sort((a, b) => (b.last_post_at || '').localeCompare(a.last_post_at || ''));
+    if (sort === 'new_posts') out = [...out].sort((a, b) => (b.new_posts + b.new_comments) - (a.new_posts + a.new_comments));
+    else if (sort === 'recent') out = [...out].sort((a, b) => (b.last_activity_at || '').localeCompare(a.last_activity_at || ''));
     else out = [...out].sort((a, b) => {
       const pr = { high: 3, medium: 2, low: 1 };
-      return pr[b.priority] - pr[a.priority] || b.new_posts - a.new_posts;
+      return pr[b.priority] - pr[a.priority] || (b.new_posts + b.new_comments) - (a.new_posts + a.new_comments);
     });
     return out;
   }, [rows, allRows, query, queueTab, sort]);
@@ -875,11 +908,12 @@ function ActivityDashboard({
             <QueueEmpty tab={queueTab} />
           ) : (
             <div role="table" aria-label="Profiles to review">
-              <div role="row" className="grid grid-cols-[minmax(0,1fr)_120px_120px_160px_140px] gap-4 px-5 h-9 items-center bg-[#F7F8FB] border-b border-[#E5E7ED] text-[11px] uppercase tracking-wider text-[#667085] font-medium">
+              <div role="row" className="grid grid-cols-[minmax(0,1fr)_110px_110px_110px_160px_140px] gap-4 px-5 h-9 items-center bg-[#F7F8FB] border-b border-[#E5E7ED] text-[11px] uppercase tracking-wider text-[#667085] font-medium">
                 <div>Profile</div>
                 <div className="text-right">New posts</div>
+                <div className="text-right">New comments</div>
                 <div>Priority</div>
-                <div>Last checked</div>
+                <div>Last activity</div>
                 <div className="text-right">Action</div>
               </div>
               <div className="divide-y divide-[#E5E7ED]">
@@ -1491,7 +1525,7 @@ function QueueRow({
     <div
       role="row"
       className={cn(
-        'grid grid-cols-[minmax(0,1fr)_120px_120px_160px_140px] gap-4 px-5 items-center hover:bg-[#F7F8FB] transition-colors group',
+        'grid grid-cols-[minmax(0,1fr)_110px_110px_110px_160px_140px] gap-4 px-5 items-center hover:bg-[#F7F8FB] transition-colors group',
         rowH,
       )}
     >
@@ -1506,8 +1540,20 @@ function QueueRow({
       </button>
 
       <div className="text-right">
-        <span className="inline-flex items-center h-6 px-2 rounded-full bg-[#F4F0FF] text-[#7C3AED] text-xs font-semibold tabular-nums">
+        <span className={cn(
+          'inline-flex items-center h-6 px-2 rounded-full text-xs font-semibold tabular-nums',
+          row.new_posts > 0 ? 'bg-[#F4F0FF] text-[#7C3AED]' : 'bg-[#F7F8FB] text-[#98A2B3]',
+        )}>
           {row.new_posts}
+        </span>
+      </div>
+
+      <div className="text-right">
+        <span className={cn(
+          'inline-flex items-center h-6 px-2 rounded-full text-xs font-semibold tabular-nums',
+          row.new_comments > 0 ? 'bg-[#E6F7F5] text-[#0E9F8E]' : 'bg-[#F7F8FB] text-[#98A2B3]',
+        )}>
+          {row.new_comments}
         </span>
       </div>
 
@@ -1518,8 +1564,9 @@ function QueueRow({
       </div>
 
       <div className="text-xs text-[#667085] tabular-nums">
-        {row.last_post_at ? relativeTime(row.last_post_at) : '—'}
+        {row.last_activity_at ? relativeTime(row.last_activity_at) : row.last_post_at ? relativeTime(row.last_post_at) : '—'}
       </div>
+
 
       <div className="flex items-center gap-1.5 justify-end">
         <button
