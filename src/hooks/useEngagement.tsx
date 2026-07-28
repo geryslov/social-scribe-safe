@@ -96,6 +96,33 @@ export function useLikePost() {
   });
 }
 
+// ---------------------------------------------------------------------------
+// Like a comment a target left on someone else's post
+// ---------------------------------------------------------------------------
+
+export function useLikeComment() {
+  const queryClient = useQueryClient();
+  const { currentWorkspace } = useWorkspace();
+
+  return useMutation({
+    mutationFn: async ({ publisher_id, comment_id }: { publisher_id: string; comment_id: string }) => {
+      if (!currentWorkspace) throw new Error('No workspace');
+      const { data, error } = await supabase.functions.invoke('like-linkedin-comment', {
+        body: { workspace_id: currentWorkspace.id, publisher_id, comment_id },
+      });
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || 'Failed to like comment');
+      return data as { success: boolean; already_liked?: boolean; urn?: string };
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['target-comments'] });
+      queryClient.invalidateQueries({ queryKey: ['discovered-comments'] });
+      toast.success(data?.already_liked ? 'Already liked on LinkedIn' : 'Liked on LinkedIn');
+    },
+    onError: (e: Error) => toast.error('Like failed: ' + e.message),
+  });
+}
+
 export interface EngagementComment {
   id: string;
   workspace_id: string;

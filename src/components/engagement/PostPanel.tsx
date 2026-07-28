@@ -404,6 +404,7 @@ export function PostPanel({ target, publisher, isAdmin, onCleared }: PostPanelPr
           <TargetCommentsFeed
             targetId={target.id}
             targetName={target.name}
+            publisherId={publisher.id}
             isAdmin={isAdmin}
             isFetching={fetchTargetComments.isPending}
             onFetch={() => currentWorkspace && fetchTargetComments.mutate({

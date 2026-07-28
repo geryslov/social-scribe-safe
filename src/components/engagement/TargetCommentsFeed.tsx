@@ -1,13 +1,15 @@
 import { useState } from 'react';
 import { useTargetComments, DiscoveredComment } from '@/hooks/useEngagementActivity';
+import { useLikeComment } from '@/hooks/useEngagement';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import { ExternalLink, MessageCircle, ThumbsUp, RefreshCw, Loader2, Quote, Sparkles } from 'lucide-react';
+import { ExternalLink, MessageCircle, ThumbsUp, RefreshCw, Loader2, Quote, Sparkles, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface Props {
   targetId: string;
   targetName: string;
+  publisherId: string;
   isAdmin: boolean;
   isFetching: boolean;
   onFetch: () => void;
@@ -24,7 +26,7 @@ function timeAgo(dateStr: string | null): string {
   return `${Math.floor(days / 30)}mo ago`;
 }
 
-export function TargetCommentsFeed({ targetId, targetName, isAdmin, isFetching, onFetch }: Props) {
+export function TargetCommentsFeed({ targetId, targetName, publisherId, isAdmin, isFetching, onFetch }: Props) {
   const { data: comments = [], isLoading } = useTargetComments(targetId);
 
   if (isLoading) {
@@ -79,7 +81,7 @@ export function TargetCommentsFeed({ targetId, targetName, isAdmin, isFetching, 
         </div>
         <ul className="divide-y-[6px] divide-[#eef0f3]">
           {comments.map((c) => (
-            <CommentRow key={c.id} comment={c} targetName={targetName} />
+            <CommentRow key={c.id} comment={c} targetName={targetName} publisherId={publisherId} />
           ))}
         </ul>
       </div>
@@ -87,13 +89,16 @@ export function TargetCommentsFeed({ targetId, targetName, isAdmin, isFetching, 
   );
 }
 
-function CommentRow({ comment, targetName }: { comment: DiscoveredComment; targetName: string }) {
+function CommentRow({ comment, targetName, publisherId }: { comment: DiscoveredComment; targetName: string; publisherId: string }) {
   const [expanded, setExpanded] = useState(false);
+  const likeComment = useLikeComment();
   const parentUrl = comment.parent_post_url || comment.comment_url;
   const parentAuthor = comment.parent_post_author_name || 'LinkedIn member';
   const parentContent = comment.parent_post_content;
   const parentHeadline = comment.parent_post_author_headline;
   const longContent = (parentContent?.length || 0) > 220;
+  const isLiked = !!comment.comment_metadata?.is_liked;
+  const canLike = !!comment.comment_urn || (comment.comment_url?.includes('urn:li:comment:') ?? false);
 
   return (
     <li className="relative px-4 py-4 hover:bg-[#fafbfc] transition-colors">
@@ -179,6 +184,34 @@ function CommentRow({ comment, targetName }: { comment: DiscoveredComment; targe
             Engage on this post
           </a>
         )}
+        <button
+          type="button"
+          disabled={!canLike || isLiked || likeComment.isPending}
+          onClick={() => likeComment.mutate({ publisher_id: publisherId, comment_id: comment.id })}
+          title={
+            !canLike
+              ? 'No comment URN captured yet — re-sync comments to enable liking'
+              : isLiked
+              ? 'You already liked this comment'
+              : `Like ${targetName}'s comment on LinkedIn`
+          }
+          className={cn(
+            'inline-flex items-center gap-1 h-6 px-2 rounded-sm text-[11px] font-medium border transition-colors',
+            isLiked
+              ? 'bg-emerald-50 text-emerald-700 border-emerald-200 cursor-default'
+              : 'bg-white text-foreground/70 border-border hover:bg-muted',
+            (!canLike || likeComment.isPending) && 'opacity-50 cursor-not-allowed',
+          )}
+        >
+          {likeComment.isPending ? (
+            <Loader2 className="h-3 w-3 animate-spin" />
+          ) : isLiked ? (
+            <Check className="h-3 w-3" />
+          ) : (
+            <ThumbsUp className="h-3 w-3" />
+          )}
+          {isLiked ? 'Liked' : 'Like comment'}
+        </button>
         {comment.parent_post_author_url && (
           <a
             href={comment.parent_post_author_url}
