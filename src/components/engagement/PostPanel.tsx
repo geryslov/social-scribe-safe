@@ -29,7 +29,10 @@ import {
 import { cn } from '@/lib/utils';
 import { CommentComposer } from './CommentComposer';
 import { CommentEngagementPopover } from './CommentEngagementPopover';
-import { useEngagementTargets, EngagementComment } from '@/hooks/useEngagement';
+import { TargetCommentsFeed } from './TargetCommentsFeed';
+import { useEngagementTargets, EngagementComment, useFetchTargetComments } from '@/hooks/useEngagement';
+import { useTargetComments } from '@/hooks/useEngagementActivity';
+
 
 interface PostPanelProps {
   target: EngagementTarget | null;
@@ -76,9 +79,13 @@ export function PostPanel({ target, publisher, isAdmin, onCleared }: PostPanelPr
   const [isFetching, setIsFetching] = useState(false);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [feedFilter, setFeedFilter] = useState<FeedFilter>('live');
+  const [activeTab, setActiveTab] = useState<'posts' | 'comments'>('posts');
   const [autoLikeCapReached, setAutoLikeCapReached] = useState(false);
 
   const fetchCommentEngagement = useFetchCommentEngagement();
+  const fetchTargetComments = useFetchTargetComments();
+  const { data: targetComments = [] } = useTargetComments(target?.id || null);
+
 
   // Posted comments for this target's posts (for the engagement popover)
   const { data: allComments = [] } = useQuery({
@@ -314,48 +321,98 @@ export function PostPanel({ target, publisher, isAdmin, onCleared }: PostPanelPr
         }}
       />
 
-      {/* ── 3-segment filter ───────────────────────────────────────────── */}
-      {posts.length > 0 && (
+      {/* ── Tab bar: Posts | Comments ──────────────────────────────────── */}
+      <div className="px-6 pt-3 border-b border-border flex items-center gap-1">
+        <TabButton
+          active={activeTab === 'posts'}
+          onClick={() => setActiveTab('posts')}
+          label="Posts"
+          count={posts.length}
+        />
+        <TabButton
+          active={activeTab === 'comments'}
+          onClick={() => setActiveTab('comments')}
+          label="Comments on others"
+          count={targetComments.length}
+          hint="Posts they engaged with — pool of things you might jump into"
+        />
+        {activeTab === 'comments' && isAdmin && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="ml-auto h-7 gap-1.5 text-[11px] text-muted-foreground hover:text-foreground"
+            disabled={fetchTargetComments.isPending}
+            onClick={() => currentWorkspace && fetchTargetComments.mutate({
+              workspace_id: currentWorkspace.id,
+              target_id: target.id,
+            })}
+          >
+            {fetchTargetComments.isPending ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : (
+              <RefreshCw className="h-3 w-3" />
+            )}
+            Sync comments
+          </Button>
+        )}
+      </div>
+
+      {/* ── 3-segment filter (Posts tab only) ──────────────────────────── */}
+      {activeTab === 'posts' && posts.length > 0 && (
         <div className="px-6 pt-4 pb-2 flex items-center gap-2">
           <SegmentedFilter value={feedFilter} onChange={setFeedFilter} counts={counts} />
         </div>
       )}
 
-      {/* ── Reader (enterprise / compact) ──────────────────────────────── */}
+      {/* ── Reader ─────────────────────────────────────────────────────── */}
       <div className="flex-1 overflow-y-auto bg-[#fafafa]">
-        {isLoading ? (
-          <div className="max-w-[820px] mx-auto px-4 py-3 divide-y divide-border border border-border bg-white mt-3 rounded-sm">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="py-3 space-y-1.5">
-                <Skeleton className="h-2.5 w-1/4" />
-                <Skeleton className="h-3 w-full" />
-                <Skeleton className="h-3 w-11/12" />
-              </div>
-            ))}
-          </div>
-        ) : posts.length === 0 ? (
-          <EmptyState targetName={target.name} isAdmin={isAdmin} isFetching={isFetching} onFetch={handleFetch} />
-        ) : filtered.length === 0 ? (
-          <div className="flex items-center justify-center py-16">
-            <p className="text-[11px] text-muted-foreground font-mono uppercase tracking-wider">No posts in this view</p>
-          </div>
+        {activeTab === 'posts' ? (
+          isLoading ? (
+            <div className="max-w-[820px] mx-auto px-4 py-3 divide-y divide-border border border-border bg-white mt-3 rounded-sm">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="py-3 space-y-1.5">
+                  <Skeleton className="h-2.5 w-1/4" />
+                  <Skeleton className="h-3 w-full" />
+                  <Skeleton className="h-3 w-11/12" />
+                </div>
+              ))}
+            </div>
+          ) : posts.length === 0 ? (
+            <EmptyState targetName={target.name} isAdmin={isAdmin} isFetching={isFetching} onFetch={handleFetch} />
+          ) : filtered.length === 0 ? (
+            <div className="flex items-center justify-center py-16">
+              <p className="text-[11px] text-muted-foreground font-mono uppercase tracking-wider">No posts in this view</p>
+            </div>
+          ) : (
+            <EnterpriseFeed
+              posts={filtered}
+              spotlightId={spotlightId}
+              commentsByPostId={commentsByPostId}
+              likingPostId={likingPostId}
+              isAdmin={isAdmin}
+              onLike={(post) => {
+                setLikingPostId(post.id);
+                likePost.mutate(
+                  { publisher_id: publisher.id, post_id: post.id },
+                  { onSettled: () => setLikingPostId(null) },
+                );
+              }}
+              onEngage={(post) => setComposerPost(post)}
+            />
+          )
         ) : (
-          <EnterpriseFeed
-            posts={filtered}
-            spotlightId={spotlightId}
-            commentsByPostId={commentsByPostId}
-            likingPostId={likingPostId}
+          <TargetCommentsFeed
+            targetId={target.id}
+            targetName={target.name}
             isAdmin={isAdmin}
-            onLike={(post) => {
-              setLikingPostId(post.id);
-              likePost.mutate(
-                { publisher_id: publisher.id, post_id: post.id },
-                { onSettled: () => setLikingPostId(null) },
-              );
-            }}
-            onEngage={(post) => setComposerPost(post)}
+            isFetching={fetchTargetComments.isPending}
+            onFetch={() => currentWorkspace && fetchTargetComments.mutate({
+              workspace_id: currentWorkspace.id,
+              target_id: target.id,
+            })}
           />
         )}
+
       </div>
 
 
@@ -860,3 +917,42 @@ function EmptyState({
 }
 
 
+
+// -----------------------------------------------------------------------------
+// TabButton — top-level Posts / Comments tab
+// -----------------------------------------------------------------------------
+
+function TabButton({
+  active, onClick, label, count, hint,
+}: {
+  active: boolean;
+  onClick: () => void;
+  label: string;
+  count: number;
+  hint?: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={hint}
+      className={cn(
+        'relative h-9 px-3 inline-flex items-center gap-1.5 text-[12.5px] font-semibold transition-colors',
+        active
+          ? 'text-[#4f46e5]'
+          : 'text-muted-foreground hover:text-foreground',
+      )}
+    >
+      {label}
+      <span className={cn(
+        'tabular-nums text-[10.5px] font-mono px-1.5 py-0.5 rounded-sm',
+        active ? 'bg-[#4f46e5]/10 text-[#4f46e5]' : 'bg-muted text-muted-foreground/70',
+      )}>
+        {count}
+      </span>
+      {active && (
+        <span className="absolute left-2 right-2 -bottom-px h-0.5 bg-[#4f46e5] rounded-full" />
+      )}
+    </button>
+  );
+}
