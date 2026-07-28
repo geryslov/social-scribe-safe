@@ -908,11 +908,12 @@ function ActivityDashboard({
             <QueueEmpty tab={queueTab} />
           ) : (
             <div role="table" aria-label="Profiles to review">
-              <div role="row" className="grid grid-cols-[minmax(0,1fr)_120px_120px_160px_140px] gap-4 px-5 h-9 items-center bg-[#F7F8FB] border-b border-[#E5E7ED] text-[11px] uppercase tracking-wider text-[#667085] font-medium">
+              <div role="row" className="grid grid-cols-[minmax(0,1fr)_110px_110px_110px_160px_140px] gap-4 px-5 h-9 items-center bg-[#F7F8FB] border-b border-[#E5E7ED] text-[11px] uppercase tracking-wider text-[#667085] font-medium">
                 <div>Profile</div>
                 <div className="text-right">New posts</div>
+                <div className="text-right">New comments</div>
                 <div>Priority</div>
-                <div>Last checked</div>
+                <div>Last activity</div>
                 <div className="text-right">Action</div>
               </div>
               <div className="divide-y divide-[#E5E7ED]">
