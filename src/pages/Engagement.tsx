@@ -418,9 +418,12 @@ type ReviewRow = {
   company: string | null;
   linkedin_url: string | null;
   new_posts: number;
+  new_comments: number;
   last_post_at: string | null;
+  last_activity_at: string | null;
   priority: 'high' | 'medium' | 'low';
   posts: DiscoveredPost[];
+  comments: DiscoveredComment[];
 };
 
 type DailySyncRow = {
