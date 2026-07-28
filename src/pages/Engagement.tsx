@@ -1699,13 +1699,32 @@ function ReviewDrawer({
 
       {/* Post previews */}
       <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="text-[11px] uppercase tracking-wider text-[#667085] font-medium">Recent activity</div>
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <div className="inline-flex rounded-lg border border-[#E5E7ED] p-0.5 text-xs bg-white" role="tablist" aria-label="Filter activity">
+            {([
+              ['all', `All ${allFeed.length}`],
+              ['posts', `Posts ${row.new_posts}`],
+              ['comments', `Comments ${targetComments.length || row.new_comments}`],
+            ] as const).map(([id, label]) => (
+              <button
+                key={id}
+                role="tab"
+                aria-selected={filter === id}
+                onClick={() => setFilter(id)}
+                className={cn(
+                  'px-2.5 h-7 rounded-md font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED]/40',
+                  filter === id ? 'bg-[#F4F0FF] text-[#7C3AED]' : 'text-[#667085] hover:text-[#171923]',
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
           <button
             type="button"
             disabled={!currentWorkspace || fetchComments.isPending}
             onClick={() => currentWorkspace && fetchComments.mutate({ workspace_id: currentWorkspace.id, target_id: row.id })}
-            className="inline-flex items-center gap-1 h-6 px-2 rounded-md border border-[#E5E7ED] bg-white hover:bg-[#F7F8FB] text-[11px] font-medium text-[#667085] disabled:opacity-50"
+            className="inline-flex items-center gap-1 h-7 px-2 rounded-md border border-[#E5E7ED] bg-white hover:bg-[#F7F8FB] text-[11px] font-medium text-[#667085] disabled:opacity-50"
             title="Fetch this profile's recent comments on other people's posts"
           >
             {fetchComments.isPending
@@ -1715,7 +1734,13 @@ function ReviewDrawer({
           </button>
         </div>
         {feed.length === 0 && (
-          <p className="text-xs text-[#667085] py-2">No recent posts or comments for this profile yet.</p>
+          <p className="text-xs text-[#667085] py-2">
+            {filter === 'comments'
+              ? 'No comments from this profile yet. Try "Fetch comments".'
+              : filter === 'posts'
+              ? 'No recent posts for this profile.'
+              : 'No recent posts or comments for this profile yet.'}
+          </p>
         )}
         {feed.map((item) => {
           if (item.kind === 'comment') {
