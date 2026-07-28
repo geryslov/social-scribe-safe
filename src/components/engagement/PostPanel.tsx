@@ -79,9 +79,13 @@ export function PostPanel({ target, publisher, isAdmin, onCleared }: PostPanelPr
   const [isFetching, setIsFetching] = useState(false);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [feedFilter, setFeedFilter] = useState<FeedFilter>('live');
+  const [activeTab, setActiveTab] = useState<'posts' | 'comments'>('posts');
   const [autoLikeCapReached, setAutoLikeCapReached] = useState(false);
 
   const fetchCommentEngagement = useFetchCommentEngagement();
+  const fetchTargetComments = useFetchTargetComments();
+  const { data: targetComments = [] } = useTargetComments(target?.id || null);
+
 
   // Posted comments for this target's posts (for the engagement popover)
   const { data: allComments = [] } = useQuery({
