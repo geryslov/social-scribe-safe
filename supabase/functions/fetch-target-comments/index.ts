@@ -182,60 +182,37 @@ function parseApifyItems(items: Record<string, unknown>[]): FetchedComment[] {
   const out: FetchedComment[] = [];
 
   for (const item of items) {
-    // --- The comment itself ---
-    const commentText =
-      str(item.commentText) || str(item.comment) || str(item.text) ||
-      str((item.comment as Record<string, unknown> | undefined)?.text) || null;
-
-    const commentUrn =
-      str(item.commentUrn) || str(item.urn) || str(item.commentId) || str(item.id) || null;
-
-    const commentUrl =
-      str(item.commentUrl) || str(item.linkedinUrl) || str(item.url) || null;
-
+    // --- The comment itself (harvestapi/linkedin-profile-comments schema) ---
+    // Comment text lives in `commentary`; the comment id is `id`; the permalink
+    // is `linkedinUrl`; the timestamp is `createdAt` (ISO) / `createdAtTimestamp`.
+    const commentText = str(item.commentary) || str(item.commentText) || str(item.text) || null;
+    const commentUrn = str(item.id) || str(item.commentUrn) || str(item.urn) || null;
+    const commentUrl = str(item.linkedinUrl) || str(item.commentUrl) || str(item.url) || null;
     const commentedAt =
-      parseTimestamp(item.commentedAt) || parseTimestamp(item.createdAt) ||
-      parseTimestamp(item.postedAt) || parseTimestamp(item.date) ||
-      parseTimestamp(item.time) || null;
+      parseTimestamp(item.createdAt) || parseTimestamp(item.createdAtTimestamp) ||
+      parseTimestamp(item.commentedAt) || null;
 
-    const reactions =
-      (item.reactionsCount as number) ?? (item.likesCount as number) ??
-      (item.numReactions as number) ?? (item.likes as number) ?? 0;
+    // Reactions on the comment = engagement.likes.
+    const engagement = (item.engagement || {}) as Record<string, unknown>;
+    const reactions = typeof engagement.likes === 'number' ? engagement.likes : 0;
 
-    // --- The post the comment was left ON (nested under several possible keys) ---
-    const post = (item.post || item.parentPost || item.originalPost || item.article || {}) as Record<string, unknown>;
-    const postAuthor = (post.author || item.postAuthor || {}) as Record<string, unknown>;
+    // --- The post the comment was left ON ---
+    const post = (item.post || {}) as Record<string, unknown>;
+    const postAuthor = (post.author || {}) as Record<string, unknown>;
 
-    const parentPostUrl =
-      str(post.url) || str(post.linkedinUrl) || str(post.postUrl) ||
-      str(item.postUrl) || str(item.parentPostUrl) || null;
+    const parentPostUrl = str(post.linkedinUrl) || str(post.shareLinkedinUrl) || null;
+    const parentPostUrn = str(post.shareUrn) || str(post.entityId) || str(post.id) || null;
+    const parentPostContent = str(post.content) || null;
+    const parentAuthorName = str(postAuthor.name) || null;
+    const parentAuthorHeadline = str(postAuthor.info) || null;
+    const parentAuthorUrl = str(postAuthor.linkedinUrl) || null;
+    // post.postedAt is an object { date, timestamp }; parseTimestamp reads either.
+    const parentPublishedAt = parseTimestamp(post.postedAt) || null;
 
-    const parentPostUrn =
-      str(post.urn) || str(post.id) || str(item.postUrn) || null;
-
-    const parentPostContent =
-      str(post.content) || str(post.text) || str(post.commentary) ||
-      str(item.postContent) || null;
-
-    const parentAuthorName =
-      str(postAuthor.name) ||
-      [str(postAuthor.firstName), str(postAuthor.lastName)].filter(Boolean).join(' ') ||
-      str(item.postAuthorName) || null;
-
-    const parentAuthorHeadline =
-      str(postAuthor.headline) || str(postAuthor.info) || str(postAuthor.occupation) || null;
-
-    const parentAuthorUrl =
-      str(postAuthor.url) || str(postAuthor.linkedinUrl) || str(postAuthor.publicIdentifier) || null;
-
-    const parentPublishedAt =
-      parseTimestamp(post.postedAt) || parseTimestamp(post.publishedAt) || null;
-
-    // Stable dedup key: URN → comment URL → parent post + timestamp.
+    // Stable dedup key: the comment id is always present and unique.
     const dedupKey =
       commentUrn ||
       commentUrl ||
-      (parentPostUrl ? `${parentPostUrl}#${commentedAt ?? ''}` : null) ||
       (commentText ? `${commentText.slice(0, 80)}#${commentedAt ?? ''}` : null);
 
     if (!dedupKey) {
@@ -322,13 +299,13 @@ Deno.serve(async (req) => {
     const apifyToken = keyRow.api_key_encrypted;
     const profileUrl = normaliseProfileUrl(target.linkedin_url);
 
-    // Incremental-ish window. postedLimit is coarse (enum), and the (target_id,
-    // dedup_key) unique constraint absorbs overlap, so we just pick a bounded
-    // window: backfill a month on the first pull, a week on subsequent pulls.
-    const postedLimit = target.last_comments_fetched_at ? 'week' : 'month';
+    // Single/manual fetch always pulls a month so one click returns a useful set
+    // (the daily batch stays on a tighter window for cost). The (target_id,
+    // dedup_key) unique constraint absorbs any overlap.
+    const postedLimit = 'month';
 
     // --- Step 1: Start the Apify run ---
-    const runId = await startApifyRun(profileUrl, apifyToken, 15, postedLimit);
+    const runId = await startApifyRun(profileUrl, apifyToken, 25, postedLimit);
     if (!runId) {
       return new Response(
         JSON.stringify({ success: false, error: 'Failed to start Apify run. Check your API token.' }),

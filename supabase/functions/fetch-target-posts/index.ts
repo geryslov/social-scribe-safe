@@ -298,7 +298,7 @@ Deno.serve(async (req) => {
       : new Date(Date.now() - THIRTY_DAYS_MS).toISOString();
 
     // --- Step 1: Start the Apify run ---
-    const runId = await startApifyRun(profileUrl, apifyToken, 5, postedLimitDate);
+    const runId = await startApifyRun(profileUrl, apifyToken, 2, postedLimitDate);
     if (!runId) {
       return new Response(
         JSON.stringify({ success: false, error: 'Failed to start Apify run. Check your API token.' }),

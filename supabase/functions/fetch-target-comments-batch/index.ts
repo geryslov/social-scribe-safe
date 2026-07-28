@@ -61,46 +61,40 @@ function parseTimestamp(v: unknown): string | null {
 }
 
 // Which queried profile (= the commenter, = our target) does this item belong to?
+// harvestapi echoes the input at `query.profile` and puts the commenter in `actor`.
 function commenterUsername(item: Record<string, unknown>): string | null {
-  const author = (item.author || item.commenter || item.profile || {}) as Record<string, unknown>;
+  const query = (item.query || {}) as Record<string, unknown>;
+  const actor = (item.actor || {}) as Record<string, unknown>;
   const candidates: (string | null)[] = [
-    typeof author.publicIdentifier === 'string' ? author.publicIdentifier.toLowerCase() : null,
-    typeof author.linkedinUrl === 'string' ? usernameFromUrl(author.linkedinUrl) : null,
-    typeof item.query === 'string' ? usernameFromUrl(item.query as string) : null,
-    typeof item.profileUrl === 'string' ? usernameFromUrl(item.profileUrl as string) : null,
-    typeof item.input === 'string' ? usernameFromUrl(item.input as string) : null,
+    typeof query.profile === 'string' ? usernameFromUrl(query.profile) : null,
+    typeof actor.linkedinUrl === 'string' ? usernameFromUrl(actor.linkedinUrl) : null,
+    typeof actor.publicIdentifier === 'string' ? actor.publicIdentifier.toLowerCase() : null,
   ];
   for (const c of candidates) if (c) return c;
   return null;
 }
 
 // Extract one stored comment row (comment + the parent post it was left on).
+// Field names per harvestapi/linkedin-profile-comments.
 function parseCommentItem(item: Record<string, unknown>): Record<string, unknown> | null {
-  const commentText =
-    str(item.commentText) || str(item.comment) || str(item.text) ||
-    str((item.comment as Record<string, unknown> | undefined)?.text) || null;
-  const commentUrn = str(item.commentUrn) || str(item.urn) || str(item.commentId) || str(item.id) || null;
-  const commentUrl = str(item.commentUrl) || str(item.linkedinUrl) || str(item.url) || null;
+  const commentText = str(item.commentary) || str(item.commentText) || str(item.text) || null;
+  const commentUrn = str(item.id) || str(item.commentUrn) || str(item.urn) || null;
+  const commentUrl = str(item.linkedinUrl) || str(item.commentUrl) || str(item.url) || null;
   const commentedAt =
-    parseTimestamp(item.commentedAt) || parseTimestamp(item.createdAt) ||
-    parseTimestamp(item.postedAt) || parseTimestamp(item.date) || parseTimestamp(item.time) || null;
-  const reactions =
-    (item.reactionsCount as number) ?? (item.likesCount as number) ??
-    (item.numReactions as number) ?? (item.likes as number) ?? 0;
+    parseTimestamp(item.createdAt) || parseTimestamp(item.createdAtTimestamp) ||
+    parseTimestamp(item.commentedAt) || null;
+  const engagement = (item.engagement || {}) as Record<string, unknown>;
+  const reactions = typeof engagement.likes === 'number' ? engagement.likes : 0;
 
-  const post = (item.post || item.parentPost || item.originalPost || item.article || {}) as Record<string, unknown>;
-  const postAuthor = (post.author || item.postAuthor || {}) as Record<string, unknown>;
+  const post = (item.post || {}) as Record<string, unknown>;
+  const postAuthor = (post.author || {}) as Record<string, unknown>;
 
-  const parentPostUrl = str(post.url) || str(post.linkedinUrl) || str(post.postUrl) || str(item.postUrl) || str(item.parentPostUrl) || null;
-  const parentPostContent = str(post.content) || str(post.text) || str(post.commentary) || str(item.postContent) || null;
-  const parentAuthorName =
-    str(postAuthor.name) ||
-    [str(postAuthor.firstName), str(postAuthor.lastName)].filter(Boolean).join(' ') ||
-    str(item.postAuthorName) || null;
+  const parentPostUrl = str(post.linkedinUrl) || str(post.shareLinkedinUrl) || null;
+  const parentPostContent = str(post.content) || null;
+  const parentAuthorName = str(postAuthor.name) || null;
 
   const dedupKey =
     commentUrn || commentUrl ||
-    (parentPostUrl ? `${parentPostUrl}#${commentedAt ?? ''}` : null) ||
     (commentText ? `${commentText.slice(0, 80)}#${commentedAt ?? ''}` : null);
   if (!dedupKey) return null;
 
@@ -110,14 +104,14 @@ function parseCommentItem(item: Record<string, unknown>): Record<string, unknown
     comment_url: commentUrl,
     comment_text: commentText,
     commented_at: commentedAt,
-    reactions_count: typeof reactions === 'number' ? reactions : 0,
+    reactions_count: reactions,
     parent_post_url: parentPostUrl,
-    parent_post_urn: str(post.urn) || str(post.id) || str(item.postUrn) || null,
+    parent_post_urn: str(post.shareUrn) || str(post.entityId) || str(post.id) || null,
     parent_post_author_name: parentAuthorName,
-    parent_post_author_headline: str(postAuthor.headline) || str(postAuthor.info) || str(postAuthor.occupation) || null,
-    parent_post_author_url: str(postAuthor.url) || str(postAuthor.linkedinUrl) || null,
+    parent_post_author_headline: str(postAuthor.info) || null,
+    parent_post_author_url: str(postAuthor.linkedinUrl) || null,
     parent_post_content: parentPostContent,
-    parent_post_published_at: parseTimestamp(post.postedAt) || parseTimestamp(post.publishedAt) || null,
+    parent_post_published_at: parseTimestamp(post.postedAt) || null,
     comment_metadata: { raw: item },
   };
 }
