@@ -917,3 +917,42 @@ function EmptyState({
 }
 
 
+
+// -----------------------------------------------------------------------------
+// TabButton — top-level Posts / Comments tab
+// -----------------------------------------------------------------------------
+
+function TabButton({
+  active, onClick, label, count, hint,
+}: {
+  active: boolean;
+  onClick: () => void;
+  label: string;
+  count: number;
+  hint?: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={hint}
+      className={cn(
+        'relative h-9 px-3 inline-flex items-center gap-1.5 text-[12.5px] font-semibold transition-colors',
+        active
+          ? 'text-[#4f46e5]'
+          : 'text-muted-foreground hover:text-foreground',
+      )}
+    >
+      {label}
+      <span className={cn(
+        'tabular-nums text-[10.5px] font-mono px-1.5 py-0.5 rounded-sm',
+        active ? 'bg-[#4f46e5]/10 text-[#4f46e5]' : 'bg-muted text-muted-foreground/70',
+      )}>
+        {count}
+      </span>
+      {active && (
+        <span className="absolute left-2 right-2 -bottom-px h-0.5 bg-[#4f46e5] rounded-full" />
+      )}
+    </button>
+  );
+}
