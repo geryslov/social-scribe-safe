@@ -1626,19 +1626,21 @@ function QueueRow({
  * Review Drawer
  * ==========================================================================*/
 function ReviewDrawer({
-  row, publisher, onClose, onOpenComment,
-}: { row: ReviewRow; publisher: Publisher | null; onClose: () => void; onOpenComment: (p: EngagementPost) => void }) {
+  row, publisher, onClose, onOpenComment, initialFilter = 'all',
+}: { row: ReviewRow; publisher: Publisher | null; onClose: () => void; onOpenComment: (p: EngagementPost) => void; initialFilter?: 'all' | 'posts' | 'comments' }) {
   const likeMutation = useLikePost();
   const { currentWorkspace } = useWorkspace();
   const { data: targetComments = [] } = useTargetComments(row.id);
   const fetchComments = useFetchTargetComments();
+  const [filter, setFilter] = useState<'all' | 'posts' | 'comments'>(initialFilter);
+  useEffect(() => { setFilter(initialFilter); }, [initialFilter, row.id]);
 
   // Merge the target's own posts with their comments on other people's posts,
   // newest first — the "activity" the user wants to react to.
   type FeedItem =
     | { kind: 'post'; ts: number; post: DiscoveredPost }
     | { kind: 'comment'; ts: number; comment: DiscoveredComment };
-  const feed: FeedItem[] = [
+  const allFeed: FeedItem[] = [
     ...row.posts.map((p): FeedItem => ({
       kind: 'post',
       ts: new Date(p.published_at || p.created_at || 0).getTime(),
@@ -1650,6 +1652,7 @@ function ReviewDrawer({
       comment: c,
     })),
   ].sort((a, b) => b.ts - a.ts);
+  const feed = filter === 'all' ? allFeed : allFeed.filter((i) => (filter === 'posts' ? i.kind === 'post' : i.kind === 'comment'));
 
   return (
     <div className="h-full flex flex-col">
