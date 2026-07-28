@@ -184,6 +184,34 @@ function CommentRow({ comment, targetName, publisherId }: { comment: DiscoveredC
             Engage on this post
           </a>
         )}
+        <button
+          type="button"
+          disabled={!canLike || isLiked || likeComment.isPending}
+          onClick={() => likeComment.mutate({ publisher_id: publisherId, comment_id: comment.id })}
+          title={
+            !canLike
+              ? 'No comment URN captured yet — re-sync comments to enable liking'
+              : isLiked
+              ? 'You already liked this comment'
+              : `Like ${targetName}'s comment on LinkedIn`
+          }
+          className={cn(
+            'inline-flex items-center gap-1 h-6 px-2 rounded-sm text-[11px] font-medium border transition-colors',
+            isLiked
+              ? 'bg-emerald-50 text-emerald-700 border-emerald-200 cursor-default'
+              : 'bg-white text-foreground/70 border-border hover:bg-muted',
+            (!canLike || likeComment.isPending) && 'opacity-50 cursor-not-allowed',
+          )}
+        >
+          {likeComment.isPending ? (
+            <Loader2 className="h-3 w-3 animate-spin" />
+          ) : isLiked ? (
+            <Check className="h-3 w-3" />
+          ) : (
+            <ThumbsUp className="h-3 w-3" />
+          )}
+          {isLiked ? 'Liked' : 'Like comment'}
+        </button>
         {comment.parent_post_author_url && (
           <a
             href={comment.parent_post_author_url}
