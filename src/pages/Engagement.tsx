@@ -84,7 +84,7 @@ export default function Engagement() {
         {tab === 'activity' && selectedPublisher && (
           <ActivityDashboard
             publisher={selectedPublisher}
-            onOpenReview={setReviewTarget}
+            onOpenReview={(row, filter = 'all') => setReviewTarget({ row, filter })}
             onOpenComment={setComposerPost}
           />
         )}
@@ -104,7 +104,8 @@ export default function Engagement() {
         <SheetContent side="right" className="w-[420px] sm:max-w-[420px] p-0 bg-white border-l border-[#E5E7ED]">
           {reviewTarget && (
             <ReviewDrawer
-              row={reviewTarget}
+              row={reviewTarget.row}
+              initialFilter={reviewTarget.filter}
               publisher={selectedPublisher}
               onClose={() => setReviewTarget(null)}
               onOpenComment={(p) => { setComposerPost(p); }}
