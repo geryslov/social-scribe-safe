@@ -56,7 +56,7 @@ export default function Engagement() {
   const [selectedPublisherId, setSelectedPublisherId] = useState<string | null>(null);
   
   const [tab, setTab] = useState<'overview' | 'activity' | 'rules' | 'history'>('activity');
-  const [reviewTarget, setReviewTarget] = useState<ReviewRow | null>(null);
+  const [reviewTarget, setReviewTarget] = useState<{ row: ReviewRow; filter: 'all' | 'posts' | 'comments' } | null>(null);
   const [composerPost, setComposerPost] = useState<EngagementPost | null>(null);
 
   useEffect(() => {
@@ -84,7 +84,7 @@ export default function Engagement() {
         {tab === 'activity' && selectedPublisher && (
           <ActivityDashboard
             publisher={selectedPublisher}
-            onOpenReview={setReviewTarget}
+            onOpenReview={(row, filter = 'all') => setReviewTarget({ row, filter })}
             onOpenComment={setComposerPost}
           />
         )}
@@ -104,7 +104,8 @@ export default function Engagement() {
         <SheetContent side="right" className="w-[420px] sm:max-w-[420px] p-0 bg-white border-l border-[#E5E7ED]">
           {reviewTarget && (
             <ReviewDrawer
-              row={reviewTarget}
+              row={reviewTarget.row}
+              initialFilter={reviewTarget.filter}
               publisher={selectedPublisher}
               onClose={() => setReviewTarget(null)}
               onOpenComment={(p) => { setComposerPost(p); }}
@@ -447,7 +448,7 @@ function ActivityDashboard({
   publisher, onOpenReview, onOpenComment,
 }: {
   publisher: Publisher;
-  onOpenReview: (row: ReviewRow) => void;
+  onOpenReview: (row: ReviewRow, filter?: 'all' | 'posts' | 'comments') => void;
   onOpenComment: (post: EngagementPost) => void;
 }) {
   const { targets } = useEngagementTargets(publisher.id);
@@ -918,7 +919,7 @@ function ActivityDashboard({
               </div>
               <div className="divide-y divide-[#E5E7ED]">
                 {filteredRows.map((r) => (
-                  <QueueRow key={r.id} row={r} density={density} onOpen={() => onOpenReview(r)} onComment={(p) => onOpenComment(p)} />
+                  <QueueRow key={r.id} row={r} density={density} onOpen={(filter) => onOpenReview(r, filter)} onComment={(p) => onOpenComment(p)} />
                 ))}
               </div>
             </div>
@@ -1513,7 +1514,7 @@ function CommentsDiscoveryTable({
 
 function QueueRow({
   row, density, onOpen, onComment,
-}: { row: ReviewRow; density: 'comfortable' | 'compact'; onOpen: () => void; onComment: (p: EngagementPost) => void }) {
+}: { row: ReviewRow; density: 'comfortable' | 'compact'; onOpen: (filter?: 'all' | 'posts' | 'comments') => void; onComment: (p: EngagementPost) => void }) {
   const rowH = density === 'compact' ? 'h-14' : 'h-[68px]';
   const priorityStyles: Record<ReviewRow['priority'], string> = {
     high: 'bg-[#F4F0FF] text-[#7C3AED] border-[#E4DAFB]',
@@ -1529,7 +1530,7 @@ function QueueRow({
         rowH,
       )}
     >
-      <button onClick={onOpen} className="flex items-center gap-3 min-w-0 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED]/40 rounded-md">
+      <button onClick={() => onOpen('all')} className="flex items-center gap-3 min-w-0 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED]/40 rounded-md">
         <Avatar url={row.avatar_url} name={row.name} size={36} />
         <div className="min-w-0">
           <div className="text-sm font-medium text-[#171923] truncate">{row.name}</div>
@@ -1540,21 +1541,37 @@ function QueueRow({
       </button>
 
       <div className="text-right">
-        <span className={cn(
-          'inline-flex items-center h-6 px-2 rounded-full text-xs font-semibold tabular-nums',
-          row.new_posts > 0 ? 'bg-[#F4F0FF] text-[#7C3AED]' : 'bg-[#F7F8FB] text-[#98A2B3]',
-        )}>
+        <button
+          type="button"
+          onClick={() => onOpen('posts')}
+          disabled={row.new_posts === 0}
+          title={row.new_posts > 0 ? `View ${row.new_posts} new post${row.new_posts === 1 ? '' : 's'}` : 'No new posts'}
+          className={cn(
+            'inline-flex items-center h-6 px-2 rounded-full text-xs font-semibold tabular-nums transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED]/40',
+            row.new_posts > 0
+              ? 'bg-[#F4F0FF] text-[#7C3AED] hover:bg-[#EADCFB] cursor-pointer'
+              : 'bg-[#F7F8FB] text-[#98A2B3] cursor-default',
+          )}
+        >
           {row.new_posts}
-        </span>
+        </button>
       </div>
 
       <div className="text-right">
-        <span className={cn(
-          'inline-flex items-center h-6 px-2 rounded-full text-xs font-semibold tabular-nums',
-          row.new_comments > 0 ? 'bg-[#E6F7F5] text-[#0E9F8E]' : 'bg-[#F7F8FB] text-[#98A2B3]',
-        )}>
+        <button
+          type="button"
+          onClick={() => onOpen('comments')}
+          disabled={row.new_comments === 0}
+          title={row.new_comments > 0 ? `View ${row.new_comments} new comment${row.new_comments === 1 ? '' : 's'}` : 'No new comments'}
+          className={cn(
+            'inline-flex items-center h-6 px-2 rounded-full text-xs font-semibold tabular-nums transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED]/40',
+            row.new_comments > 0
+              ? 'bg-[#E6F7F5] text-[#0E9F8E] hover:bg-[#CFF0EB] cursor-pointer'
+              : 'bg-[#F7F8FB] text-[#98A2B3] cursor-default',
+          )}
+        >
           {row.new_comments}
-        </span>
+        </button>
       </div>
 
       <div>
@@ -1571,7 +1588,7 @@ function QueueRow({
       <div className="flex items-center gap-1.5 justify-end">
         <button
           type="button"
-          onClick={onOpen}
+          onClick={() => onOpen('all')}
           className="inline-flex items-center gap-1 h-8 px-3 rounded-md bg-white border border-[#E5E7ED] hover:bg-[#F4F0FF] hover:border-[#E4DAFB] hover:text-[#7C3AED] text-xs font-medium text-[#171923] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED]/40"
         >
           Review
@@ -1609,19 +1626,21 @@ function QueueRow({
  * Review Drawer
  * ==========================================================================*/
 function ReviewDrawer({
-  row, publisher, onClose, onOpenComment,
-}: { row: ReviewRow; publisher: Publisher | null; onClose: () => void; onOpenComment: (p: EngagementPost) => void }) {
+  row, publisher, onClose, onOpenComment, initialFilter = 'all',
+}: { row: ReviewRow; publisher: Publisher | null; onClose: () => void; onOpenComment: (p: EngagementPost) => void; initialFilter?: 'all' | 'posts' | 'comments' }) {
   const likeMutation = useLikePost();
   const { currentWorkspace } = useWorkspace();
   const { data: targetComments = [] } = useTargetComments(row.id);
   const fetchComments = useFetchTargetComments();
+  const [filter, setFilter] = useState<'all' | 'posts' | 'comments'>(initialFilter);
+  useEffect(() => { setFilter(initialFilter); }, [initialFilter, row.id]);
 
   // Merge the target's own posts with their comments on other people's posts,
   // newest first — the "activity" the user wants to react to.
   type FeedItem =
     | { kind: 'post'; ts: number; post: DiscoveredPost }
     | { kind: 'comment'; ts: number; comment: DiscoveredComment };
-  const feed: FeedItem[] = [
+  const allFeed: FeedItem[] = [
     ...row.posts.map((p): FeedItem => ({
       kind: 'post',
       ts: new Date(p.published_at || p.created_at || 0).getTime(),
@@ -1633,6 +1652,7 @@ function ReviewDrawer({
       comment: c,
     })),
   ].sort((a, b) => b.ts - a.ts);
+  const feed = filter === 'all' ? allFeed : allFeed.filter((i) => (filter === 'posts' ? i.kind === 'post' : i.kind === 'comment'));
 
   return (
     <div className="h-full flex flex-col">
@@ -1679,13 +1699,32 @@ function ReviewDrawer({
 
       {/* Post previews */}
       <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="text-[11px] uppercase tracking-wider text-[#667085] font-medium">Recent activity</div>
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <div className="inline-flex rounded-lg border border-[#E5E7ED] p-0.5 text-xs bg-white" role="tablist" aria-label="Filter activity">
+            {([
+              ['all', `All ${allFeed.length}`],
+              ['posts', `Posts ${row.new_posts}`],
+              ['comments', `Comments ${targetComments.length || row.new_comments}`],
+            ] as const).map(([id, label]) => (
+              <button
+                key={id}
+                role="tab"
+                aria-selected={filter === id}
+                onClick={() => setFilter(id)}
+                className={cn(
+                  'px-2.5 h-7 rounded-md font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED]/40',
+                  filter === id ? 'bg-[#F4F0FF] text-[#7C3AED]' : 'text-[#667085] hover:text-[#171923]',
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
           <button
             type="button"
             disabled={!currentWorkspace || fetchComments.isPending}
             onClick={() => currentWorkspace && fetchComments.mutate({ workspace_id: currentWorkspace.id, target_id: row.id })}
-            className="inline-flex items-center gap-1 h-6 px-2 rounded-md border border-[#E5E7ED] bg-white hover:bg-[#F7F8FB] text-[11px] font-medium text-[#667085] disabled:opacity-50"
+            className="inline-flex items-center gap-1 h-7 px-2 rounded-md border border-[#E5E7ED] bg-white hover:bg-[#F7F8FB] text-[11px] font-medium text-[#667085] disabled:opacity-50"
             title="Fetch this profile's recent comments on other people's posts"
           >
             {fetchComments.isPending
@@ -1695,7 +1734,13 @@ function ReviewDrawer({
           </button>
         </div>
         {feed.length === 0 && (
-          <p className="text-xs text-[#667085] py-2">No recent posts or comments for this profile yet.</p>
+          <p className="text-xs text-[#667085] py-2">
+            {filter === 'comments'
+              ? 'No comments from this profile yet. Try "Fetch comments".'
+              : filter === 'posts'
+              ? 'No recent posts for this profile.'
+              : 'No recent posts or comments for this profile yet.'}
+          </p>
         )}
         {feed.map((item) => {
           if (item.kind === 'comment') {
