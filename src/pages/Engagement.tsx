@@ -1530,7 +1530,7 @@ function QueueRow({
         rowH,
       )}
     >
-      <button onClick={onOpen} className="flex items-center gap-3 min-w-0 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED]/40 rounded-md">
+      <button onClick={() => onOpen('all')} className="flex items-center gap-3 min-w-0 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED]/40 rounded-md">
         <Avatar url={row.avatar_url} name={row.name} size={36} />
         <div className="min-w-0">
           <div className="text-sm font-medium text-[#171923] truncate">{row.name}</div>
@@ -1541,21 +1541,37 @@ function QueueRow({
       </button>
 
       <div className="text-right">
-        <span className={cn(
-          'inline-flex items-center h-6 px-2 rounded-full text-xs font-semibold tabular-nums',
-          row.new_posts > 0 ? 'bg-[#F4F0FF] text-[#7C3AED]' : 'bg-[#F7F8FB] text-[#98A2B3]',
-        )}>
+        <button
+          type="button"
+          onClick={() => onOpen('posts')}
+          disabled={row.new_posts === 0}
+          title={row.new_posts > 0 ? `View ${row.new_posts} new post${row.new_posts === 1 ? '' : 's'}` : 'No new posts'}
+          className={cn(
+            'inline-flex items-center h-6 px-2 rounded-full text-xs font-semibold tabular-nums transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED]/40',
+            row.new_posts > 0
+              ? 'bg-[#F4F0FF] text-[#7C3AED] hover:bg-[#EADCFB] cursor-pointer'
+              : 'bg-[#F7F8FB] text-[#98A2B3] cursor-default',
+          )}
+        >
           {row.new_posts}
-        </span>
+        </button>
       </div>
 
       <div className="text-right">
-        <span className={cn(
-          'inline-flex items-center h-6 px-2 rounded-full text-xs font-semibold tabular-nums',
-          row.new_comments > 0 ? 'bg-[#E6F7F5] text-[#0E9F8E]' : 'bg-[#F7F8FB] text-[#98A2B3]',
-        )}>
+        <button
+          type="button"
+          onClick={() => onOpen('comments')}
+          disabled={row.new_comments === 0}
+          title={row.new_comments > 0 ? `View ${row.new_comments} new comment${row.new_comments === 1 ? '' : 's'}` : 'No new comments'}
+          className={cn(
+            'inline-flex items-center h-6 px-2 rounded-full text-xs font-semibold tabular-nums transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED]/40',
+            row.new_comments > 0
+              ? 'bg-[#E6F7F5] text-[#0E9F8E] hover:bg-[#CFF0EB] cursor-pointer'
+              : 'bg-[#F7F8FB] text-[#98A2B3] cursor-default',
+          )}
+        >
           {row.new_comments}
-        </span>
+        </button>
       </div>
 
       <div>
@@ -1572,7 +1588,7 @@ function QueueRow({
       <div className="flex items-center gap-1.5 justify-end">
         <button
           type="button"
-          onClick={onOpen}
+          onClick={() => onOpen('all')}
           className="inline-flex items-center gap-1 h-8 px-3 rounded-md bg-white border border-[#E5E7ED] hover:bg-[#F4F0FF] hover:border-[#E4DAFB] hover:text-[#7C3AED] text-xs font-medium text-[#171923] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED]/40"
         >
           Review
