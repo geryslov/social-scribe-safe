@@ -15,7 +15,7 @@ import { Label } from '@/components/ui/label';
 import { useEngagementSync, getNextScheduledSync } from '@/hooks/useEngagementSync';
 import {
   useDiscoveredPosts, useAutoLikeHistory, usePublisherComments,
-  useEngagementSyncRuns, DiscoveredPost,
+  useEngagementSyncRuns, DiscoveredPost, useDiscoveredComments,
   useTargetComments, DiscoveredComment,
 } from '@/hooks/useEngagementActivity';
 import { CommentComposer } from '@/components/engagement/CommentComposer';
@@ -449,10 +449,12 @@ function ActivityDashboard({
 }) {
   const { targets } = useEngagementTargets(publisher.id);
   const { data: discovered = [], isLoading: discoveredLoading } = useDiscoveredPosts(publisher.id, 7);
+  const { data: discoveredComments = [], isLoading: discoveredCommentsLoading } = useDiscoveredComments(publisher.id, 14);
   const { data: likes = [] } = useAutoLikeHistory(publisher.id, 7);
   const { data: comments = [] } = usePublisherComments(publisher.id, 7);
   const { data: syncRuns = [] } = useEngagementSyncRuns(20);
 
+  const [activitySource, setActivitySource] = useState<'posts' | 'comments'>('posts');
   const [queueTab, setQueueTab] = useState<'review' | 'all' | 'engaged' | 'dismissed'>('review');
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<'relevance' | 'new_posts' | 'recent'>('relevance');
@@ -703,6 +705,36 @@ function ActivityDashboard({
     return out;
   }, [rows, allRows, query, queueTab, sort]);
 
+  const filteredCommentRows = useMemo(() => {
+    let out = discoveredComments;
+    const q = query.trim().toLowerCase();
+    if (q) {
+      out = out.filter((c) => [
+        c.target_name,
+        c.target_company,
+        c.target_title,
+        c.comment_text,
+        c.parent_post_author_name,
+        c.parent_post_author_headline,
+        c.parent_post_content,
+      ].some((value) => (value || '').toLowerCase().includes(q)));
+    }
+    return [...out].sort((a, b) => {
+      if (sort === 'new_posts' || sort === 'relevance') {
+        const reactionDelta = (b.reactions_count || 0) - (a.reactions_count || 0);
+        if (reactionDelta !== 0) return reactionDelta;
+      }
+      const bt = new Date(b.commented_at || b.created_at || 0).getTime();
+      const at = new Date(a.commented_at || a.created_at || 0).getTime();
+      return bt - at;
+    });
+  }, [discoveredComments, query, sort]);
+
+  const openTargetFromComment = (targetId: string) => {
+    const row = allRows.find((r) => r.id === targetId) || rows.find((r) => r.id === targetId);
+    if (row) onOpenReview(row);
+  };
+
   const hasCompletedEngagement = totalLikes7d + totalComments7d > 0;
   const hasChartActivity = totalLikes7d + totalComments7d + totalPosts7d + totalChecks7d > 0;
 
@@ -746,40 +778,63 @@ function ActivityDashboard({
           <div className="flex items-start justify-between gap-4 flex-wrap">
             <div>
               <h2 className="text-sm font-semibold text-[#171923]">Review queue</h2>
-              <p className="text-xs text-[#667085] mt-0.5">Profiles with new activity worth your attention.</p>
+              <p className="text-xs text-[#667085] mt-0.5">
+                Review profile posts or the posts they commented on elsewhere.
+              </p>
             </div>
           </div>
           <div className="mt-3 flex items-center gap-2 flex-wrap">
-            <div className="inline-flex rounded-lg border border-[#E5E7ED] p-0.5 text-xs" role="tablist">
+            <div className="inline-flex rounded-lg border border-[#E5E7ED] p-0.5 text-xs bg-white" role="tablist" aria-label="Activity source">
               {([
-                ['review', `Needs review`],
-                ['all', 'All discovered'],
-                ['engaged', 'Engaged'],
-                ['dismissed', 'Dismissed'],
+                ['posts', `Posts ${discovered.length}`],
+                ['comments', `Comments on others ${discoveredComments.length}`],
               ] as const).map(([id, label]) => (
                 <button
                   key={id}
                   role="tab"
-                  aria-selected={queueTab === id}
-                  onClick={() => setQueueTab(id)}
+                  aria-selected={activitySource === id}
+                  onClick={() => setActivitySource(id)}
                   className={cn(
                     'px-2.5 h-7 rounded-md font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED]/40',
-                    queueTab === id ? 'bg-[#F4F0FF] text-[#7C3AED]' : 'text-[#667085] hover:text-[#171923]',
+                    activitySource === id ? 'bg-[#F4F0FF] text-[#7C3AED]' : 'text-[#667085] hover:text-[#171923]',
                   )}
                 >
                   {label}
                 </button>
               ))}
             </div>
+            {activitySource === 'posts' && (
+              <div className="inline-flex rounded-lg border border-[#E5E7ED] p-0.5 text-xs" role="tablist" aria-label="Post queue filters">
+                {([
+                  ['review', `Needs review`],
+                  ['all', 'All discovered'],
+                  ['engaged', 'Engaged'],
+                  ['dismissed', 'Dismissed'],
+                ] as const).map(([id, label]) => (
+                  <button
+                    key={id}
+                    role="tab"
+                    aria-selected={queueTab === id}
+                    onClick={() => setQueueTab(id)}
+                    className={cn(
+                      'px-2.5 h-7 rounded-md font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED]/40',
+                      queueTab === id ? 'bg-[#F4F0FF] text-[#7C3AED]' : 'text-[#667085] hover:text-[#171923]',
+                    )}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )}
             <div className="flex-1" />
             <div className="relative">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#667085]" />
               <Input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search profiles"
+                placeholder={activitySource === 'comments' ? 'Search comments' : 'Search profiles'}
                 className="h-8 pl-8 text-xs w-52 border-[#E5E7ED] bg-white"
-                aria-label="Search profiles"
+                aria-label={activitySource === 'comments' ? 'Search comments' : 'Search profiles'}
               />
             </div>
             <button className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-md border border-[#E5E7ED] bg-white text-xs font-medium text-[#171923] hover:bg-[#F7F8FB] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED]/40" aria-label="Filters">
@@ -813,25 +868,33 @@ function ActivityDashboard({
         </div>
 
         {/* Table */}
-        {discoveredLoading ? (
-          <div className="p-10 text-center text-sm text-[#667085]">Loading queue…</div>
-        ) : filteredRows.length === 0 ? (
-          <QueueEmpty tab={queueTab} />
+        {activitySource === 'posts' ? (
+          discoveredLoading ? (
+            <div className="p-10 text-center text-sm text-[#667085]">Loading queue…</div>
+          ) : filteredRows.length === 0 ? (
+            <QueueEmpty tab={queueTab} />
+          ) : (
+            <div role="table" aria-label="Profiles to review">
+              <div role="row" className="grid grid-cols-[minmax(0,1fr)_120px_120px_160px_140px] gap-4 px-5 h-9 items-center bg-[#F7F8FB] border-b border-[#E5E7ED] text-[11px] uppercase tracking-wider text-[#667085] font-medium">
+                <div>Profile</div>
+                <div className="text-right">New posts</div>
+                <div>Priority</div>
+                <div>Last checked</div>
+                <div className="text-right">Action</div>
+              </div>
+              <div className="divide-y divide-[#E5E7ED]">
+                {filteredRows.map((r) => (
+                  <QueueRow key={r.id} row={r} density={density} onOpen={() => onOpenReview(r)} onComment={(p) => onOpenComment(p)} />
+                ))}
+              </div>
+            </div>
+          )
+        ) : discoveredCommentsLoading ? (
+          <div className="p-10 text-center text-sm text-[#667085]">Loading comments…</div>
+        ) : filteredCommentRows.length === 0 ? (
+          <CommentsQueueEmpty />
         ) : (
-          <div role="table" aria-label="Profiles to review">
-            <div role="row" className="grid grid-cols-[minmax(0,1fr)_120px_120px_160px_140px] gap-4 px-5 h-9 items-center bg-[#F7F8FB] border-b border-[#E5E7ED] text-[11px] uppercase tracking-wider text-[#667085] font-medium">
-              <div>Profile</div>
-              <div className="text-right">New posts</div>
-              <div>Priority</div>
-              <div>Last checked</div>
-              <div className="text-right">Action</div>
-            </div>
-            <div className="divide-y divide-[#E5E7ED]">
-              {filteredRows.map((r) => (
-                <QueueRow key={r.id} row={r} density={density} onOpen={() => onOpenReview(r)} onComment={(p) => onOpenComment(p)} />
-              ))}
-            </div>
-          </div>
+          <CommentsDiscoveryTable comments={filteredCommentRows} onOpenTarget={openTargetFromComment} />
         )}
       </section>
     </div>
@@ -1297,6 +1360,119 @@ function QueueEmpty({ tab }: { tab: string }) {
       </div>
       <h3 className="text-sm font-semibold text-[#171923]">All clear</h3>
       <p className="text-xs text-[#667085] mt-1">{label}</p>
+    </div>
+  );
+}
+
+function CommentsQueueEmpty() {
+  return (
+    <div className="p-10 flex flex-col items-center text-center">
+      <div className="h-10 w-10 rounded-lg bg-[#F4F0FF] text-[#7C3AED] flex items-center justify-center mb-2">
+        <MessageCircle className="h-5 w-5" />
+      </div>
+      <h3 className="text-sm font-semibold text-[#171923]">No tracked comments yet</h3>
+      <p className="text-xs text-[#667085] mt-1 max-w-sm">
+        Run comment sync for a profile to see posts they commented on elsewhere.
+      </p>
+    </div>
+  );
+}
+
+function CommentsDiscoveryTable({
+  comments, onOpenTarget,
+}: {
+  comments: DiscoveredComment[];
+  onOpenTarget: (targetId: string) => void;
+}) {
+  return (
+    <div role="table" aria-label="Comments discovered from target profiles">
+      <div role="row" className="grid grid-cols-[minmax(180px,0.8fr)_minmax(0,1.7fr)_120px_140px] gap-4 px-5 h-9 items-center bg-[#F7F8FB] border-b border-[#E5E7ED] text-[11px] uppercase tracking-wider text-[#667085] font-medium">
+        <div>Profile</div>
+        <div>Commented on</div>
+        <div className="text-right">Reactions</div>
+        <div className="text-right">Action</div>
+      </div>
+      <div className="divide-y divide-[#E5E7ED]">
+        {comments.map((comment) => {
+          const parentUrl = comment.parent_post_url || comment.comment_url;
+          const targetName = comment.target_name || 'Unknown profile';
+          return (
+            <div
+              key={comment.id}
+              role="row"
+              className="grid grid-cols-[minmax(180px,0.8fr)_minmax(0,1.7fr)_120px_140px] gap-4 px-5 py-4 items-start hover:bg-[#FBFAFF] transition-colors"
+            >
+              <button
+                type="button"
+                onClick={() => onOpenTarget(comment.target_id)}
+                className="flex items-center gap-3 min-w-0 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED]/40 rounded-md"
+              >
+                <Avatar url={comment.target_avatar_url} name={targetName} size={36} />
+                <div className="min-w-0">
+                  <div className="text-sm font-medium text-[#171923] truncate">{targetName}</div>
+                  <div className="text-xs text-[#667085] truncate">
+                    {[comment.target_title, comment.target_company].filter(Boolean).join(' · ') || 'LinkedIn profile'}
+                  </div>
+                  {comment.commented_at && (
+                    <div className="text-[11px] text-[#667085] tabular-nums mt-0.5">
+                      commented {relativeTime(comment.commented_at)}
+                    </div>
+                  )}
+                </div>
+              </button>
+
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5 text-xs text-[#667085]">
+                  <MessageCircle className="h-3.5 w-3.5 text-[#7C3AED]" />
+                  <span className="truncate">
+                    {comment.parent_post_author_name ? `${comment.parent_post_author_name}'s post` : 'LinkedIn post'}
+                  </span>
+                </div>
+                {comment.parent_post_content && (
+                  <p className="mt-1 text-sm text-[#171923] leading-relaxed line-clamp-2">
+                    {comment.parent_post_content}
+                  </p>
+                )}
+                {comment.comment_text && (
+                  <div className="mt-2 rounded-md border-l-2 border-[#7C3AED] bg-[#FBFAFF] px-3 py-2">
+                    <div className="text-[10px] uppercase tracking-wider text-[#7C3AED] font-medium">
+                      {targetName} said
+                    </div>
+                    <p className="mt-0.5 text-xs text-[#3F4657] leading-relaxed line-clamp-3">
+                      {comment.comment_text}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              <div className="text-right text-xs text-[#171923] font-semibold tabular-nums">
+                {comment.reactions_count || 0}
+              </div>
+
+              <div className="flex items-center justify-end gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => onOpenTarget(comment.target_id)}
+                  className="inline-flex items-center gap-1 h-8 px-3 rounded-md bg-white border border-[#E5E7ED] hover:bg-[#F4F0FF] hover:border-[#E4DAFB] hover:text-[#7C3AED] text-xs font-medium text-[#171923] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED]/40"
+                >
+                  Review
+                </button>
+                {parentUrl && (
+                  <a
+                    href={parentUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center justify-center h-8 w-8 rounded-md border border-[#E5E7ED] bg-white hover:bg-[#F7F8FB] text-[#667085] hover:text-[#171923] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED]/40"
+                    aria-label="Open LinkedIn thread"
+                  >
+                    <ExternalLink className="h-3.5 w-3.5" />
+                  </a>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
