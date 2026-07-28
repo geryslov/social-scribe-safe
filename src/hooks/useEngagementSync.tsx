@@ -14,6 +14,7 @@ export interface EngagementSyncRun {
   failed: number;
   new_posts: number;
   trigger: string;
+  details?: any;
 }
 
 export interface EngagementSettings {
