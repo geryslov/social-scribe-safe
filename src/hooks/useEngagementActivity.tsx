@@ -49,6 +49,7 @@ export interface DiscoveredComment {
   target_title: string | null;
   target_company: string | null;
   comment_url: string | null;
+  comment_urn: string | null;
   comment_text: string | null;
   commented_at: string | null;
   created_at: string;
@@ -59,6 +60,7 @@ export interface DiscoveredComment {
   parent_post_author_url: string | null;
   parent_post_content: string | null;
   parent_post_published_at: string | null;
+  comment_metadata: Record<string, any> | null;
 }
 
 export interface EngagementSyncRunFull {
@@ -182,7 +184,7 @@ export function useDiscoveredComments(publisherId: string | null, days: number) 
       if (targetIds.length === 0) return [];
       const { data, error } = await (supabase as any)
         .from('engagement_target_comments')
-        .select('id, target_id, comment_url, comment_text, commented_at, created_at, reactions_count, parent_post_url, parent_post_author_name, parent_post_author_headline, parent_post_author_url, parent_post_content, parent_post_published_at')
+        .select('id, target_id, comment_url, comment_urn, comment_text, commented_at, created_at, reactions_count, parent_post_url, parent_post_author_name, parent_post_author_headline, parent_post_author_url, parent_post_content, parent_post_published_at, comment_metadata')
         .in('target_id', targetIds)
         .gte('created_at', since)
         .order('commented_at', { ascending: false })
@@ -217,7 +219,7 @@ export function useTargetComments(targetId: string | null) {
       if (!currentWorkspace || !targetId) return [] as DiscoveredComment[];
       const { data, error } = await (supabase as any)
         .from('engagement_target_comments')
-        .select('id, target_id, comment_url, comment_text, commented_at, created_at, reactions_count, parent_post_url, parent_post_author_name, parent_post_author_headline, parent_post_author_url, parent_post_content, parent_post_published_at')
+        .select('id, target_id, comment_url, comment_urn, comment_text, commented_at, created_at, reactions_count, parent_post_url, parent_post_author_name, parent_post_author_headline, parent_post_author_url, parent_post_content, parent_post_published_at, comment_metadata')
         .eq('workspace_id', currentWorkspace.id)
         .eq('target_id', targetId)
         .order('commented_at', { ascending: false })
