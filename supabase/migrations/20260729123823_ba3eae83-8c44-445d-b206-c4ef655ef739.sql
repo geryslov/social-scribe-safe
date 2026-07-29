@@ -1,0 +1,3 @@
+ALTER TABLE public.engagement_folders
+  ADD COLUMN IF NOT EXISTS auto_like BOOLEAN NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS auto_sync BOOLEAN NOT NULL DEFAULT true;

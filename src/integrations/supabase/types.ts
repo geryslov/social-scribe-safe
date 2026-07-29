@@ -489,6 +489,8 @@ export type Database = {
       }
       engagement_folders: {
         Row: {
+          auto_like: boolean
+          auto_sync: boolean
           created_at: string
           created_by: string | null
           id: string
@@ -499,6 +501,8 @@ export type Database = {
           workspace_id: string
         }
         Insert: {
+          auto_like?: boolean
+          auto_sync?: boolean
           created_at?: string
           created_by?: string | null
           id?: string
@@ -509,6 +513,8 @@ export type Database = {
           workspace_id: string
         }
         Update: {
+          auto_like?: boolean
+          auto_sync?: boolean
           created_at?: string
           created_by?: string | null
           id?: string
