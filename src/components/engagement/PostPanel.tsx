@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import {
   useEngagementPosts, useFetchTargetPosts, EngagementTarget, EngagementPost,
@@ -322,16 +323,50 @@ export function PostPanel({ target, publisher, isAdmin, onCleared }: PostPanelPr
             { id: target.id, updates: { auto_like: checked } },
             {
               onSuccess: () => {
-                // Kick the server-side auto-liker immediately so it works even
-                // if the user closes the panel or the client-side loop misses.
+                // Kick the server-side auto-liker immediately, and report what it
+                // did — so activating auto-like gives instant, honest feedback
+                // instead of silently doing nothing (cap hit, nothing new, etc.).
                 if (checked && currentWorkspace) {
+                  const toastId = toast.loading(`Checking ${target.name} for something to like…`);
                   supabase.functions.invoke('auto-like-target-posts', {
                     body: {
                       workspace_id: currentWorkspace.id,
                       target_id: target.id,
                       trigger: 'toggle',
                     },
-                  }).catch((e) => console.warn('auto-like kick failed:', e));
+                  }).then(({ data, error }) => {
+                    if (error) {
+                      toast.error(`Auto-like failed: ${error.message}`, { id: toastId });
+                      return;
+                    }
+                    const r = (data || {}) as {
+                      cap_reached?: boolean; liked?: number; comments_liked?: number;
+                      failed?: number; comments_failed?: number;
+                      attempted?: number; comments_attempted?: number;
+                    };
+                    if (r.cap_reached) {
+                      toast.warning('Auto-like paused — daily cap reached. Resumes at 00:00 UTC.', { id: toastId });
+                      setAutoLikeCapReached(true);
+                      return;
+                    }
+                    const likedPosts = r.liked || 0;
+                    const likedComments = r.comments_liked || 0;
+                    if (likedPosts + likedComments > 0) {
+                      const parts: string[] = [];
+                      if (likedPosts) parts.push(`${likedPosts} post${likedPosts === 1 ? '' : 's'}`);
+                      if (likedComments) parts.push(`${likedComments} comment${likedComments === 1 ? '' : 's'}`);
+                      toast.success(`Auto-liked ${parts.join(' + ')} for ${target.name}`, { id: toastId });
+                    } else if ((r.failed || 0) + (r.comments_failed || 0) > 0) {
+                      toast.error(`Couldn't auto-like ${target.name} — see the Activity tab for the reason.`, { id: toastId });
+                    } else if ((r.attempted || 0) + (r.comments_attempted || 0) === 0) {
+                      toast.info('Nothing to like yet — no unliked posts or comments for this profile.', { id: toastId });
+                    } else {
+                      toast.info(`${target.name} is already fully liked.`, { id: toastId });
+                    }
+                  }).catch((e) => {
+                    console.warn('auto-like kick failed:', e);
+                    toast.error('Auto-like kick failed.', { id: toastId });
+                  });
                 }
               },
             },
