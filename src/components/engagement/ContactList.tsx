@@ -1408,16 +1408,15 @@ function FolderStrip({
         );
       })}
 
-      {/* Unfiled — only when relevant */}
-      {hasUnfiled && (
-        <FolderPill
-          label="Unfiled"
-          count={folderCounts.unfiled || 0}
-          active={activeScope === 'unfiled'}
-          onClick={() => onSelectScope('unfiled')}
-          muted
-        />
-      )}
+      {/* Unfiled — always visible so users know where imported profiles go */}
+      <FolderPill
+        label="Unfiled"
+        count={folderCounts.unfiled || 0}
+        active={activeScope === 'unfiled'}
+        onClick={() => onSelectScope('unfiled')}
+        muted
+      />
+
 
       {/* + New folder */}
       {isAdmin && (creating ? (
