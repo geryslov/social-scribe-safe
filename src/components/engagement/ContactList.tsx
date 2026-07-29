@@ -104,6 +104,9 @@ export function ContactList({
   const [bulkUrls, setBulkUrls] = useState('');
   const [bulkImporting, setBulkImporting] = useState(false);
   const [bulkProgress, setBulkProgress] = useState({ done: 0, total: 0 });
+  // Folder chosen in the Add dialog. `undefined` = follow current folderScope,
+  // `null` = Unfiled, string = specific folder id. Reset each time dialog opens.
+  const [addFolderId, setAddFolderId] = useState<string | null | undefined>(undefined);
 
   // Per-target counts (unseen / fresh / done)
   const { data: countMaps = { unseen: {}, fresh: {}, done: {} } } = useQuery({
