@@ -1152,38 +1152,80 @@ function TargetRow({
           <span className="h-1.5 w-1.5 rounded-full bg-amber-500" title={`${fresh} fresh`} />
         )}
         {isAdmin && !selectionMode && (
-          <span
-            role="button"
-            tabIndex={0}
-            title={confirmDelete ? 'Click again to remove' : 'Remove profile'}
-            onClick={(e) => {
-              e.stopPropagation();
-              if (confirmDelete) {
-                onDelete(target.id);
-                setConfirmDelete(false);
-              } else {
-                setConfirmDelete(true);
-                setTimeout(() => setConfirmDelete(false), 3000);
-              }
-            }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
+          <div className="flex items-center gap-0.5" onClick={(e) => e.stopPropagation()}>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  title="Move to folder"
+                  className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded text-muted-foreground/50 hover:text-primary hover:bg-primary/5"
+                >
+                  <Folder className="h-3 w-3" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground/70">
+                  Move to folder
+                </DropdownMenuLabel>
+                {folders.length === 0 ? (
+                  <div className="px-2 py-1.5 text-[11px] text-muted-foreground italic">No folders yet</div>
+                ) : (
+                  folders.map((f) => (
+                    <DropdownMenuItem
+                      key={f.id}
+                      disabled={target.folder_id === f.id}
+                      onClick={() => onMoveToFolder(f.id)}
+                    >
+                      <Folder className="h-3 w-3 mr-2" />
+                      {f.name}
+                      {target.folder_id === f.id && <Check className="h-3 w-3 ml-auto opacity-60" />}
+                    </DropdownMenuItem>
+                  ))
+                )}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  disabled={!target.folder_id}
+                  onClick={() => onMoveToFolder(null)}
+                >
+                  <FolderOpen className="h-3 w-3 mr-2 opacity-60" />
+                  Unfiled
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <span
+              role="button"
+              tabIndex={0}
+              title={confirmDelete ? 'Click again to remove' : 'Remove profile'}
+              onClick={(e) => {
                 e.stopPropagation();
-                e.preventDefault();
-                e.currentTarget.click();
-              }
-            }}
-            className={cn(
-              'inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded transition-colors',
-              confirmDelete
-                ? 'text-destructive bg-destructive/10'
-                : 'text-muted-foreground/50 hover:text-destructive hover:bg-destructive/5',
-            )}
-          >
-            <Trash2 className="h-3 w-3" />
-            {confirmDelete ? 'Confirm?' : ''}
-          </span>
+                if (confirmDelete) {
+                  onDelete(target.id);
+                  setConfirmDelete(false);
+                } else {
+                  setConfirmDelete(true);
+                  setTimeout(() => setConfirmDelete(false), 3000);
+                }
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  e.currentTarget.click();
+                }
+              }}
+              className={cn(
+                'inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded transition-colors',
+                confirmDelete
+                  ? 'text-destructive bg-destructive/10'
+                  : 'text-muted-foreground/50 hover:text-destructive hover:bg-destructive/5',
+              )}
+            >
+              <Trash2 className="h-3 w-3" />
+              {confirmDelete ? 'Confirm?' : ''}
+            </span>
+          </div>
         )}
+
         {target.last_fetched_at && (
           <span className="text-[10px] text-muted-foreground/40 tabular-nums">
             {timeAgoShort(target.last_fetched_at)}
