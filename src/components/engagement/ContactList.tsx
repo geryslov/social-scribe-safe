@@ -104,6 +104,9 @@ export function ContactList({
   const [bulkUrls, setBulkUrls] = useState('');
   const [bulkImporting, setBulkImporting] = useState(false);
   const [bulkProgress, setBulkProgress] = useState({ done: 0, total: 0 });
+  // Folder chosen in the Add dialog. `undefined` = follow current folderScope,
+  // `null` = Unfiled, string = specific folder id. Reset each time dialog opens.
+  const [addFolderId, setAddFolderId] = useState<string | null | undefined>(undefined);
 
   // Per-target counts (unseen / fresh / done)
   const { data: countMaps = { unseen: {}, fresh: {}, done: {} } } = useQuery({
@@ -213,6 +216,9 @@ export function ContactList({
     return folderScope;
   }, [folderScope]);
 
+  // Effective folder used by the Add dialog: explicit user choice wins, else the scope default.
+  const addTargetFolderId = addFolderId === undefined ? defaultFolderId : addFolderId;
+
   const refreshEngagementData = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ['engagement-posts'] });
     queryClient.invalidateQueries({ queryKey: ['engagement-targets'] });
@@ -229,7 +235,7 @@ export function ContactList({
     if (!newUrl.trim() || !currentWorkspace) return;
     const name = newName.trim() || newUrl.match(/linkedin\.com\/in\/([^/?#]+)/)?.[1]?.replace(/-/g, ' ')?.replace(/\b\w/g, (c) => c.toUpperCase()) || 'Unknown';
     createTarget.mutate(
-      { publisher_id: publisher.id, name, linkedin_url: newUrl.trim(), folder_id: defaultFolderId },
+      { publisher_id: publisher.id, name, linkedin_url: newUrl.trim(), folder_id: addTargetFolderId },
       {
         onSuccess: (data: any) => {
           setNewName('');
@@ -245,7 +251,7 @@ export function ContactList({
         },
       },
     );
-  }, [newName, newUrl, currentWorkspace, publisher.id, createTarget, fetchPosts, defaultFolderId]);
+  }, [newName, newUrl, currentWorkspace, publisher.id, createTarget, fetchPosts, addTargetFolderId]);
 
   // Bulk import
   const handleBulkImport = useCallback(async () => {
@@ -273,7 +279,7 @@ export function ContactList({
       const res = await bulkCreateTargets.mutateAsync({
         publisher_id: publisher.id,
         urls,
-        folder_id: defaultFolderId,
+        folder_id: addTargetFolderId,
       });
       createdIds = res.ids;
       skipped = res.skipped;
@@ -312,7 +318,7 @@ export function ContactList({
           toast.error('Failed to start enrichment');
         });
     }
-  }, [bulkUrls, currentWorkspace, publisher.id, bulkCreateTargets, defaultFolderId, scheduleEngagementRefreshes]);
+  }, [bulkUrls, currentWorkspace, publisher.id, bulkCreateTargets, addTargetFolderId, scheduleEngagementRefreshes]);
 
   // ⋮ Retry-failed actions (uses fast batched edge function)
   const [reEnriching, setReEnriching] = useState(false);
@@ -818,7 +824,13 @@ export function ContactList({
       </div>
 
       {/* Add Dialog */}
-      <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+      <Dialog
+        open={showAddDialog}
+        onOpenChange={(open) => {
+          setShowAddDialog(open);
+          if (open) setAddFolderId(undefined);
+        }}
+      >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="font-display">Add Profiles</DialogTitle>
@@ -826,6 +838,24 @@ export function ContactList({
               Add one or many LinkedIn profiles. Name, title, company, and photo are fetched automatically.
             </DialogDescription>
           </DialogHeader>
+
+          {/* Folder assignment — new profiles inherit the chosen folder's automation */}
+          <div className="mt-3">
+            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Folder</label>
+            <select
+              value={addTargetFolderId ?? ''}
+              onChange={(e) => setAddFolderId(e.target.value === '' ? null : e.target.value)}
+              className="w-full h-9 rounded-md border border-input bg-background px-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+            >
+              <option value="">Unfiled</option>
+              {folders.map((f) => (
+                <option key={f.id} value={f.id}>{f.name}</option>
+              ))}
+            </select>
+            <p className="text-[10px] text-muted-foreground/60 mt-1">
+              Profiles added here will inherit the folder's Auto-like / Auto-sync settings.
+            </p>
+          </div>
 
           <Tabs defaultValue="single" className="mt-2">
             <TabsList className="w-full">
