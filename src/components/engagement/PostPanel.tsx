@@ -50,6 +50,10 @@ const AUTO_LIKE_FIRST_DELAY_MIN_MS = 400;
 const AUTO_LIKE_FIRST_DELAY_MAX_MS = 800;
 const AUTO_LIKE_MIN_DELAY_MS = 6_000;
 const AUTO_LIKE_MAX_DELAY_MS = 12_000;
+// Like at most ONE post per target session, matching the server-side per-run
+// cap (MAX_POSTS_PER_RUN). Without this the loop re-fires on every posts refetch
+// and works through the whole unliked backlog until the 30/day cap.
+const AUTO_LIKE_MAX_PER_SESSION = 1;
 
 function timeAgo(dateStr: string | null): string {
   if (!dateStr) return '';
@@ -162,6 +166,9 @@ export function PostPanel({ target, publisher, isAdmin, onCleared }: PostPanelPr
   useEffect(() => {
     if (!target?.auto_like || autoLikeCapReached || !posts.length) return;
     if (autoLikeBusyRef.current) return;
+    // Stop after one like per session — the ref persists across the posts
+    // refetches that re-trigger this effect, so it caps the whole run at 1.
+    if (autoLikedRef.current.size >= AUTO_LIKE_MAX_PER_SESSION) return;
 
     const next = posts.find(
       (p) => !p.is_liked && !autoLikedRef.current.has(p.id),
@@ -209,7 +216,10 @@ export function PostPanel({ target, publisher, isAdmin, onCleared }: PostPanelPr
   // Derive a stable progress label for the auto-like switch.
   // done = posts already attempted in this session; remaining = unliked posts left to process.
   const autoLikeRemaining = target?.auto_like
-    ? posts.filter((p) => !p.is_liked && !autoLikedRef.current.has(p.id)).length
+    ? Math.min(
+        posts.filter((p) => !p.is_liked && !autoLikedRef.current.has(p.id)).length,
+        Math.max(0, AUTO_LIKE_MAX_PER_SESSION - autoLikedRef.current.size),
+      )
     : 0;
   const autoLikeDone = autoLikedRef.current.size;
   const autoLikeTotal = autoLikeDone + autoLikeRemaining;
