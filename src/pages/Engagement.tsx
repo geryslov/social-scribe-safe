@@ -38,7 +38,7 @@ import {
   Search, Bell, RefreshCw, Loader2, ChevronDown, ChevronRight, Check,
   Heart, MessageCircle, TrendingUp, AlertTriangle, ArrowRight,
   ExternalLink, MoreHorizontal, Filter, ArrowUpDown, Rows3, Rows2,
-  Clock, CheckCircle2, XCircle, EyeOff, BookmarkPlus, Users, Plus, UserPlus, Trash2,
+  Clock, CheckCircle2, XCircle, EyeOff, BookmarkPlus, Users, Plus, UserPlus, Trash2, Zap,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -1642,8 +1642,60 @@ function ReviewDrawer({
   const { currentWorkspace } = useWorkspace();
   const { data: targetComments = [] } = useTargetComments(row.id);
   const fetchComments = useFetchTargetComments();
+  const { targets, updateTarget } = useEngagementTargets(publisher?.id ?? null);
   const [filter, setFilter] = useState<'all' | 'posts' | 'comments'>(initialFilter);
   useEffect(() => { setFilter(initialFilter); }, [initialFilter, row.id]);
+
+  // Per-profile auto-like: toggle the flag AND kick the server auto-liker right
+  // away (with feedback + a processing spinner) — instead of only flipping a
+  // flag that does nothing until the daily cron.
+  const target = targets.find((t) => t.id === row.id);
+  const autoLikeOn = !!target?.auto_like;
+  const [autoLiking, setAutoLiking] = useState(false);
+  const postsLiked = row.posts.filter((p) => p.is_liked).length;
+  const commentsLiked = targetComments.filter((c) => (c.comment_metadata as any)?.is_liked).length;
+  const totalLiked = postsLiked + commentsLiked;
+
+  const kickAutoLike = () => {
+    if (!currentWorkspace) return;
+    setAutoLiking(true);
+    const toastId = toast.loading(`Checking ${row.name} for something to like…`);
+    supabase.functions.invoke('auto-like-target-posts', {
+      body: { workspace_id: currentWorkspace.id, target_id: row.id, trigger: 'toggle' },
+    }).then(({ data, error }) => {
+      if (error) { toast.error(`Auto-like failed: ${error.message}`, { id: toastId }); return; }
+      const r = (data || {}) as {
+        cap_reached?: boolean; liked?: number; comments_liked?: number;
+        failed?: number; comments_failed?: number; attempted?: number; comments_attempted?: number;
+      };
+      if (r.cap_reached) {
+        toast.warning('Auto-like paused — daily cap reached. Resumes at 00:00 UTC.', { id: toastId });
+        return;
+      }
+      const lp = r.liked || 0, lc = r.comments_liked || 0;
+      if (lp + lc > 0) {
+        const parts: string[] = [];
+        if (lp) parts.push(`${lp} post${lp === 1 ? '' : 's'}`);
+        if (lc) parts.push(`${lc} comment${lc === 1 ? '' : 's'}`);
+        toast.success(`Auto-liked ${parts.join(' + ')} for ${row.name}`, { id: toastId });
+      } else if ((r.failed || 0) + (r.comments_failed || 0) > 0) {
+        toast.error(`Couldn't auto-like ${row.name} — check the Activity tab for why.`, { id: toastId });
+      } else if ((r.attempted || 0) + (r.comments_attempted || 0) === 0) {
+        toast.info('Nothing new to like for this profile yet.', { id: toastId });
+      } else {
+        toast.info(`${row.name} is already fully liked.`, { id: toastId });
+      }
+    }).catch((e) => {
+      console.warn('auto-like kick failed:', e);
+      toast.error('Auto-like kick failed.', { id: toastId });
+    }).finally(() => setAutoLiking(false));
+  };
+
+  const onToggleAutoLike = (checked: boolean) => {
+    if (!target) return;
+    updateTarget.mutate({ id: row.id, updates: { auto_like: checked } });
+    if (checked) kickAutoLike();
+  };
 
   // Merge the target's own posts with their comments on other people's posts,
   // newest first — the "activity" the user wants to react to.
@@ -1692,6 +1744,32 @@ function ReviewDrawer({
           )}>
             {row.priority === 'high' ? 'High priority' : row.priority === 'medium' ? 'Medium priority' : 'Low priority'}
           </span>
+          {totalLiked > 0 && (
+            <span className="inline-flex items-center gap-1 h-6 px-2 rounded-full bg-rose-50 text-rose-600 border border-rose-200 font-medium" title={`${postsLiked} post${postsLiked === 1 ? '' : 's'} + ${commentsLiked} comment${commentsLiked === 1 ? '' : 's'} liked`}>
+              <Heart className="h-3 w-3 fill-rose-500 text-rose-500" />
+              <b className="tabular-nums font-semibold">{totalLiked}</b> liked
+            </span>
+          )}
+        </div>
+
+        {/* Per-profile auto-like: activates AND runs immediately on this profile */}
+        <div className="mt-3 flex items-center gap-2 rounded-lg border border-[#E5E7ED] bg-[#FBFAFF] px-3 py-2">
+          <Zap className={cn('h-4 w-4 flex-shrink-0', autoLikeOn ? 'text-[#7C3AED]' : 'text-[#98A2B3]')} />
+          <div className="flex-1 min-w-0">
+            <div className="text-xs font-semibold text-[#171923]">Auto-like this profile</div>
+            <div className="text-[11px] text-[#667085]">
+              {autoLiking
+                ? 'Working — checking for a post and comment to like…'
+                : autoLikeOn ? 'On — likes new posts & comments automatically' : 'Off'}
+            </div>
+          </div>
+          {autoLiking && <Loader2 className="h-4 w-4 animate-spin text-[#7C3AED] flex-shrink-0" />}
+          <Switch
+            checked={autoLikeOn}
+            onCheckedChange={onToggleAutoLike}
+            disabled={!target || updateTarget.isPending}
+            aria-label="Auto-like this profile"
+          />
         </div>
       </div>
 
