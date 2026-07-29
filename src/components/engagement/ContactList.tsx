@@ -1323,7 +1323,11 @@ function FolderStrip({
   const hasUnfiled = (folderCounts.unfiled || 0) > 0;
 
   return (
-    <div className="px-3 pt-3 pb-1.5 border-b bg-background flex items-center gap-1.5 overflow-x-auto">
+    <div className="px-3 pt-2.5 pb-1.5 border-b bg-background flex items-center gap-1.5 overflow-x-auto">
+      <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60 mr-1 flex-shrink-0">
+        Folders
+      </span>
+
       {/* All */}
       <FolderPill
         label="All"
