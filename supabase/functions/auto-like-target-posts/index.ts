@@ -130,7 +130,7 @@ Deno.serve(async (req) => {
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              workspace_id, publisher_id: target.publisher_id, comment_id: c.id,
+              workspace_id, publisher_id: target.publisher_id, comment_id: c.id, auto: true,
             }),
           });
           const body = await res.json().catch(() => ({}));

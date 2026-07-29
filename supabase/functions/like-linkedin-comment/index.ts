@@ -19,7 +19,7 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
   try {
-    const { workspace_id, publisher_id, comment_id } = await req.json();
+    const { workspace_id, publisher_id, comment_id, auto = false } = await req.json();
     if (!workspace_id || !publisher_id || !comment_id) {
       return new Response(
         JSON.stringify({ success: false, error: 'workspace_id, publisher_id, comment_id required' }),
@@ -51,12 +51,37 @@ Deno.serve(async (req) => {
 
     const { data: commentRow, error: cErr } = await supabase
       .from('engagement_target_comments')
-      .select('id, comment_urn, comment_url, parent_post_urn, parent_post_url, comment_metadata')
+      .select('id, target_id, comment_text, comment_urn, comment_url, parent_post_urn, parent_post_url, comment_metadata')
       .eq('id', comment_id).eq('workspace_id', workspace_id).single();
     if (cErr || !commentRow) {
       return new Response(JSON.stringify({ success: false, error: 'Comment not found' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
+
+    // Log auto-like attempts into the same ledger as post likes (post_id null),
+    // so the report and Activity tab show comment likes and failures too.
+    const { data: targetRow } = commentRow.target_id
+      ? await supabase.from('engagement_targets').select('id, name').eq('id', commentRow.target_id).maybeSingle()
+      : { data: null as any };
+    const logAutoLike = async (status: string, errorMessage: string | null) => {
+      if (!auto) return;
+      try {
+        await supabase.from('engagement_auto_like_runs').insert({
+          workspace_id,
+          publisher_id,
+          target_id: commentRow.target_id ?? null,
+          target_name: targetRow?.name ?? null,
+          post_id: null,
+          post_url: commentRow.comment_url ?? null,
+          post_excerpt: '💬 ' + (commentRow.comment_text || '').slice(0, 180),
+          status,
+          error_message: errorMessage,
+          trigger: 'auto',
+        });
+      } catch (e) {
+        console.warn('auto-like (comment) log failed:', e);
+      }
+    };
 
     const safeDecode = (value: string) => {
       try {
@@ -128,6 +153,7 @@ Deno.serve(async (req) => {
 
     const tryUrns = [...new Set(candidates)].filter((urn) => /^urn:li:comment:\(urn:li:(activity|share|ugcPost):\d+,\d+\)$/.test(urn));
     if (tryUrns.length === 0) {
+      await logAutoLike('failed', 'Could not resolve a likeable comment URN for this comment.');
       return new Response(JSON.stringify({ success: false, error: 'No comment URN available to like' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
@@ -141,6 +167,7 @@ Deno.serve(async (req) => {
     const markLiked = async (urn: string, already = false) => {
       const meta = { ...(commentRow.comment_metadata || {}), is_liked: true, liked_at: new Date().toISOString(), liked_urn: urn };
       await supabase.from('engagement_target_comments').update({ comment_metadata: meta }).eq('id', comment_id);
+      await logAutoLike(already ? 'skipped_already' : 'liked', null);
       return new Response(JSON.stringify({ success: true, already_liked: already, urn }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     };
@@ -174,6 +201,7 @@ Deno.serve(async (req) => {
     if (lastStatus === 403) friendly = 'LinkedIn denied the like (403). Publisher token missing w_member_social scope. Reconnect.';
     else if (lastStatus === 401) friendly = 'LinkedIn token expired. Reconnect the publisher.';
 
+    await logAutoLike('failed', friendly);
     return new Response(JSON.stringify({ success: false, error: friendly, linkedin_status: lastStatus }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (e) {

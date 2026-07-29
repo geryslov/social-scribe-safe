@@ -31,7 +31,7 @@ import { CommentComposer } from './CommentComposer';
 import { CommentEngagementPopover } from './CommentEngagementPopover';
 import { TargetCommentsFeed } from './TargetCommentsFeed';
 import { useEngagementTargets, EngagementComment, useFetchTargetComments } from '@/hooks/useEngagement';
-import { useTargetComments } from '@/hooks/useEngagementActivity';
+import { useTargetComments, useAutoLikeHistory } from '@/hooks/useEngagementActivity';
 
 
 interface PostPanelProps {
@@ -89,6 +89,7 @@ export function PostPanel({ target, publisher, isAdmin, onCleared }: PostPanelPr
   const fetchCommentEngagement = useFetchCommentEngagement();
   const fetchTargetComments = useFetchTargetComments();
   const { data: targetComments = [] } = useTargetComments(target?.id || null);
+  const { data: autoLikeHistory = [] } = useAutoLikeHistory(publisher.id, 7);
 
 
   // Posted comments for this target's posts (for the engagement popover)
@@ -281,6 +282,13 @@ export function PostPanel({ target, publisher, isAdmin, onCleared }: PostPanelPr
     liked: posts.filter((p) => p.is_liked).length,
   };
 
+  // Auto-like report — what actually got liked, and the reason if it didn't.
+  const postsLiked = counts.liked;
+  const commentsLiked = targetComments.filter((c) => (c.comment_metadata as any)?.is_liked).length;
+  const lastAutoLikeFail = autoLikeHistory.find(
+    (r) => r.target_id === target.id && r.status === 'failed',
+  );
+
   return (
     <div className="flex-1 flex flex-col overflow-hidden bg-background">
       {/* ── Slim profile banner (48px) ─────────────────────────────────── */}
@@ -366,6 +374,32 @@ export function PostPanel({ target, publisher, isAdmin, onCleared }: PostPanelPr
           </Button>
         )}
       </div>
+
+      {/* ── Auto-like report — liked-of-total for posts & comments ─────── */}
+      {(posts.length > 0 || targetComments.length > 0) && (
+        <div className="px-6 pt-3">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 rounded-md border border-border bg-white px-3 py-2 text-[11px]">
+            <span className="font-mono uppercase tracking-wider text-muted-foreground">Auto-like</span>
+            <span className="inline-flex items-center gap-1 text-foreground/80">
+              <ThumbsUp className="h-3 w-3" /> <b className="font-semibold tabular-nums">{postsLiked}</b>/{posts.length} posts
+            </span>
+            <span className="inline-flex items-center gap-1 text-foreground/80">
+              <MessageCircle className="h-3 w-3" /> <b className="font-semibold tabular-nums">{commentsLiked}</b>/{targetComments.length} comments
+            </span>
+            {target.auto_like ? (
+              <span className="inline-flex items-center gap-1 text-emerald-600"><Zap className="h-3 w-3" /> on</span>
+            ) : (
+              <span className="text-muted-foreground">off</span>
+            )}
+            {lastAutoLikeFail?.error_message && (
+              <span className="inline-flex items-center gap-1 text-red-600 ml-auto max-w-full" title={lastAutoLikeFail.error_message}>
+                <Activity className="h-3 w-3 shrink-0" />
+                <span className="truncate">Last attempt failed: {lastAutoLikeFail.error_message}</span>
+              </span>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ── 3-segment filter (Posts tab only) ──────────────────────────── */}
       {activeTab === 'posts' && posts.length > 0 && (

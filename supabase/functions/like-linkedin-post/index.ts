@@ -113,6 +113,9 @@ Deno.serve(async (req) => {
     const { data: tokenRow } = await supabase
       .from('publisher_tokens').select('linkedin_access_token').eq('publisher_id', publisher_id).single();
     if (!tokenRow?.linkedin_access_token) {
+      // Log it — otherwise an auto-like against an unconnected publisher fails
+      // silently and the user just sees "nothing is liking".
+      await logAutoLike('failed', `${publisher.name || 'Publisher'} is not connected to LinkedIn. Reconnect to enable likes.`);
       return new Response(JSON.stringify({ success: false, error: 'Publisher has no LinkedIn token. Reconnect.' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
