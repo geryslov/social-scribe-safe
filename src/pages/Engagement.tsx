@@ -2406,6 +2406,7 @@ type TodayRow = {
   name: string;
   avatar_url: string | null;
   linkedin_url: string | null;
+  folder_id: string | null;
   checkStatus: 'synced' | 'failed' | 'skipped' | 'pending' | 'not_checked';
   checkedAt: string | null; // ISO
   newPosts: number;
@@ -2428,9 +2429,11 @@ function TodayTable({
 }) {
   const { isAdmin } = useAuth();
   const { deleteTarget, bulkDeleteTargets } = useEngagementTargets(publisher.id);
+  const { folders, moveTargetsToFolder } = useEngagementFolders(publisher.id);
   const [selectionMode, setSelectionMode] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [confirmBulk, setConfirmBulk] = useState(false);
+  const [folderScope, setFolderScope] = useState<FolderScope>('all');
   const toggleSelected = (id: string) => {
     setSelected((prev) => {
       const next = new Set(prev);
@@ -2513,6 +2516,7 @@ function TodayTable({
         name: t.name || 'Unknown',
         avatar_url: (t as any).avatar_url ?? null,
         linkedin_url: (t as any).linkedin_url ?? null,
+        folder_id: (t as any).folder_id ?? null,
         checkStatus,
         checkedAt: t.last_fetched_at ?? null,
         newPosts: newPostsByTarget.get(t.id) || 0,
@@ -2525,30 +2529,46 @@ function TodayTable({
     });
   }, [targets, discovered, discoveredComments, likes, syncRuns, todayStart, todayKey]);
 
+  const folderCounts = useMemo(() => {
+    const counts: Record<string, number> = { all: rows.length, unfiled: 0 };
+    for (const folder of folders) counts[folder.id] = 0;
+    for (const row of rows) {
+      if (!row.folder_id) counts.unfiled += 1;
+      else if (counts[row.folder_id] !== undefined) counts[row.folder_id] += 1;
+    }
+    return counts;
+  }, [folders, rows]);
+
+  const filteredByFolder = useMemo(() => {
+    if (folderScope === 'all') return rows;
+    if (folderScope === 'unfiled') return rows.filter((row) => !row.folder_id);
+    return rows.filter((row) => row.folder_id === folderScope);
+  }, [folderScope, rows]);
+
   // Default sort: new posts first, then failed check, then alphabetical
   const sorted = useMemo(() => {
-    return [...rows].sort((a, b) => {
+    return [...filteredByFolder].sort((a, b) => {
       if (b.newPosts !== a.newPosts) return b.newPosts - a.newPosts;
       const failRank = (r: TodayRow) => (r.checkStatus === 'failed' ? 1 : 0);
       if (failRank(b) !== failRank(a)) return failRank(b) - failRank(a);
       return a.name.localeCompare(b.name);
     });
-  }, [rows]);
+  }, [filteredByFolder]);
 
   const totals = useMemo(() => {
-    const syncedProfiles = rows.filter((r) => r.checkStatus === 'synced').length;
-    const failedProfiles = rows.filter((r) => r.checkStatus === 'failed').length;
+    const syncedProfiles = sorted.filter((r) => r.checkStatus === 'synced').length;
+    const failedProfiles = sorted.filter((r) => r.checkStatus === 'failed').length;
     return {
       syncedProfiles,
       failedProfiles,
-      totalProfiles: rows.length,
-      newPosts: rows.reduce((s, r) => s + r.newPosts, 0),
-      newComments: rows.reduce((s, r) => s + r.newComments, 0),
-      postLikes: rows.reduce((s, r) => s + r.postLikes, 0),
-      commentLikes: rows.reduce((s, r) => s + r.commentLikes, 0),
-      actionFailures: rows.reduce((s, r) => s + r.actionFailures, 0),
+      totalProfiles: sorted.length,
+      newPosts: sorted.reduce((s, r) => s + r.newPosts, 0),
+      newComments: sorted.reduce((s, r) => s + r.newComments, 0),
+      postLikes: sorted.reduce((s, r) => s + r.postLikes, 0),
+      commentLikes: sorted.reduce((s, r) => s + r.commentLikes, 0),
+      actionFailures: sorted.reduce((s, r) => s + r.actionFailures, 0),
     };
-  }, [rows]);
+  }, [sorted]);
 
   const [expanded, setExpanded] = useState(false);
   // The per-profile breakdown is revealed on click of the macro summary.
@@ -2577,34 +2597,75 @@ function TodayTable({
           {isAdmin && (
             <div className="flex items-center gap-2">
               {selectionMode && selected.size > 0 && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (confirmBulk) {
-                      const ids = Array.from(selected);
-                      bulkDeleteTargets.mutate(ids, {
-                        onSuccess: () => {
-                          toast.success(`Removed ${ids.length} profile${ids.length === 1 ? '' : 's'}`);
-                          exitSelection();
-                        },
-                        onError: (e: any) => toast.error(e?.message || 'Failed to remove'),
-                      });
-                    } else {
-                      setConfirmBulk(true);
-                      setTimeout(() => setConfirmBulk(false), 3000);
-                    }
-                  }}
-                  disabled={bulkDeleteTargets.isPending}
-                  className={cn(
-                    'inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-medium border transition-colors',
-                    confirmBulk
-                      ? 'bg-[#B42318] text-white border-[#B42318] hover:bg-[#912117]'
-                      : 'bg-white text-[#B42318] border-[#FDA29B] hover:bg-[#FEF3F2]',
-                  )}
-                >
-                  {bulkDeleteTargets.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
-                  {confirmBulk ? `Confirm delete ${selected.size}?` : `Delete ${selected.size}`}
-                </button>
+                <>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        type="button"
+                        disabled={moveTargetsToFolder.isPending}
+                        className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-medium border border-[#DDD0FB] bg-[#F4F0FF] text-[#7C3AED] hover:bg-[#EDE6FF] transition-colors disabled:opacity-50"
+                      >
+                        {moveTargetsToFolder.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FolderKanban className="h-3.5 w-3.5" />}
+                        Move {selected.size}
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-56">
+                      <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-[#667085]">Move selected to folder</DropdownMenuLabel>
+                      {folders.length === 0 ? (
+                        <div className="px-2 py-1.5 text-xs text-[#667085]">No folders yet. Create one in the Folders section above.</div>
+                      ) : folders.map((folder) => (
+                        <DropdownMenuItem
+                          key={folder.id}
+                          onClick={() => moveTargetsToFolder.mutate(
+                            { targetIds: Array.from(selected), folderId: folder.id },
+                            { onSuccess: () => exitSelection() },
+                          )}
+                        >
+                          <FolderKanban className="h-3.5 w-3.5 mr-2" />
+                          {folder.name}
+                        </DropdownMenuItem>
+                      ))}
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onClick={() => moveTargetsToFolder.mutate(
+                          { targetIds: Array.from(selected), folderId: null },
+                          { onSuccess: () => exitSelection() },
+                        )}
+                      >
+                        <FolderKanban className="h-3.5 w-3.5 mr-2 text-[#98A2B3]" />
+                        Unfiled
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (confirmBulk) {
+                        const ids = Array.from(selected);
+                        bulkDeleteTargets.mutate(ids, {
+                          onSuccess: () => {
+                            toast.success(`Removed ${ids.length} profile${ids.length === 1 ? '' : 's'}`);
+                            exitSelection();
+                          },
+                          onError: (e: any) => toast.error(e?.message || 'Failed to remove'),
+                        });
+                      } else {
+                        setConfirmBulk(true);
+                        setTimeout(() => setConfirmBulk(false), 3000);
+                      }
+                    }}
+                    disabled={bulkDeleteTargets.isPending}
+                    className={cn(
+                      'inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-medium border transition-colors',
+                      confirmBulk
+                        ? 'bg-[#B42318] text-white border-[#B42318] hover:bg-[#912117]'
+                        : 'bg-white text-[#B42318] border-[#FDA29B] hover:bg-[#FEF3F2]',
+                    )}
+                  >
+                    {bulkDeleteTargets.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                    {confirmBulk ? `Confirm delete ${selected.size}?` : `Delete ${selected.size}`}
+                  </button>
+                </>
               )}
               <button
                 type="button"
@@ -2621,6 +2682,21 @@ function TodayTable({
               </button>
             </div>
           )}
+        </div>
+
+        <div className="px-5 py-3 border-b border-[#E5E7ED] flex items-center gap-2 overflow-x-auto">
+          <span className="text-[10px] uppercase tracking-wider text-[#667085] font-semibold flex-shrink-0">Folders</span>
+          <FolderFilterPill label="All" count={folderCounts.all || 0} active={folderScope === 'all'} onClick={() => setFolderScope('all')} />
+          {folders.map((folder) => (
+            <FolderFilterPill
+              key={folder.id}
+              label={folder.name}
+              count={folderCounts[folder.id] || 0}
+              active={folderScope === folder.id}
+              onClick={() => setFolderScope(folder.id)}
+            />
+          ))}
+          <FolderFilterPill label="Unfiled" count={folderCounts.unfiled || 0} active={folderScope === 'unfiled'} onClick={() => setFolderScope('unfiled')} muted />
         </div>
 
         {/* Macro summary — the headline numbers for today. Click to reveal the
@@ -2673,9 +2749,9 @@ function TodayTable({
           {isAdmin && <div />}
         </div>
 
-        {rows.length === 0 ? (
+        {sorted.length === 0 ? (
           <div className="p-10 text-center text-sm text-[#667085]">
-            No profiles tracked for this publisher yet.
+            {rows.length === 0 ? 'No profiles tracked for this publisher yet.' : 'No profiles in this folder.'}
           </div>
         ) : (
           <>
@@ -2689,6 +2765,8 @@ function TodayTable({
                   selectionMode={selectionMode}
                   isSelected={selected.has(r.id)}
                   onToggleSelect={() => toggleSelected(r.id)}
+                  folders={folders}
+                  onMoveToFolder={(folderId) => moveTargetsToFolder.mutate({ targetIds: [r.id], folderId })}
                   onDelete={() =>
                     deleteTarget.mutate(r.id, {
                       onSuccess: () => toast.success(`Removed ${r.name}`),
@@ -2748,6 +2826,30 @@ function MacroTile({ label, value, sub, danger }: { label: string; value: string
   );
 }
 
+function FolderFilterPill({
+  label, count, active, muted, onClick,
+}: { label: string; count: number; active: boolean; muted?: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={cn(
+        'inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full border text-xs font-medium transition-colors flex-shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED]/40',
+        active
+          ? 'bg-[#F4F0FF] text-[#7C3AED] border-[#DDD0FB]'
+          : muted
+            ? 'bg-white text-[#667085] border-dashed border-[#D0D5DD] hover:bg-[#F7F8FB]'
+            : 'bg-white text-[#3F4657] border-[#E5E7ED] hover:bg-[#F7F8FB]',
+      )}
+    >
+      <FolderKanban className="h-3 w-3" />
+      <span className="max-w-[140px] truncate">{label}</span>
+      <span className={cn('tabular-nums text-[11px]', active ? 'text-[#7C3AED]' : 'text-[#98A2B3]')}>{count}</span>
+    </button>
+  );
+}
+
 function MetricHeader({ label, tip, align }: { label: string; tip: string; align?: 'right' }) {
   return (
     <Tooltip>
@@ -2777,19 +2879,22 @@ function TotalCell({
 }
 
 function TodayTableRow({
-  row, gridCls, isAdmin, selectionMode, isSelected, onToggleSelect, onDelete,
+  row, gridCls, isAdmin, selectionMode, isSelected, folders, onToggleSelect, onMoveToFolder, onDelete,
 }: {
   row: TodayRow;
   gridCls: string;
   isAdmin: boolean;
   selectionMode: boolean;
   isSelected: boolean;
+  folders: import('@/hooks/useEngagementFolders').EngagementFolder[];
   onToggleSelect: () => void;
+  onMoveToFolder: (folderId: string | null) => void;
   onDelete: () => void;
 }) {
   const initials = row.name.split(' ').map((s) => s[0]).slice(0, 2).join('').toUpperCase();
   const checkedTime = row.checkedAt ? new Date(row.checkedAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }) : null;
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const folderName = row.folder_id ? folders.find((folder) => folder.id === row.folder_id)?.name || 'Folder' : 'Unfiled';
 
   return (
     <div
@@ -2830,11 +2935,51 @@ function TodayTableRow({
               </Tooltip>
             )}
           </div>
-          {row.linkedin_url && (
-            <a href={row.linkedin_url} target="_blank" rel="noreferrer" className="text-[11px] text-[#667085] hover:text-[#7C3AED] truncate inline-flex items-center gap-1">
-              LinkedIn <ExternalLink className="h-2.5 w-2.5" />
-            </a>
-          )}
+          <div className="mt-0.5 flex items-center gap-1.5 min-w-0">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  onClick={(e) => e.stopPropagation()}
+                  className={cn(
+                    'inline-flex items-center gap-1 h-5 max-w-[130px] px-1.5 rounded-full border text-[10px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED]/40',
+                    row.folder_id
+                      ? 'bg-[#F4F0FF] text-[#7C3AED] border-[#DDD0FB] hover:bg-[#EDE6FF]'
+                      : 'bg-white text-[#667085] border-dashed border-[#D0D5DD] hover:bg-[#F7F8FB]',
+                  )}
+                >
+                  <FolderKanban className="h-2.5 w-2.5 flex-shrink-0" />
+                  <span className="truncate">{folderName}</span>
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-52">
+                <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-[#667085]">Move to folder</DropdownMenuLabel>
+                {folders.length === 0 ? (
+                  <div className="px-2 py-1.5 text-xs text-[#667085]">No folders yet.</div>
+                ) : folders.map((folder) => (
+                  <DropdownMenuItem
+                    key={folder.id}
+                    disabled={row.folder_id === folder.id}
+                    onClick={() => onMoveToFolder(folder.id)}
+                  >
+                    <FolderKanban className="h-3.5 w-3.5 mr-2" />
+                    {folder.name}
+                    {row.folder_id === folder.id && <Check className="h-3.5 w-3.5 ml-auto text-[#7C3AED]" />}
+                  </DropdownMenuItem>
+                ))}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem disabled={!row.folder_id} onClick={() => onMoveToFolder(null)}>
+                  <FolderKanban className="h-3.5 w-3.5 mr-2 text-[#98A2B3]" />
+                  Unfiled
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            {row.linkedin_url && (
+              <a href={row.linkedin_url} target="_blank" rel="noreferrer" className="text-[11px] text-[#667085] hover:text-[#7C3AED] truncate inline-flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                LinkedIn <ExternalLink className="h-2.5 w-2.5" />
+              </a>
+            )}
+          </div>
         </div>
       </div>
 
