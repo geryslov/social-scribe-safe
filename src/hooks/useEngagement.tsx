@@ -263,11 +263,21 @@ export function useEngagementTargets(publisherId: string | null) {
             });
           } catch (err) {
             console.error('Initial comment fetch failed:', err);
-          } finally {
-            queryClient.invalidateQueries({ queryKey: ['engagement-targets'] });
-            queryClient.invalidateQueries({ queryKey: ['discovered-posts'] });
-            queryClient.invalidateQueries({ queryKey: ['discovered-comments'] });
           }
+          // Now that posts AND comments are in, kick the server auto-liker.
+          // The one-shot toggle-kick can fire before the async comment fetch
+          // finishes, leaving comments unliked until the next daily sync; this
+          // closes that gap. The server no-ops when auto_like is off.
+          try {
+            await supabase.functions.invoke('auto-like-target-posts', {
+              body: { workspace_id: currentWorkspace.id, target_id: result.id, trigger: 'post-fetch' },
+            });
+          } catch (err) {
+            console.error('auto-like kick failed:', err);
+          }
+          queryClient.invalidateQueries({ queryKey: ['engagement-targets'] });
+          queryClient.invalidateQueries({ queryKey: ['discovered-posts'] });
+          queryClient.invalidateQueries({ queryKey: ['discovered-comments'] });
         })();
       }
 
@@ -565,10 +575,15 @@ export function useFetchTargetComments() {
       if (!data?.success) throw new Error(data?.error || 'Failed to fetch comments');
       return data as { success: boolean; comments_found: number };
     },
-    onSuccess: (data) => {
+    onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['target-comments'] });
       queryClient.invalidateQueries({ queryKey: ['discovered-comments'] });
       queryClient.invalidateQueries({ queryKey: ['engagement-targets'] });
+      // Newly synced comments should get auto-liked without waiting for the
+      // daily run — kick the server auto-liker (it no-ops if auto_like is off).
+      supabase.functions.invoke('auto-like-target-posts', {
+        body: { workspace_id: variables.workspace_id, target_id: variables.target_id, trigger: 'comment-sync' },
+      }).catch((e) => console.warn('auto-like kick failed:', e));
       toast.success(`Found ${data.comments_found} comment${data.comments_found === 1 ? '' : 's'} on other posts`);
     },
     onError: (error) => {
