@@ -318,7 +318,7 @@ export function ContactList({
           toast.error('Failed to start enrichment');
         });
     }
-  }, [bulkUrls, currentWorkspace, publisher.id, bulkCreateTargets, defaultFolderId, scheduleEngagementRefreshes]);
+  }, [bulkUrls, currentWorkspace, publisher.id, bulkCreateTargets, addTargetFolderId, scheduleEngagementRefreshes]);
 
   // ⋮ Retry-failed actions (uses fast batched edge function)
   const [reEnriching, setReEnriching] = useState(false);
