@@ -18,7 +18,10 @@ const corsHeaders = {
 
 const MIN_DELAY_MS = 6_000;
 const MAX_DELAY_MS = 12_000;
-const MAX_POSTS_PER_RUN = 10;
+// Per-run cap: like at most ONE post and ONE comment per target per run.
+// Keeps the auto-liker deliberate and low-volume.
+const MAX_POSTS_PER_RUN = 1;
+const MAX_COMMENTS_PER_RUN = 1;
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const jitter = () => MIN_DELAY_MS + Math.floor(Math.random() * (MAX_DELAY_MS - MIN_DELAY_MS));
@@ -109,10 +112,11 @@ Deno.serve(async (req) => {
         .select('id, comment_metadata, commented_at')
         .eq('target_id', target_id)
         .order('commented_at', { ascending: false })
-        .limit(MAX_POSTS_PER_RUN);
+        .limit(MAX_COMMENTS_PER_RUN + 5);
 
       const cqueue = ((comments || []) as Array<{ id: string; comment_metadata: any }>)
-        .filter((c) => !c?.comment_metadata?.is_liked);
+        .filter((c) => !c?.comment_metadata?.is_liked)
+        .slice(0, MAX_COMMENTS_PER_RUN);
 
       for (let i = 0; i < cqueue.length; i++) {
         if (capReached) break;
