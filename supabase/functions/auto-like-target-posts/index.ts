@@ -18,7 +18,10 @@ const corsHeaders = {
 
 const MIN_DELAY_MS = 6_000;
 const MAX_DELAY_MS = 12_000;
-const MAX_POSTS_PER_RUN = 10;
+// Per-run cap: like at most ONE post and ONE comment per target per run.
+// Keeps the auto-liker deliberate and low-volume.
+const MAX_POSTS_PER_RUN = 1;
+const MAX_COMMENTS_PER_RUN = 1;
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const jitter = () => MIN_DELAY_MS + Math.floor(Math.random() * (MAX_DELAY_MS - MIN_DELAY_MS));
