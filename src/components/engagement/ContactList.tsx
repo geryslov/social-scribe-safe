@@ -216,6 +216,9 @@ export function ContactList({
     return folderScope;
   }, [folderScope]);
 
+  // Effective folder used by the Add dialog: explicit user choice wins, else the scope default.
+  const addTargetFolderId = addFolderId === undefined ? defaultFolderId : addFolderId;
+
   const refreshEngagementData = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ['engagement-posts'] });
     queryClient.invalidateQueries({ queryKey: ['engagement-targets'] });
