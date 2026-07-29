@@ -1061,8 +1061,9 @@ interface TargetRowProps {
 
 function TargetRow({
   target, isSelected, isFetching, isChecked, selectionMode, isAdmin,
-  fresh, done, queueMode, onClick, onToggleSelect, onRetryEnrich, onDelete,
+  fresh, done, queueMode, folders, onClick, onToggleSelect, onRetryEnrich, onDelete, onMoveToFolder,
 }: TargetRowProps) {
+
   const initials = target.name
     .split(' ')
     .map((w) => w[0])
