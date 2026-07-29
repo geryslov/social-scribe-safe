@@ -363,14 +363,29 @@ export function useEngagementTargets(publisherId: string | null) {
 
       if (rows.length === 0) return { ids: [] as string[], skipped: data.urls.length };
 
-      // Re-importing an existing list is a no-op rather than a duplicate: the
-      // unique constraint on (workspace_id, publisher_id, linkedin_username) absorbs it.
+      // Dedupe against already-imported profiles HERE rather than relying on an
+      // ON CONFLICT clause: the (workspace, publisher, username) unique
+      // constraint isn't present in every deployed DB, and a missing constraint
+      // makes upsert fail outright ("no unique or exclusion constraint matching
+      // the ON CONFLICT specification"). Filtering first works either way.
+      const typedRows = rows as Array<Record<string, any>>;
+      const usernames = typedRows.map((r) => r.linkedin_username as string);
+      const { data: existing } = await (supabase as any)
+        .from('engagement_targets')
+        .select('linkedin_username')
+        .eq('workspace_id', currentWorkspace.id)
+        .eq('publisher_id', data.publisher_id)
+        .in('linkedin_username', usernames);
+      const existingSet = new Set(
+        ((existing ?? []) as { linkedin_username: string }[]).map((r) => r.linkedin_username),
+      );
+      const newRows = typedRows.filter((r) => !existingSet.has(r.linkedin_username as string));
+
+      if (newRows.length === 0) return { ids: [] as string[], skipped: data.urls.length };
+
       const { data: result, error } = await (supabase as any)
         .from('engagement_targets')
-        .upsert(rows, {
-          onConflict: 'workspace_id,publisher_id,linkedin_username',
-          ignoreDuplicates: true,
-        })
+        .insert(newRows)
         .select('id');
       if (error) throw error;
 
