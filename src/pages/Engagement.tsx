@@ -877,8 +877,8 @@ function ActivityDashboard({
         publisher={publisher}
         targets={activeTargets}
         discovered={discovered}
+        discoveredComments={discoveredComments}
         likes={likes}
-        comments={comments}
         syncRuns={syncRuns}
       />
 
@@ -2409,20 +2409,21 @@ type TodayRow = {
   checkStatus: 'synced' | 'failed' | 'skipped' | 'pending' | 'not_checked';
   checkedAt: string | null; // ISO
   newPosts: number;
-  liked: number;
-  commented: number;
+  newComments: number;
+  postLikes: number;
+  commentLikes: number;
   actionFailures: number;
   failureReason: string | null;
 };
 
 function TodayTable({
-  publisher, targets, discovered, likes, comments, syncRuns,
+  publisher, targets, discovered, discoveredComments, likes, syncRuns,
 }: {
   publisher: Publisher;
   targets: EngagementTarget[];
   discovered: DiscoveredPost[];
+  discoveredComments: DiscoveredComment[];
   likes: import('@/hooks/useEngagementActivity').AutoLikeRun[];
-  comments: any[];
   syncRuns: import('@/hooks/useEngagementActivity').EngagementSyncRunFull[];
 }) {
   const { isAdmin } = useAuth();
@@ -2462,43 +2463,38 @@ function TodayTable({
       }
     }
 
-    // New posts per target (today)
+    // New posts gathered today + how many of those we've liked, per target.
     const newPostsByTarget = new Map<string, number>();
-    // post id → target id (needed for attributing comments to a target)
-    const postTarget = new Map<string, string>();
+    const postLikesByTarget = new Map<string, number>();
     for (const p of discovered) {
-      postTarget.set(p.id, p.target_id);
       const t = new Date(p.created_at).getTime();
       if (t < todayStart) continue;
       newPostsByTarget.set(p.target_id, (newPostsByTarget.get(p.target_id) || 0) + 1);
+      if (p.is_liked) postLikesByTarget.set(p.target_id, (postLikesByTarget.get(p.target_id) || 0) + 1);
     }
 
-    // Likes today per target
-    const likedByTarget = new Map<string, number>();
+    // New comments (comments THEY left on others' posts) gathered today + likes.
+    const newCommentsByTarget = new Map<string, number>();
+    const commentLikesByTarget = new Map<string, number>();
+    for (const c of discoveredComments) {
+      const t = new Date(c.created_at).getTime();
+      if (t < todayStart) continue;
+      newCommentsByTarget.set(c.target_id, (newCommentsByTarget.get(c.target_id) || 0) + 1);
+      if ((c.comment_metadata as any)?.is_liked) {
+        commentLikesByTarget.set(c.target_id, (commentLikesByTarget.get(c.target_id) || 0) + 1);
+      }
+    }
+
+    // Action failures today (a like/comment errored), per target — for the ⚠ hint.
     const failByTarget = new Map<string, number>();
     const failReason = new Map<string, string>();
     for (const l of likes) {
       const t = new Date(l.run_at).getTime();
-      if (t < todayStart) continue;
-      if (!l.target_id) continue;
-      if (l.status === 'liked') likedByTarget.set(l.target_id, (likedByTarget.get(l.target_id) || 0) + 1);
-      else if (l.status === 'failed') {
+      if (t < todayStart || !l.target_id) continue;
+      if (l.status === 'failed') {
         failByTarget.set(l.target_id, (failByTarget.get(l.target_id) || 0) + 1);
         if (l.error_message && !failReason.has(l.target_id)) failReason.set(l.target_id, l.error_message);
       }
-    }
-
-    // Comments today per target (join via post_id → target_id)
-    const commentedByTarget = new Map<string, string[]>();
-    for (const c of comments) {
-      if (!c.posted_at) continue;
-      const t = new Date(c.posted_at).getTime();
-      if (t < todayStart) continue;
-      const tgt = c.post_id ? postTarget.get(c.post_id) : null;
-      if (!tgt) continue;
-      const arr = commentedByTarget.get(tgt) || [];
-      arr.push(c.id);
-      commentedByTarget.set(tgt, arr);
     }
 
     return targets.map((t): TodayRow => {
@@ -2520,13 +2516,14 @@ function TodayTable({
         checkStatus,
         checkedAt: t.last_fetched_at ?? null,
         newPosts: newPostsByTarget.get(t.id) || 0,
-        liked: likedByTarget.get(t.id) || 0,
-        commented: (commentedByTarget.get(t.id) || []).length,
+        newComments: newCommentsByTarget.get(t.id) || 0,
+        postLikes: postLikesByTarget.get(t.id) || 0,
+        commentLikes: commentLikesByTarget.get(t.id) || 0,
         actionFailures: failByTarget.get(t.id) || 0,
         failureReason: failReason.get(t.id) || null,
       };
     });
-  }, [targets, discovered, likes, comments, syncRuns, todayStart, todayKey]);
+  }, [targets, discovered, discoveredComments, likes, syncRuns, todayStart, todayKey]);
 
   // Default sort: new posts first, then failed check, then alphabetical
   const sorted = useMemo(() => {
@@ -2546,18 +2543,21 @@ function TodayTable({
       failedProfiles,
       totalProfiles: rows.length,
       newPosts: rows.reduce((s, r) => s + r.newPosts, 0),
-      liked: rows.reduce((s, r) => s + r.liked, 0),
-      commented: rows.reduce((s, r) => s + r.commented, 0),
+      newComments: rows.reduce((s, r) => s + r.newComments, 0),
+      postLikes: rows.reduce((s, r) => s + r.postLikes, 0),
+      commentLikes: rows.reduce((s, r) => s + r.commentLikes, 0),
       actionFailures: rows.reduce((s, r) => s + r.actionFailures, 0),
     };
   }, [rows]);
 
   const [expanded, setExpanded] = useState(false);
+  // The per-profile breakdown is revealed on click of the macro summary.
+  const [showBreakdown, setShowBreakdown] = useState(false);
   const visible = expanded ? sorted : sorted.slice(0, 12);
 
   const gridCls = isAdmin
-    ? 'grid grid-cols-[36px_minmax(0,1.4fr)_140px_100px_90px_110px_60px_44px] gap-3 px-5'
-    : 'grid grid-cols-[minmax(0,1.4fr)_140px_100px_90px_110px_60px] gap-3 px-5';
+    ? 'grid grid-cols-[32px_minmax(0,1.4fr)_120px_88px_96px_88px_96px_40px] gap-3 px-5'
+    : 'grid grid-cols-[minmax(0,1.4fr)_120px_88px_96px_88px_96px] gap-3 px-5';
 
   return (
     <TooltipProvider delayDuration={200}>
@@ -2623,6 +2623,29 @@ function TodayTable({
           )}
         </div>
 
+        {/* Macro summary — the headline numbers for today. Click to reveal the
+            per-profile breakdown with the same columns. */}
+        <button
+          type="button"
+          onClick={() => setShowBreakdown((v) => !v)}
+          className="w-full block text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED]/30"
+          aria-expanded={showBreakdown}
+        >
+          <div className="grid grid-cols-2 sm:grid-cols-5 divide-x divide-[#EEF0F4] border-b border-[#E5E7ED]">
+            <MacroTile label="Profiles checked" value={`${totals.syncedProfiles}/${totals.totalProfiles}`}
+              sub={totals.failedProfiles > 0 ? `${totals.failedProfiles} failed` : undefined} danger={totals.failedProfiles > 0} />
+            <MacroTile label="New posts" value={totals.newPosts} />
+            <MacroTile label="New comments" value={totals.newComments} />
+            <MacroTile label="Post likes" value={totals.postLikes} />
+            <MacroTile label="Comment likes" value={totals.commentLikes} />
+          </div>
+          <div className="px-5 py-2 text-[11px] font-medium text-[#7C3AED] flex items-center gap-1 bg-[#FBFAFF] border-b border-[#E5E7ED]">
+            {showBreakdown ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+            {showBreakdown ? 'Hide profile breakdown' : `View ${totals.totalProfiles} profile${totals.totalProfiles === 1 ? '' : 's'} in today's sync`}
+          </div>
+        </button>
+
+        {showBreakdown && (<>
         {/* Column header */}
         <div role="row" className={cn(gridCls, 'h-9 items-center bg-[#F7F8FB] border-b border-[#E5E7ED] text-[11px] uppercase tracking-wider text-[#667085] font-medium')}>
           {isAdmin && (
@@ -2644,9 +2667,9 @@ function TodayTable({
           <div>Profile</div>
           <MetricHeader label="Checked" tip="Whether today's sync fetched this profile's posts. ✓ with the sync time, ✗ if the fetch failed, — if not yet checked today." />
           <MetricHeader label="New posts" tip="Posts by this profile that landed in your DB today (since 00:00 local)." align="right" />
-          <MetricHeader label="Liked" tip="Likes YOU (auto or manual) performed on this profile's posts today." align="right" />
-          <MetricHeader label="Commented" tip="Comments you posted on this profile's posts today." align="right" />
-          <MetricHeader label="⚠" tip="Action failures today (a like or comment errored). Hover the row for the reason." align="right" />
+          <MetricHeader label="New comments" tip="Comments this profile left on other people's posts, gathered today." align="right" />
+          <MetricHeader label="Post likes" tip="Likes you (auto or manual) performed on today's new posts." align="right" />
+          <MetricHeader label="Comment likes" tip="Likes you performed on today's new comments." align="right" />
           {isAdmin && <div />}
         </div>
 
@@ -2686,10 +2709,10 @@ function TodayTable({
                 subTone="danger"
                 tip={`Profiles checked today. Scope: today (since 00:00 your time). ${totals.failedProfiles > 0 ? `${totals.failedProfiles} failed sync${totals.failedProfiles === 1 ? '' : 's'}.` : ''}`}
               />
-              <TotalCell text={String(totals.newPosts)} tip="Total new posts across all profiles. Scope: today." align="right" />
-              <TotalCell text={String(totals.liked)} tip="Total likes you performed today. Scope: today." align="right" />
-              <TotalCell text={String(totals.commented)} tip="Total comments you posted today. Scope: today." align="right" />
-              <TotalCell text={String(totals.actionFailures)} tip="Total action failures today. Scope: today." align="right" tone={totals.actionFailures > 0 ? 'danger' : 'muted'} />
+              <TotalCell text={String(totals.newPosts)} tip="Total new posts gathered today across all profiles." align="right" />
+              <TotalCell text={String(totals.newComments)} tip="Total new comments gathered today across all profiles." align="right" />
+              <TotalCell text={String(totals.postLikes)} tip="Total likes on today's new posts." align="right" />
+              <TotalCell text={String(totals.commentLikes)} tip="Total likes on today's new comments." align="right" />
               {isAdmin && <div />}
             </div>
 
@@ -2706,10 +2729,23 @@ function TodayTable({
             )}
           </>
         )}
+        </>)}
       </section>
     </TooltipProvider>
   );
 
+}
+
+function MacroTile({ label, value, sub, danger }: { label: string; value: string | number; sub?: string; danger?: boolean }) {
+  return (
+    <div className="px-4 py-3.5 hover:bg-[#FBFAFF] transition-colors">
+      <div className="text-[10px] uppercase tracking-wider text-[#667085] font-medium truncate">{label}</div>
+      <div className="mt-1.5 flex items-baseline gap-1.5">
+        <span className="text-[26px] leading-none font-bold text-[#171923] tabular-nums">{value}</span>
+        {sub && <span className={cn('text-[11px] font-medium', danger ? 'text-[#B42318]' : 'text-[#667085]')}>{sub}</span>}
+      </div>
+    </div>
+  );
 }
 
 function MetricHeader({ label, tip, align }: { label: string; tip: string; align?: 'right' }) {
@@ -2781,7 +2817,19 @@ function TodayTableRow({
           {row.avatar_url ? <img src={row.avatar_url} alt="" className="h-full w-full object-cover" /> : initials || '?'}
         </div>
         <div className="min-w-0">
-          <div className="text-sm font-medium text-[#171923] truncate">{row.name}</div>
+          <div className="text-sm font-medium text-[#171923] truncate flex items-center gap-1">
+            <span className="truncate">{row.name}</span>
+            {row.actionFailures > 0 && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="flex-shrink-0"><AlertTriangle className="h-3 w-3 text-[#B42318]" /></span>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="max-w-[280px] text-xs">
+                  {row.failureReason || `${row.actionFailures} action failure${row.actionFailures === 1 ? '' : 's'} today.`}
+                </TooltipContent>
+              </Tooltip>
+            )}
+          </div>
           {row.linkedin_url && (
             <a href={row.linkedin_url} target="_blank" rel="noreferrer" className="text-[11px] text-[#667085] hover:text-[#7C3AED] truncate inline-flex items-center gap-1">
               LinkedIn <ExternalLink className="h-2.5 w-2.5" />
@@ -2829,28 +2877,21 @@ function TodayTableRow({
       <div className="text-right text-sm tabular-nums">
         {row.newPosts > 0 ? <b className="text-[#171923]">{row.newPosts}</b> : <span className="text-[#B0B5C0]">—</span>}
       </div>
-      {/* Liked */}
+      {/* New comments */}
       <div className="text-right text-sm tabular-nums">
-        {row.liked > 0 ? <span className="text-[#171923]">{row.liked}</span> : <span className="text-[#B0B5C0]">—</span>}
+        {row.newComments > 0 ? <b className="text-[#171923]">{row.newComments}</b> : <span className="text-[#B0B5C0]">—</span>}
       </div>
-      {/* Commented */}
-      <div className="text-right text-sm tabular-nums">
-        {row.commented > 0 ? <span className="text-[#171923]">{row.commented}</span> : <span className="text-[#B0B5C0]">—</span>}
+      {/* Post likes */}
+      <div className="flex items-center justify-end text-sm tabular-nums">
+        {row.postLikes > 0
+          ? <span className="inline-flex items-center gap-1 text-rose-600"><Heart className="h-3 w-3 fill-rose-500 text-rose-500" />{row.postLikes}</span>
+          : <span className="text-[#B0B5C0]">—</span>}
       </div>
-      {/* Failures */}
-      <div className="text-right text-sm tabular-nums">
-        {row.actionFailures > 0 ? (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span className="text-[#B42318] cursor-help">{row.actionFailures}</span>
-            </TooltipTrigger>
-            <TooltipContent side="top" className="max-w-[280px] text-xs">
-              {row.failureReason || `${row.actionFailures} action failure${row.actionFailures === 1 ? '' : 's'} today.`}
-            </TooltipContent>
-          </Tooltip>
-        ) : (
-          <span className="text-[#B0B5C0]">—</span>
-        )}
+      {/* Comment likes */}
+      <div className="flex items-center justify-end text-sm tabular-nums">
+        {row.commentLikes > 0
+          ? <span className="inline-flex items-center gap-1 text-rose-600"><Heart className="h-3 w-3 fill-rose-500 text-rose-500" />{row.commentLikes}</span>
+          : <span className="text-[#B0B5C0]">—</span>}
       </div>
       {isAdmin && (
         <div className="flex items-center justify-end">
