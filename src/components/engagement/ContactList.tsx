@@ -1158,7 +1158,7 @@ function TargetRow({
             {!queueMode && fresh > 0 && (
               <span className="h-1.5 w-1.5 rounded-full bg-amber-500" title={`${fresh} fresh`} />
             )}
-            {isAdmin && !selectionMode && (
+            {!selectionMode && (
               <div className="flex items-center gap-0.5" onClick={(e) => e.stopPropagation()}>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -1207,37 +1207,39 @@ function TargetRow({
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
-                <span
-                  role="button"
-                  tabIndex={0}
-                  title={confirmDelete ? 'Click again to remove' : 'Remove profile'}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (confirmDelete) {
-                      onDelete(target.id);
-                      setConfirmDelete(false);
-                    } else {
-                      setConfirmDelete(true);
-                      setTimeout(() => setConfirmDelete(false), 3000);
-                    }
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
+                {isAdmin && (
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    title={confirmDelete ? 'Click again to remove' : 'Remove profile'}
+                    onClick={(e) => {
                       e.stopPropagation();
-                      e.preventDefault();
-                      e.currentTarget.click();
-                    }
-                  }}
-                  className={cn(
-                    'inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-1 rounded-full transition-colors',
-                    confirmDelete
-                      ? 'text-destructive bg-destructive/10'
-                      : 'text-muted-foreground/50 hover:text-destructive hover:bg-destructive/5',
-                  )}
-                >
-                  <Trash2 className="h-3 w-3" />
-                  {confirmDelete ? 'Confirm?' : ''}
-                </span>
+                      if (confirmDelete) {
+                        onDelete(target.id);
+                        setConfirmDelete(false);
+                      } else {
+                        setConfirmDelete(true);
+                        setTimeout(() => setConfirmDelete(false), 3000);
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        e.currentTarget.click();
+                      }
+                    }}
+                    className={cn(
+                      'inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-1 rounded-full transition-colors',
+                      confirmDelete
+                        ? 'text-destructive bg-destructive/10'
+                        : 'text-muted-foreground/50 hover:text-destructive hover:bg-destructive/5',
+                    )}
+                  >
+                    <Trash2 className="h-3 w-3" />
+                    {confirmDelete ? 'Confirm?' : ''}
+                  </span>
+                )}
               </div>
             )}
           </div>
