@@ -1158,90 +1158,92 @@ function TargetRow({
             {!queueMode && fresh > 0 && (
               <span className="h-1.5 w-1.5 rounded-full bg-amber-500" title={`${fresh} fresh`} />
             )}
-            {!selectionMode && (
-              <div className="flex items-center gap-0.5" onClick={(e) => e.stopPropagation()}>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <button
-                      type="button"
-                      title={target.folder_id ? 'Change folder' : 'Move to folder'}
-                      className={cn(
-                        'inline-flex items-center gap-1 text-[10px] font-medium px-2 py-1 rounded-full transition-colors',
-                        target.folder_id
-                          ? 'bg-primary/10 text-primary hover:bg-primary/20'
-                          : 'text-muted-foreground/70 hover:text-primary hover:bg-primary/10 border border-dashed border-muted-foreground/30',
-                      )}
-                    >
-                      <Folder className="h-3 w-3" />
+            {/* Folder pill — always visible, even in selection mode */}
+            <div className="flex items-center gap-0.5" onClick={(e) => e.stopPropagation()}>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    title={target.folder_id ? 'Change folder' : 'Move to folder'}
+                    className={cn(
+                      'inline-flex items-center gap-1 text-[10px] font-medium px-2 py-1 rounded-full transition-colors max-w-[110px]',
+                      target.folder_id
+                        ? 'bg-primary/10 text-primary hover:bg-primary/20'
+                        : 'text-muted-foreground/70 hover:text-primary hover:bg-primary/10 border border-dashed border-muted-foreground/30',
+                    )}
+                  >
+                    <Folder className="h-3 w-3 flex-shrink-0" />
+                    <span className="truncate">
                       {target.folder_id
                         ? folders.find((f) => f.id === target.folder_id)?.name || 'Folder'
                         : 'Move'}
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-48">
-                    <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground/70">
-                      Move to folder
-                    </DropdownMenuLabel>
-                    {folders.length === 0 ? (
-                      <div className="px-2 py-1.5 text-[11px] text-muted-foreground italic">No folders yet</div>
-                    ) : (
-                      folders.map((f) => (
-                        <DropdownMenuItem
-                          key={f.id}
-                          disabled={target.folder_id === f.id}
-                          onClick={() => onMoveToFolder(f.id)}
-                        >
-                          <Folder className="h-3 w-3 mr-2" />
-                          {f.name}
-                          {target.folder_id === f.id && <Check className="h-3 w-3 ml-auto opacity-60" />}
-                        </DropdownMenuItem>
-                      ))
-                    )}
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      disabled={!target.folder_id}
-                      onClick={() => onMoveToFolder(null)}
-                    >
-                      <FolderOpen className="h-3 w-3 mr-2 opacity-60" />
-                      Unfiled
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-                {isAdmin && (
-                  <span
-                    role="button"
-                    tabIndex={0}
-                    title={confirmDelete ? 'Click again to remove' : 'Remove profile'}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (confirmDelete) {
-                        onDelete(target.id);
-                        setConfirmDelete(false);
-                      } else {
-                        setConfirmDelete(true);
-                        setTimeout(() => setConfirmDelete(false), 3000);
-                      }
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.stopPropagation();
-                        e.preventDefault();
-                        e.currentTarget.click();
-                      }
-                    }}
-                    className={cn(
-                      'inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-1 rounded-full transition-colors',
-                      confirmDelete
-                        ? 'text-destructive bg-destructive/10'
-                        : 'text-muted-foreground/50 hover:text-destructive hover:bg-destructive/5',
-                    )}
+                    </span>
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground/70">
+                    Move to folder
+                  </DropdownMenuLabel>
+                  {folders.length === 0 ? (
+                    <div className="px-2 py-1.5 text-[11px] text-muted-foreground italic">No folders yet — create one from the strip above</div>
+                  ) : (
+                    folders.map((f) => (
+                      <DropdownMenuItem
+                        key={f.id}
+                        disabled={target.folder_id === f.id}
+                        onClick={() => onMoveToFolder(f.id)}
+                      >
+                        <Folder className="h-3 w-3 mr-2" />
+                        {f.name}
+                        {target.folder_id === f.id && <Check className="h-3 w-3 ml-auto opacity-60" />}
+                      </DropdownMenuItem>
+                    ))
+                  )}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    disabled={!target.folder_id}
+                    onClick={() => onMoveToFolder(null)}
                   >
-                    <Trash2 className="h-3 w-3" />
-                    {confirmDelete ? 'Confirm?' : ''}
-                  </span>
-                )}
-              </div>
-            )}
+                    <FolderOpen className="h-3 w-3 mr-2 opacity-60" />
+                    Unfiled
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              {!selectionMode && isAdmin && (
+                <span
+                  role="button"
+                  tabIndex={0}
+                  title={confirmDelete ? 'Click again to remove' : 'Remove profile'}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (confirmDelete) {
+                      onDelete(target.id);
+                      setConfirmDelete(false);
+                    } else {
+                      setConfirmDelete(true);
+                      setTimeout(() => setConfirmDelete(false), 3000);
+                    }
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      e.currentTarget.click();
+                    }
+                  }}
+                  className={cn(
+                    'inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-1 rounded-full transition-colors',
+                    confirmDelete
+                      ? 'text-destructive bg-destructive/10'
+                      : 'text-muted-foreground/50 hover:text-destructive hover:bg-destructive/5',
+                  )}
+                >
+                  <Trash2 className="h-3 w-3" />
+                  {confirmDelete ? 'Confirm?' : ''}
+                </span>
+              )}
+            </div>
+
           </div>
 
           {target.last_fetched_at && (
@@ -1321,7 +1323,11 @@ function FolderStrip({
   const hasUnfiled = (folderCounts.unfiled || 0) > 0;
 
   return (
-    <div className="px-3 pt-3 pb-1.5 border-b bg-background flex items-center gap-1.5 overflow-x-auto">
+    <div className="px-3 pt-2.5 pb-1.5 border-b bg-background flex items-center gap-1.5 overflow-x-auto">
+      <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60 mr-1 flex-shrink-0">
+        Folders
+      </span>
+
       {/* All */}
       <FolderPill
         label="All"
@@ -1402,16 +1408,15 @@ function FolderStrip({
         );
       })}
 
-      {/* Unfiled — only when relevant */}
-      {hasUnfiled && (
-        <FolderPill
-          label="Unfiled"
-          count={folderCounts.unfiled || 0}
-          active={activeScope === 'unfiled'}
-          onClick={() => onSelectScope('unfiled')}
-          muted
-        />
-      )}
+      {/* Unfiled — always visible so users know where imported profiles go */}
+      <FolderPill
+        label="Unfiled"
+        count={folderCounts.unfiled || 0}
+        active={activeScope === 'unfiled'}
+        onClick={() => onSelectScope('unfiled')}
+        muted
+      />
+
 
       {/* + New folder */}
       {isAdmin && (creating ? (
