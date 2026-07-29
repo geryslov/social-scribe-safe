@@ -235,7 +235,7 @@ export function ContactList({
     if (!newUrl.trim() || !currentWorkspace) return;
     const name = newName.trim() || newUrl.match(/linkedin\.com\/in\/([^/?#]+)/)?.[1]?.replace(/-/g, ' ')?.replace(/\b\w/g, (c) => c.toUpperCase()) || 'Unknown';
     createTarget.mutate(
-      { publisher_id: publisher.id, name, linkedin_url: newUrl.trim(), folder_id: defaultFolderId },
+      { publisher_id: publisher.id, name, linkedin_url: newUrl.trim(), folder_id: addTargetFolderId },
       {
         onSuccess: (data: any) => {
           setNewName('');
@@ -251,7 +251,7 @@ export function ContactList({
         },
       },
     );
-  }, [newName, newUrl, currentWorkspace, publisher.id, createTarget, fetchPosts, defaultFolderId]);
+  }, [newName, newUrl, currentWorkspace, publisher.id, createTarget, fetchPosts, addTargetFolderId]);
 
   // Bulk import
   const handleBulkImport = useCallback(async () => {
