@@ -112,10 +112,11 @@ Deno.serve(async (req) => {
         .select('id, comment_metadata, commented_at')
         .eq('target_id', target_id)
         .order('commented_at', { ascending: false })
-        .limit(MAX_POSTS_PER_RUN);
+        .limit(MAX_COMMENTS_PER_RUN + 5);
 
       const cqueue = ((comments || []) as Array<{ id: string; comment_metadata: any }>)
-        .filter((c) => !c?.comment_metadata?.is_liked);
+        .filter((c) => !c?.comment_metadata?.is_liked)
+        .slice(0, MAX_COMMENTS_PER_RUN);
 
       for (let i = 0; i < cqueue.length; i++) {
         if (capReached) break;
