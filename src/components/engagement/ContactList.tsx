@@ -1050,11 +1050,14 @@ interface TargetRowProps {
   fresh: number;
   done: number;
   queueMode?: boolean;
+  folders: EngagementFolder[];
   onClick: () => void;
   onToggleSelect: () => void;
   onRetryEnrich: () => void;
   onDelete: (id: string) => void;
+  onMoveToFolder: (folderId: string | null) => void;
 }
+
 
 function TargetRow({
   target, isSelected, isFetching, isChecked, selectionMode, isAdmin,
