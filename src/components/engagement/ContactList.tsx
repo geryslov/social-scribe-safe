@@ -810,7 +810,10 @@ export function ContactList({
                         onToggleSelect={() => toggleSelected(target.id)}
                         onRetryEnrich={() => enrichTarget.mutate(target.id)}
                         onDelete={(id) => deleteTarget.mutate(id)}
+                        folders={folders}
+                        onMoveToFolder={(folderId) => moveTargetsToFolder.mutate({ targetIds: [target.id], folderId })}
                       />
+
                     </div>
                   );
                 })}
