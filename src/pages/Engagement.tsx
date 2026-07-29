@@ -8,6 +8,7 @@ import { useWorkspaces } from '@/hooks/useWorkspaces';
 import { useWorkspacePermissions } from '@/hooks/useWorkspacePermissions';
 import { usePublishers, Publisher } from '@/hooks/usePublishers';
 import { useEngagementTargets, EngagementTarget, useLikePost, useLikeComment, useFetchTargetComments } from '@/hooks/useEngagement';
+import { useEngagementFolders } from '@/hooks/useEngagementFolders';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
@@ -273,6 +274,7 @@ function PageHeader({
       {publisher && (
         <>
           <BulkAutomationToggles publisher={publisher} />
+          <FolderAutomationBar publisher={publisher} />
           <AddProfileDialog
             open={addOpen}
             onOpenChange={setAddOpen}
@@ -382,6 +384,96 @@ function BulkAutomationToggles({ publisher }: { publisher: Publisher }) {
         disabled={total === 0 || bulkUpdatePublisherTargets.isPending}
         onChange={onLike}
       />
+    </div>
+  );
+}
+
+function FolderAutomationBar({ publisher }: { publisher: Publisher }) {
+  const { folders, createFolder, setFolderAutomation } = useEngagementFolders(publisher.id);
+  const { targets } = useEngagementTargets(publisher.id);
+  const [newName, setNewName] = useState('');
+  const [adding, setAdding] = useState(false);
+
+  const countFor = (folderId: string) => targets.filter((t) => t.folder_id === folderId).length;
+  const submitNew = () => {
+    const name = newName.trim();
+    if (!name) return;
+    createFolder.mutate(name, { onSuccess: () => { setNewName(''); setAdding(false); } });
+  };
+
+  if (folders.length === 0 && !adding) {
+    return (
+      <div className="rounded-[14px] border border-dashed border-[#E5E7ED] bg-white px-4 py-3 flex items-center gap-3">
+        <FolderKanban className="h-4 w-4 text-[#98A2B3] flex-shrink-0" />
+        <span className="text-xs text-[#667085]">Group profiles into folders, then set Auto-like once per folder — it applies to everyone in it.</span>
+        <button
+          type="button"
+          onClick={() => setAdding(true)}
+          className="ml-auto inline-flex items-center gap-1 text-xs font-medium text-[#7C3AED] hover:underline flex-shrink-0"
+        >
+          <Plus className="h-3.5 w-3.5" /> New folder
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-[14px] border border-[#E5E7ED] bg-white px-4 py-3">
+      <div className="flex items-center gap-2">
+        <FolderKanban className="h-4 w-4 text-[#667085]" />
+        <span className="text-xs font-semibold text-[#171923]">Folders</span>
+        <span className="text-[11px] text-[#98A2B3]">· Auto-like applies to every profile in the folder</span>
+      </div>
+      <div className="mt-3 flex flex-col gap-2">
+        {folders.map((f) => {
+          const n = countFor(f.id);
+          return (
+            <div key={f.id} className="flex items-center gap-3 rounded-lg border border-[#E5E7ED] px-3 py-2">
+              <span className="text-[13px] font-medium text-[#171923] truncate">{f.name}</span>
+              <span className="text-[11px] text-[#667085] tabular-nums flex-shrink-0">{n} profile{n === 1 ? '' : 's'}</span>
+              <div className="ml-auto flex items-center gap-2 flex-shrink-0">
+                <Zap className={cn('h-3.5 w-3.5', f.auto_like ? 'text-[#7C3AED]' : 'text-[#98A2B3]')} />
+                <span className="text-[11px] text-[#3F4657]">Auto-like</span>
+                <Switch
+                  checked={!!f.auto_like}
+                  onCheckedChange={(c) => setFolderAutomation.mutate({ folderId: f.id, updates: { auto_like: c } })}
+                  disabled={setFolderAutomation.isPending}
+                  aria-label={`Auto-like folder ${f.name}`}
+                />
+              </div>
+            </div>
+          );
+        })}
+        {adding ? (
+          <div className="flex items-center gap-2">
+            <Input
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              placeholder="Folder name"
+              autoFocus
+              className="h-8 text-xs"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') submitNew();
+                if (e.key === 'Escape') { setNewName(''); setAdding(false); }
+              }}
+            />
+            <button type="button" onClick={submitNew} disabled={!newName.trim() || createFolder.isPending}
+              className="inline-flex items-center gap-1 h-8 px-3 rounded-md bg-[#7C3AED] hover:bg-[#6D28D9] text-white text-xs font-medium disabled:opacity-50">
+              Add
+            </button>
+            <button type="button" onClick={() => { setNewName(''); setAdding(false); }}
+              className="text-xs text-[#667085] hover:text-[#171923] px-2">Cancel</button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setAdding(true)}
+            className="inline-flex items-center gap-1 text-xs font-medium text-[#7C3AED] hover:underline self-start mt-0.5"
+          >
+            <Plus className="h-3.5 w-3.5" /> New folder
+          </button>
+        )}
+      </div>
     </div>
   );
 }
@@ -1643,6 +1735,7 @@ function ReviewDrawer({
   const { data: targetComments = [] } = useTargetComments(row.id);
   const fetchComments = useFetchTargetComments();
   const { targets, updateTarget } = useEngagementTargets(publisher?.id ?? null);
+  const { folders, moveTargetsToFolder } = useEngagementFolders(publisher?.id ?? null);
   const [filter, setFilter] = useState<'all' | 'posts' | 'comments'>(initialFilter);
   useEffect(() => { setFilter(initialFilter); }, [initialFilter, row.id]);
 
@@ -1771,6 +1864,23 @@ function ReviewDrawer({
             aria-label="Auto-like this profile"
           />
         </div>
+
+        {/* Folder assignment — moving into a folder inherits its automation */}
+        {folders.length > 0 && target && (
+          <div className="mt-2 flex items-center gap-2 text-xs">
+            <FolderKanban className="h-3.5 w-3.5 text-[#98A2B3] flex-shrink-0" />
+            <span className="text-[#667085]">Folder</span>
+            <select
+              value={target.folder_id ?? ''}
+              onChange={(e) => moveTargetsToFolder.mutate({ targetIds: [row.id], folderId: e.target.value || null })}
+              disabled={moveTargetsToFolder.isPending}
+              className="ml-auto h-7 rounded-md border border-[#E5E7ED] bg-white px-2 text-xs text-[#171923] focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/40"
+            >
+              <option value="">Unfiled</option>
+              {folders.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
+            </select>
+          </div>
+        )}
       </div>
 
       {/* Relevance explanation */}
