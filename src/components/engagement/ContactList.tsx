@@ -279,7 +279,7 @@ export function ContactList({
       const res = await bulkCreateTargets.mutateAsync({
         publisher_id: publisher.id,
         urls,
-        folder_id: defaultFolderId,
+        folder_id: addTargetFolderId,
       });
       createdIds = res.ids;
       skipped = res.skipped;
