@@ -132,7 +132,7 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const workspace_id: string = body.workspace_id;
     const target_ids: string[] = body.target_ids || [];
-    const maxPosts: number = body.max_posts ?? 2;
+    const maxPosts: number = body.max_posts ?? 1;
 
     if (!workspace_id || !Array.isArray(target_ids) || target_ids.length === 0) {
       return new Response(

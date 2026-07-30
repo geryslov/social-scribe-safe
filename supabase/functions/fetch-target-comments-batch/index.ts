@@ -161,7 +161,7 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const workspace_id: string = body.workspace_id;
     const target_ids: string[] = body.target_ids || [];
-    const maxItems: number = body.max_items ?? 15;
+    const maxItems: number = body.max_items ?? 1;
 
     if (!workspace_id || !Array.isArray(target_ids) || target_ids.length === 0) {
       return new Response(
@@ -224,10 +224,11 @@ Deno.serve(async (req) => {
         if (uname) byUsername.set(uname, t);
       }
 
-      // Daily cadence: a week window comfortably covers a day's gap. The
-      // (target_id, dedup_key) unique constraint absorbs overlap, and harvestapi
-      // bills per comment returned, so a tighter window keeps cost down.
-      const postedLimit = 'week';
+      // Daily job wants only genuinely-new comments: a 24h window returns
+      // nothing (no per-comment charge) when a profile hasn't commented since
+      // the last run, and maxItems=1 caps it to the single newest comment.
+      // Trade-off: a skipped daily run can miss a comment older than 24h.
+      const postedLimit = '24h';
 
       const runId = await startApifyRun(urls, apifyToken, maxItems, postedLimit);
       if (!runId) {
