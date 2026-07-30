@@ -36,7 +36,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import {
   FileText, BarChart3, FolderKanban, Sparkles, MessageSquareHeart,
   ShieldCheck, HelpCircle, PanelLeftClose, PanelLeftOpen,
-  Search, Bell, RefreshCw, Loader2, ChevronDown, ChevronRight, Check,
+  Search, Bell, RefreshCw, Loader2, ChevronDown, ChevronUp, ChevronRight, Check,
   Heart, MessageCircle, TrendingUp, AlertTriangle, ArrowRight,
   ExternalLink, MoreHorizontal, Filter, ArrowUpDown, Rows3, Rows2,
   Clock, CheckCircle2, XCircle, EyeOff, BookmarkPlus, Users, Plus, UserPlus, Trash2, Zap,
@@ -2417,6 +2417,11 @@ type TodayRow = {
   failureReason: string | null;
 };
 
+type TodaySortKey = 'name' | 'checkStatus' | 'newPosts' | 'newComments' | 'postLikes' | 'commentLikes';
+const TODAY_STATUS_RANK: Record<TodayRow['checkStatus'], number> = {
+  synced: 4, pending: 3, skipped: 2, failed: 1, not_checked: 0,
+};
+
 function TodayTable({
   publisher, targets, discovered, discoveredComments, likes, syncRuns,
 }: {
@@ -2546,14 +2551,34 @@ function TodayTable({
   }, [folderScope, rows]);
 
   // Default sort: new posts first, then failed check, then alphabetical
+  const [sortKey, setSortKey] = useState<TodaySortKey>('newPosts');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+  const onSort = (key: TodaySortKey) => {
+    if (key === sortKey) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    else { setSortKey(key); setSortDir(key === 'name' ? 'asc' : 'desc'); }
+  };
+
   const sorted = useMemo(() => {
+    const dir = sortDir === 'asc' ? 1 : -1;
+    const val = (r: TodayRow): number | string => {
+      switch (sortKey) {
+        case 'name': return r.name.toLowerCase();
+        case 'checkStatus': return TODAY_STATUS_RANK[r.checkStatus];
+        case 'newPosts': return r.newPosts;
+        case 'newComments': return r.newComments;
+        case 'postLikes': return r.postLikes;
+        case 'commentLikes': return r.commentLikes;
+      }
+    };
     return [...filteredByFolder].sort((a, b) => {
-      if (b.newPosts !== a.newPosts) return b.newPosts - a.newPosts;
-      const failRank = (r: TodayRow) => (r.checkStatus === 'failed' ? 1 : 0);
-      if (failRank(b) !== failRank(a)) return failRank(b) - failRank(a);
-      return a.name.localeCompare(b.name);
+      const av = val(a), bv = val(b);
+      const cmp = typeof av === 'string' && typeof bv === 'string'
+        ? av.localeCompare(bv)
+        : (av as number) - (bv as number);
+      if (cmp !== 0) return cmp * dir;
+      return a.name.localeCompare(b.name); // stable tiebreak
     });
-  }, [filteredByFolder]);
+  }, [filteredByFolder, sortKey, sortDir]);
 
   const totals = useMemo(() => {
     const syncedProfiles = sorted.filter((r) => r.checkStatus === 'synced').length;
@@ -2740,12 +2765,12 @@ function TodayTable({
               )}
             </div>
           )}
-          <div>Profile</div>
-          <MetricHeader label="Checked" tip="Whether today's sync fetched this profile's posts. ✓ with the sync time, ✗ if the fetch failed, — if not yet checked today." />
-          <MetricHeader label="New posts" tip="Posts by this profile that landed in your DB today (since 00:00 local)." align="right" />
-          <MetricHeader label="New comments" tip="Comments this profile left on other people's posts, gathered today." align="right" />
-          <MetricHeader label="Post likes" tip="Likes you (auto or manual) performed on today's new posts." align="right" />
-          <MetricHeader label="Comment likes" tip="Likes you performed on today's new comments." align="right" />
+          <MetricHeader label="Profile" tip="Profile name. Click to sort A–Z." sortKey="name" activeKey={sortKey} dir={sortDir} onSort={onSort} />
+          <MetricHeader label="Checked" tip="Whether today's sync fetched this profile's posts. ✓ with the sync time, ✗ if the fetch failed, — if not yet checked today." sortKey="checkStatus" activeKey={sortKey} dir={sortDir} onSort={onSort} />
+          <MetricHeader label="New posts" tip="Posts by this profile that landed in your DB today (since 00:00 local)." align="right" sortKey="newPosts" activeKey={sortKey} dir={sortDir} onSort={onSort} />
+          <MetricHeader label="New comments" tip="Comments this profile left on other people's posts, gathered today." align="right" sortKey="newComments" activeKey={sortKey} dir={sortDir} onSort={onSort} />
+          <MetricHeader label="Post likes" tip="Likes you (auto or manual) performed on today's new posts." align="right" sortKey="postLikes" activeKey={sortKey} dir={sortDir} onSort={onSort} />
+          <MetricHeader label="Comment likes" tip="Likes you performed on today's new comments." align="right" sortKey="commentLikes" activeKey={sortKey} dir={sortDir} onSort={onSort} />
           {isAdmin && <div />}
         </div>
 
@@ -2850,12 +2875,37 @@ function FolderFilterPill({
   );
 }
 
-function MetricHeader({ label, tip, align }: { label: string; tip: string; align?: 'right' }) {
+function MetricHeader({
+  label, tip, align, sortKey, activeKey, dir, onSort,
+}: {
+  label: string; tip: string; align?: 'right';
+  sortKey?: TodaySortKey; activeKey?: TodaySortKey; dir?: 'asc' | 'desc'; onSort?: (k: TodaySortKey) => void;
+}) {
+  const sortable = !!sortKey && !!onSort;
+  const active = sortable && activeKey === sortKey;
+  const inner = (
+    <button
+      type="button"
+      disabled={!sortable}
+      onClick={() => sortable && onSort!(sortKey!)}
+      className={cn(
+        'inline-flex items-center gap-1 select-none max-w-full',
+        align === 'right' ? 'flex-row-reverse w-full justify-start' : '',
+        sortable ? 'cursor-pointer hover:text-[#171923]' : 'cursor-help',
+        active && 'text-[#171923] font-semibold',
+      )}
+    >
+      <span className="truncate">{label}</span>
+      {sortable && (
+        active
+          ? (dir === 'asc' ? <ChevronUp className="h-3 w-3 flex-shrink-0" /> : <ChevronDown className="h-3 w-3 flex-shrink-0" />)
+          : <ArrowUpDown className="h-3 w-3 opacity-30 flex-shrink-0" />
+      )}
+    </button>
+  );
   return (
     <Tooltip>
-      <TooltipTrigger asChild>
-        <div className={cn('cursor-help', align === 'right' && 'text-right')}>{label}</div>
-      </TooltipTrigger>
+      <TooltipTrigger asChild>{inner}</TooltipTrigger>
       <TooltipContent side="top" className="max-w-[280px] text-xs">{tip}</TooltipContent>
     </Tooltip>
   );
