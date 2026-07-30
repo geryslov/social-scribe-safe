@@ -16,7 +16,7 @@ import { Label } from '@/components/ui/label';
 import { useEngagementSync, getNextScheduledSync } from '@/hooks/useEngagementSync';
 import {
   useDiscoveredPosts, useAutoLikeHistory, usePublisherComments,
-  useEngagementSyncRuns, DiscoveredPost, useDiscoveredComments,
+  useEngagementSyncRuns, DiscoveredPost, useDiscoveredComments, useLikesToday,
   useTargetComments, DiscoveredComment,
 } from '@/hooks/useEngagementActivity';
 import { CommentComposer } from '@/components/engagement/CommentComposer';
@@ -547,6 +547,7 @@ function ActivityDashboard({
   const { data: discovered = [], isLoading: discoveredLoading } = useDiscoveredPosts(publisher.id, 7);
   const { data: discoveredComments = [], isLoading: discoveredCommentsLoading } = useDiscoveredComments(publisher.id, 14);
   const { data: likes = [] } = useAutoLikeHistory(publisher.id, 7);
+  const { data: likesToday = [] } = useLikesToday(publisher.id);
   const { data: comments = [] } = usePublisherComments(publisher.id, 7);
   const { data: syncRuns = [] } = useEngagementSyncRuns(20);
 
@@ -882,6 +883,11 @@ function ActivityDashboard({
         syncRuns={syncRuns}
       />
 
+      {/* Likes the publisher completed today — posts + comments, auto + manual. */}
+      <div className="flex flex-wrap gap-3">
+        <LikesCompletedCard likes={likesToday} />
+      </div>
+
       {/* Everything else lives in a collapsed Details section. */}
       <EngageDetails
         dailySyncRows={dailySyncRows}
@@ -1193,19 +1199,10 @@ function ProfileListPopover({
   );
 }
 
-function LikesCompletedCard({ likes }: { likes: import('@/hooks/useEngagementActivity').AutoLikeRun[] }) {
-  const todayStart = useMemo(() => {
-    const d = new Date();
-    d.setHours(0, 0, 0, 0);
-    return d.getTime();
-  }, []);
-  const likedToday = useMemo(
-    () => likes
-      .filter((l) => l.status === 'liked' && new Date(l.run_at).getTime() >= todayStart)
-      .sort((a, b) => new Date(b.run_at).getTime() - new Date(a.run_at).getTime()),
-    [likes, todayStart],
-  );
-  const value = likedToday.length;
+function LikesCompletedCard({ likes }: { likes: import('@/hooks/useEngagementActivity').LikeToday[] }) {
+  const value = likes.length;
+  const postCount = likes.filter((l) => l.kind === 'post').length;
+  const commentCount = likes.filter((l) => l.kind === 'comment').length;
 
   return (
     <Popover>
@@ -1234,19 +1231,19 @@ function LikesCompletedCard({ likes }: { likes: import('@/hooks/useEngagementAct
         <div className="px-4 py-3 border-b border-[#E5E7ED]">
           <div className="text-sm font-semibold text-[#171923]">Likes completed today</div>
           <div className="text-xs text-[#667085] mt-0.5">
-            {likedToday.length === 0 ? 'No likes yet today.' : `${likedToday.length} post${likedToday.length === 1 ? '' : 's'} liked · most recent first`}
+            {value === 0 ? 'No likes yet today.' : `${postCount} post${postCount === 1 ? '' : 's'} · ${commentCount} comment${commentCount === 1 ? '' : 's'} · most recent first`}
           </div>
         </div>
         <div className="max-h-[360px] overflow-y-auto">
-          {likedToday.length === 0 ? (
+          {value === 0 ? (
             <div className="p-6 text-center">
               <Heart className="h-6 w-6 text-[#E5E7ED] mx-auto mb-2" />
-              <p className="text-xs text-[#667085]">Auto-likes will appear here as they happen.</p>
+              <p className="text-xs text-[#667085]">Likes (auto or manual, on posts or comments) appear here.</p>
             </div>
           ) : (
             <ul className="divide-y divide-[#E5E7ED]">
-              {likedToday.map((l) => (
-                <li key={l.id} className="px-4 py-3 hover:bg-[#F7F8FB]">
+              {likes.map((l) => (
+                <li key={`${l.kind}-${l.id}`} className="px-4 py-3 hover:bg-[#F7F8FB]">
                   <div className="flex items-start gap-2">
                     <Heart className="h-3.5 w-3.5 text-rose-500 fill-rose-500 mt-0.5 flex-shrink-0" />
                     <div className="min-w-0 flex-1">
@@ -1254,23 +1251,26 @@ function LikesCompletedCard({ likes }: { likes: import('@/hooks/useEngagementAct
                         <span className="text-sm font-medium text-[#171923] truncate">
                           {l.target_name || 'Unknown profile'}
                         </span>
-                        <span className="text-[11px] text-[#667085] tabular-nums flex-shrink-0">
-                          {relativeTime(l.run_at)}
+                        <span className={cn('text-[10px] font-medium px-1.5 rounded flex-shrink-0', l.kind === 'post' ? 'bg-[#F4F0FF] text-[#7C3AED]' : 'bg-rose-50 text-rose-600')}>
+                          {l.kind === 'post' ? 'Post' : 'Comment'}
+                        </span>
+                        <span className="text-[11px] text-[#667085] tabular-nums flex-shrink-0 ml-auto">
+                          {relativeTime(l.liked_at)}
                         </span>
                       </div>
-                      {l.post_excerpt && (
+                      {l.text && (
                         <p className="text-xs text-[#667085] mt-0.5 line-clamp-2 leading-snug">
-                          {l.post_excerpt}
+                          {l.text}
                         </p>
                       )}
-                      {l.post_url && (
+                      {l.url && (
                         <a
-                          href={l.post_url}
+                          href={l.url}
                           target="_blank"
                           rel="noreferrer"
                           className="mt-1 inline-flex items-center gap-1 text-[11px] text-[#7C3AED] hover:underline"
                         >
-                          Open post <ExternalLink className="h-2.5 w-2.5" />
+                          {l.kind === 'post' ? 'Open post' : 'Open thread'} <ExternalLink className="h-2.5 w-2.5" />
                         </a>
                       )}
                     </div>

@@ -234,6 +234,91 @@ export function useTargetComments(targetId: string | null) {
   });
 }
 
+/** A like the publisher performed today — on a target's post or their comment. */
+export interface LikeToday {
+  kind: 'post' | 'comment';
+  id: string;
+  target_id: string;
+  target_name: string | null;
+  target_avatar_url: string | null;
+  text: string | null;
+  url: string | null;
+  liked_at: string;
+}
+
+/**
+ * Every like the publisher's account performed TODAY — manual OR auto, on posts
+ * AND on target comments. Derived from is_liked/liked_at (posts) and
+ * comment_metadata.is_liked/liked_at (comments), so it captures all likes, not
+ * just the auto-like ledger.
+ */
+export function useLikesToday(publisherId: string | null) {
+  const { currentWorkspace } = useWorkspace();
+  return useQuery({
+    queryKey: ['likes-today', currentWorkspace?.id, publisherId],
+    queryFn: async () => {
+      if (!currentWorkspace || !publisherId) return [] as LikeToday[];
+      const start = new Date(); start.setHours(0, 0, 0, 0);
+      const startMs = start.getTime();
+      const sinceIso = start.toISOString();
+
+      const { data: targets } = await (supabase as any)
+        .from('engagement_targets')
+        .select('id, name, avatar_url')
+        .eq('publisher_id', publisherId)
+        .eq('workspace_id', currentWorkspace.id);
+      const tmap = new Map<string, { name: string; avatar_url: string | null }>();
+      for (const t of (targets || []) as any[]) tmap.set(t.id, { name: t.name, avatar_url: t.avatar_url });
+      const ids = [...tmap.keys()];
+      if (ids.length === 0) return [] as LikeToday[];
+
+      const out: LikeToday[] = [];
+
+      // Post likes today
+      const { data: posts } = await (supabase as any)
+        .from('engagement_posts')
+        .select('id, target_id, content, linkedin_post_url, liked_at')
+        .in('target_id', ids)
+        .eq('is_liked', true)
+        .gte('liked_at', sinceIso)
+        .order('liked_at', { ascending: false })
+        .limit(300);
+      for (const p of (posts || []) as any[]) {
+        const t = tmap.get(p.target_id);
+        out.push({
+          kind: 'post', id: p.id, target_id: p.target_id,
+          target_name: t?.name ?? null, target_avatar_url: t?.avatar_url ?? null,
+          text: p.content ?? null, url: p.linkedin_post_url ?? null, liked_at: p.liked_at,
+        });
+      }
+
+      // Comment likes today (is_liked lives in comment_metadata JSONB — filter client-side).
+      // Tolerant of a missing table: on error, `comments` is null and we skip.
+      const { data: comments } = await (supabase as any)
+        .from('engagement_target_comments')
+        .select('id, target_id, comment_text, comment_url, comment_metadata')
+        .in('target_id', ids)
+        .order('created_at', { ascending: false })
+        .limit(500);
+      for (const c of (comments || []) as any[]) {
+        const m = (c.comment_metadata || {}) as Record<string, any>;
+        if (!m.is_liked || !m.liked_at) continue;
+        if (new Date(m.liked_at).getTime() < startMs) continue;
+        const t = tmap.get(c.target_id);
+        out.push({
+          kind: 'comment', id: c.id, target_id: c.target_id,
+          target_name: t?.name ?? null, target_avatar_url: t?.avatar_url ?? null,
+          text: c.comment_text ?? null, url: c.comment_url ?? null, liked_at: m.liked_at,
+        });
+      }
+
+      out.sort((a, b) => new Date(b.liked_at).getTime() - new Date(a.liked_at).getTime());
+      return out;
+    },
+    enabled: !!currentWorkspace && !!publisherId,
+  });
+}
+
 /** Comments posted by a publisher over the last N days. */
 export function usePublisherComments(publisherId: string | null, days: number) {
   const { currentWorkspace } = useWorkspace();

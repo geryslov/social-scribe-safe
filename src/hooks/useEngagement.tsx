@@ -81,6 +81,8 @@ export function useLikePost() {
       }
       queryClient.invalidateQueries({ queryKey: ['engagement-posts'] });
       queryClient.invalidateQueries({ queryKey: ['target-counts'] });
+      queryClient.invalidateQueries({ queryKey: ['likes-today'] });
+      queryClient.invalidateQueries({ queryKey: ['discovered-posts'] });
       // Suppress per-row success toast for auto-likes (would be noisy)
       if (variables.auto) return;
       toast.success(data?.already_liked ? 'Already liked on LinkedIn' : 'Liked on LinkedIn');
@@ -117,6 +119,7 @@ export function useLikeComment() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['target-comments'] });
       queryClient.invalidateQueries({ queryKey: ['discovered-comments'] });
+      queryClient.invalidateQueries({ queryKey: ['likes-today'] });
       toast.success(data?.already_liked ? 'Already liked on LinkedIn' : 'Liked on LinkedIn');
     },
     onError: (e: Error) => toast.error('Like failed: ' + e.message),
