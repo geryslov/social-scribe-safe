@@ -299,13 +299,14 @@ Deno.serve(async (req) => {
     const apifyToken = keyRow.api_key_encrypted;
     const profileUrl = normaliseProfileUrl(target.linkedin_url);
 
-    // Single/manual fetch always pulls a month so one click returns a useful set
-    // (the daily batch stays on a tighter window for cost). The (target_id,
-    // dedup_key) unique constraint absorbs any overlap.
+    // Manual fetch grabs only the LATEST comment — keeps it cheap (Apify bills
+    // per comment returned) and avoids re-pulling a whole batch on every click.
+    // The daily batch handles broader gathering. postedLimit stays 'month' so
+    // the newest comment is found even if it's a few weeks old.
     const postedLimit = 'month';
 
     // --- Step 1: Start the Apify run ---
-    const runId = await startApifyRun(profileUrl, apifyToken, 25, postedLimit);
+    const runId = await startApifyRun(profileUrl, apifyToken, 1, postedLimit);
     if (!runId) {
       return new Response(
         JSON.stringify({ success: false, error: 'Failed to start Apify run. Check your API token.' }),
