@@ -161,7 +161,8 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const workspace_id: string = body.workspace_id;
     const target_ids: string[] = body.target_ids || [];
-    const maxItems: number = body.max_items ?? 1;
+    // Per-chunk cap is computed adaptively below (see the self-healing window);
+    // body.max_items overrides it when provided.
 
     if (!workspace_id || !Array.isArray(target_ids) || target_ids.length === 0) {
       return new Response(
@@ -224,13 +225,29 @@ Deno.serve(async (req) => {
         if (uname) byUsername.set(uname, t);
       }
 
-      // Daily job wants only genuinely-new comments: a 24h window returns
-      // nothing (no per-comment charge) when a profile hasn't commented since
-      // the last run, and maxItems=1 caps it to the single newest comment.
-      // Trade-off: a skipped daily run can miss a comment older than 24h.
-      const postedLimit = '24h';
+      // Self-healing window (backup for failed/skipped runs). Normally 24h / 1
+      // comment: cheap, only genuinely-new comments. But a failed or missed run
+      // leaves last_comments_fetched_at stale, so the next run widens the window
+      // and raises the cap to backfill the gap, then drops back to 24h/1 once
+      // caught up. Keyed off the OLDEST last-fetch in the chunk (one Apify run =
+      // one window). An explicit max_items in the request still overrides.
+      const DAY_MS = 24 * 60 * 60 * 1000;
+      let oldestFetch = Date.now();
+      let anyNever = false;
+      for (const t of chunk) {
+        if (!t.last_comments_fetched_at) { anyNever = true; break; }
+        const ts = new Date(t.last_comments_fetched_at).getTime();
+        if (ts < oldestFetch) oldestFetch = ts;
+      }
+      const gapMs = anyNever ? Infinity : Date.now() - oldestFetch;
+      let postedLimit: string;
+      let catchupMax: number;
+      if (gapMs > 7 * DAY_MS) { postedLimit = 'month'; catchupMax = 15; }
+      else if (gapMs > 1.25 * DAY_MS) { postedLimit = 'week'; catchupMax = 10; }
+      else { postedLimit = '24h'; catchupMax = 1; }
+      const runMax = body.max_items ?? catchupMax;
 
-      const runId = await startApifyRun(urls, apifyToken, maxItems, postedLimit);
+      const runId = await startApifyRun(urls, apifyToken, runMax, postedLimit);
       if (!runId) {
         for (const t of chunk) {
           details.push({ target_id: t.id, name: t.name, status: 'failed', comments_found: 0, detail: 'Apify start failed' });

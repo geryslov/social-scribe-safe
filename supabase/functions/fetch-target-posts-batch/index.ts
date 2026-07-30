@@ -217,7 +217,16 @@ Deno.serve(async (req) => {
       }
       const postedLimitDate = new Date(oldest).toISOString();
 
-      const runId = await startApifyRun(urls, apifyToken, maxPosts, postedLimitDate);
+      // Self-healing cap (backup for failed/skipped runs). The date window above
+      // already backfills everything since the oldest last-fetch, so the cap must
+      // scale too: normally 1 (just the newest), but if a run was missed/failed
+      // (oldest last-fetch > ~30h ago) raise it so a multi-post gap is caught.
+      // A failed profile keeps its stale last_fetched_at, so it self-recovers.
+      const gapMs = Date.now() - oldest;
+      const catchupPosts = gapMs > 1.25 * 24 * 60 * 60 * 1000 ? 5 : 1;
+      const runMaxPosts = body.max_posts != null ? maxPosts : catchupPosts;
+
+      const runId = await startApifyRun(urls, apifyToken, runMaxPosts, postedLimitDate);
       if (!runId) {
         for (const t of chunk) {
           details.push({ target_id: t.id, name: t.name, status: 'failed', posts_found: 0, detail: 'Apify start failed' });
