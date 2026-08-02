@@ -264,20 +264,22 @@ export function useLikesToday(publisherId: string | null) {
 export function useLikesHistory(publisherId: string | null, days: number) {
   const { currentWorkspace } = useWorkspace();
   return useQuery({
-    queryKey: ['likes-today', currentWorkspace?.id, publisherId],
+    queryKey: ['likes-history', currentWorkspace?.id, publisherId, days],
     queryFn: async () => {
       if (!currentWorkspace || !publisherId) return [] as LikeToday[];
-      const start = new Date(); start.setHours(0, 0, 0, 0);
+      const start = new Date();
+      start.setHours(0, 0, 0, 0);
+      if (days > 1) start.setDate(start.getDate() - (days - 1));
       const startMs = start.getTime();
       const sinceIso = start.toISOString();
 
       const { data: targets } = await (supabase as any)
         .from('engagement_targets')
-        .select('id, name, avatar_url')
+        .select('id, name, avatar_url, linkedin_url')
         .eq('publisher_id', publisherId)
         .eq('workspace_id', currentWorkspace.id);
-      const tmap = new Map<string, { name: string; avatar_url: string | null }>();
-      for (const t of (targets || []) as any[]) tmap.set(t.id, { name: t.name, avatar_url: t.avatar_url });
+      const tmap = new Map<string, { name: string; avatar_url: string | null; linkedin_url: string | null }>();
+      for (const t of (targets || []) as any[]) tmap.set(t.id, { name: t.name, avatar_url: t.avatar_url, linkedin_url: t.linkedin_url });
       const ids = [...tmap.keys()];
       if (ids.length === 0) return [] as LikeToday[];
 
