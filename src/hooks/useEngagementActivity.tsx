@@ -253,6 +253,15 @@ export interface LikeToday {
  * just the auto-like ledger.
  */
 export function useLikesToday(publisherId: string | null) {
+  return useLikesHistory(publisherId, 1);
+}
+
+/**
+ * Every like the publisher's account performed over the last N days (N=1 means
+ * "since midnight today"). Posts come from is_liked/liked_at, comments from
+ * comment_metadata.is_liked/liked_at.
+ */
+export function useLikesHistory(publisherId: string | null, days: number) {
   const { currentWorkspace } = useWorkspace();
   return useQuery({
     queryKey: ['likes-today', currentWorkspace?.id, publisherId],
