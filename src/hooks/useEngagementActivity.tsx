@@ -241,6 +241,7 @@ export interface LikeToday {
   target_id: string;
   target_name: string | null;
   target_avatar_url: string | null;
+  target_linkedin_url?: string | null;
   text: string | null;
   url: string | null;
   liked_at: string;
@@ -293,12 +294,13 @@ export function useLikesHistory(publisherId: string | null, days: number) {
         .eq('is_liked', true)
         .gte('liked_at', sinceIso)
         .order('liked_at', { ascending: false })
-        .limit(300);
+        .limit(1000);
       for (const p of (posts || []) as any[]) {
         const t = tmap.get(p.target_id);
         out.push({
           kind: 'post', id: p.id, target_id: p.target_id,
           target_name: t?.name ?? null, target_avatar_url: t?.avatar_url ?? null,
+          target_linkedin_url: t?.linkedin_url ?? null,
           text: p.content ?? null, url: p.linkedin_post_url ?? null, liked_at: p.liked_at,
         });
       }
@@ -310,7 +312,7 @@ export function useLikesHistory(publisherId: string | null, days: number) {
         .select('id, target_id, comment_text, comment_url, comment_metadata')
         .in('target_id', ids)
         .order('created_at', { ascending: false })
-        .limit(500);
+        .limit(1000);
       for (const c of (comments || []) as any[]) {
         const m = (c.comment_metadata || {}) as Record<string, any>;
         if (!m.is_liked || !m.liked_at) continue;
@@ -319,6 +321,7 @@ export function useLikesHistory(publisherId: string | null, days: number) {
         out.push({
           kind: 'comment', id: c.id, target_id: c.target_id,
           target_name: t?.name ?? null, target_avatar_url: t?.avatar_url ?? null,
+          target_linkedin_url: t?.linkedin_url ?? null,
           text: c.comment_text ?? null, url: c.comment_url ?? null, liked_at: m.liked_at,
         });
       }
