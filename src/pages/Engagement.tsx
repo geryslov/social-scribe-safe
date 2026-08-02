@@ -888,6 +888,10 @@ function ActivityDashboard({
         <LikesCompletedCard likes={likesToday} />
       </div>
 
+      {/* Full likes history — by profile or by date, split by like type. */}
+      <LikesExplorer publisherId={publisher.id} />
+
+
       {/* Everything else lives in a collapsed Details section. */}
       <EngageDetails
         dailySyncRows={dailySyncRows}
