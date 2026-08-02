@@ -55,24 +55,30 @@ Deno.serve(async (req) => {
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    // One auto-like per target per day. The workspace sync can re-trigger itself
-    // (time budget) and would otherwise fire this function several times in a row
-    // for the same target, stacking 2-3 likes on one person within minutes.
+    // Per target per day: at most ONE post like and ONE comment like.
+    // The workspace sync can re-trigger itself (time budget) and would otherwise
+    // fire this function several times in a row, stacking likes on one person.
+    // Post likes log with post_id set; comment likes log with post_id null.
     const dayStart = new Date();
     dayStart.setUTCHours(0, 0, 0, 0);
-    const { count: alreadyRanToday } = await supabase
+    const { data: todayRuns } = await supabase
       .from('engagement_auto_like_runs')
-      .select('id', { count: 'exact', head: true })
+      .select('post_id, status')
       .eq('target_id', target_id)
       .in('status', ['liked', 'skipped_already'])
       .gte('run_at', dayStart.toISOString());
 
-    if ((alreadyRanToday || 0) > 0) {
-      return new Response(JSON.stringify({ success: true, skipped: 'already_liked_today' }),
+    const runsToday = (todayRuns || []) as Array<{ post_id: string | null }>;
+    const postLikedToday = runsToday.some((r) => r.post_id !== null);
+    const commentLikedToday = runsToday.some((r) => r.post_id === null);
+
+    if (postLikedToday && commentLikedToday) {
+      return new Response(JSON.stringify({ success: true, skipped: 'daily_quota_done' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    const { data: posts } = await supabase
+
+    const { data: posts } = postLikedToday ? { data: [] as any[] } : await supabase
       .from('engagement_posts')
       .select('id, linkedin_post_url, content, is_liked, published_at')
       .eq('target_id', target_id)
@@ -123,7 +129,7 @@ Deno.serve(async (req) => {
     // other people's posts). Skips ones already liked (tracked in
     // comment_metadata.is_liked).
     let comments_attempted = 0, comments_liked = 0, comments_skipped_already = 0, comments_failed = 0;
-    if (!capReached) {
+    if (!capReached && !commentLikedToday) {
       const { data: comments } = await supabase
         .from('engagement_target_comments')
         .select('id, comment_metadata, commented_at')
