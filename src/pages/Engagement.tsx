@@ -20,6 +20,7 @@ import {
   useTargetComments, DiscoveredComment,
 } from '@/hooks/useEngagementActivity';
 import { CommentComposer } from '@/components/engagement/CommentComposer';
+import { LikesExplorer } from '@/components/engagement/LikesExplorer';
 import type { EngagementPost } from '@/hooks/useEngagement';
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription,
