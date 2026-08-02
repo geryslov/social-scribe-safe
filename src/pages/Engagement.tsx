@@ -20,6 +20,7 @@ import {
   useTargetComments, DiscoveredComment,
 } from '@/hooks/useEngagementActivity';
 import { CommentComposer } from '@/components/engagement/CommentComposer';
+import { LikesExplorer } from '@/components/engagement/LikesExplorer';
 import type { EngagementPost } from '@/hooks/useEngagement';
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription,
@@ -887,6 +888,10 @@ function ActivityDashboard({
       <div className="flex flex-wrap gap-3">
         <LikesCompletedCard likes={likesToday} />
       </div>
+
+      {/* Full likes history — by profile or by date, split by like type. */}
+      <LikesExplorer publisherId={publisher.id} />
+
 
       {/* Everything else lives in a collapsed Details section. */}
       <EngageDetails

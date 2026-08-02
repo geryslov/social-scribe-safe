@@ -241,6 +241,7 @@ export interface LikeToday {
   target_id: string;
   target_name: string | null;
   target_avatar_url: string | null;
+  target_linkedin_url?: string | null;
   text: string | null;
   url: string | null;
   liked_at: string;
@@ -253,22 +254,33 @@ export interface LikeToday {
  * just the auto-like ledger.
  */
 export function useLikesToday(publisherId: string | null) {
+  return useLikesHistory(publisherId, 1);
+}
+
+/**
+ * Every like the publisher's account performed over the last N days (N=1 means
+ * "since midnight today"). Posts come from is_liked/liked_at, comments from
+ * comment_metadata.is_liked/liked_at.
+ */
+export function useLikesHistory(publisherId: string | null, days: number) {
   const { currentWorkspace } = useWorkspace();
   return useQuery({
-    queryKey: ['likes-today', currentWorkspace?.id, publisherId],
+    queryKey: ['likes-history', currentWorkspace?.id, publisherId, days],
     queryFn: async () => {
       if (!currentWorkspace || !publisherId) return [] as LikeToday[];
-      const start = new Date(); start.setHours(0, 0, 0, 0);
+      const start = new Date();
+      start.setHours(0, 0, 0, 0);
+      if (days > 1) start.setDate(start.getDate() - (days - 1));
       const startMs = start.getTime();
       const sinceIso = start.toISOString();
 
       const { data: targets } = await (supabase as any)
         .from('engagement_targets')
-        .select('id, name, avatar_url')
+        .select('id, name, avatar_url, linkedin_url')
         .eq('publisher_id', publisherId)
         .eq('workspace_id', currentWorkspace.id);
-      const tmap = new Map<string, { name: string; avatar_url: string | null }>();
-      for (const t of (targets || []) as any[]) tmap.set(t.id, { name: t.name, avatar_url: t.avatar_url });
+      const tmap = new Map<string, { name: string; avatar_url: string | null; linkedin_url: string | null }>();
+      for (const t of (targets || []) as any[]) tmap.set(t.id, { name: t.name, avatar_url: t.avatar_url, linkedin_url: t.linkedin_url });
       const ids = [...tmap.keys()];
       if (ids.length === 0) return [] as LikeToday[];
 
@@ -282,12 +294,13 @@ export function useLikesToday(publisherId: string | null) {
         .eq('is_liked', true)
         .gte('liked_at', sinceIso)
         .order('liked_at', { ascending: false })
-        .limit(300);
+        .limit(1000);
       for (const p of (posts || []) as any[]) {
         const t = tmap.get(p.target_id);
         out.push({
           kind: 'post', id: p.id, target_id: p.target_id,
           target_name: t?.name ?? null, target_avatar_url: t?.avatar_url ?? null,
+          target_linkedin_url: t?.linkedin_url ?? null,
           text: p.content ?? null, url: p.linkedin_post_url ?? null, liked_at: p.liked_at,
         });
       }
@@ -299,7 +312,7 @@ export function useLikesToday(publisherId: string | null) {
         .select('id, target_id, comment_text, comment_url, comment_metadata')
         .in('target_id', ids)
         .order('created_at', { ascending: false })
-        .limit(500);
+        .limit(1000);
       for (const c of (comments || []) as any[]) {
         const m = (c.comment_metadata || {}) as Record<string, any>;
         if (!m.is_liked || !m.liked_at) continue;
@@ -308,6 +321,7 @@ export function useLikesToday(publisherId: string | null) {
         out.push({
           kind: 'comment', id: c.id, target_id: c.target_id,
           target_name: t?.name ?? null, target_avatar_url: t?.avatar_url ?? null,
+          target_linkedin_url: t?.linkedin_url ?? null,
           text: c.comment_text ?? null, url: c.comment_url ?? null, liked_at: m.liked_at,
         });
       }
