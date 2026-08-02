@@ -78,7 +78,7 @@ Deno.serve(async (req) => {
     }
 
 
-    const { data: posts } = await supabase
+    const { data: posts } = postLikedToday ? { data: [] as any[] } : await supabase
       .from('engagement_posts')
       .select('id, linkedin_post_url, content, is_liked, published_at')
       .eq('target_id', target_id)
