@@ -55,6 +55,23 @@ Deno.serve(async (req) => {
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
+    // One auto-like per target per day. The workspace sync can re-trigger itself
+    // (time budget) and would otherwise fire this function several times in a row
+    // for the same target, stacking 2-3 likes on one person within minutes.
+    const dayStart = new Date();
+    dayStart.setUTCHours(0, 0, 0, 0);
+    const { count: alreadyRanToday } = await supabase
+      .from('engagement_auto_like_runs')
+      .select('id', { count: 'exact', head: true })
+      .eq('target_id', target_id)
+      .in('status', ['liked', 'skipped_already'])
+      .gte('run_at', dayStart.toISOString());
+
+    if ((alreadyRanToday || 0) > 0) {
+      return new Response(JSON.stringify({ success: true, skipped: 'already_liked_today' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
     const { data: posts } = await supabase
       .from('engagement_posts')
       .select('id, linkedin_post_url, content, is_liked, published_at')
