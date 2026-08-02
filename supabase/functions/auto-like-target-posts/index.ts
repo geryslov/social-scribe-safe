@@ -129,7 +129,7 @@ Deno.serve(async (req) => {
     // other people's posts). Skips ones already liked (tracked in
     // comment_metadata.is_liked).
     let comments_attempted = 0, comments_liked = 0, comments_skipped_already = 0, comments_failed = 0;
-    if (!capReached) {
+    if (!capReached && !commentLikedToday) {
       const { data: comments } = await supabase
         .from('engagement_target_comments')
         .select('id, comment_metadata, commented_at')
