@@ -20,7 +20,6 @@ const corsHeaders = {
 // how often we check. 20h keeps a target eligible on the next daily run.
 const COOLDOWN_HOURS = 20;
 const BETWEEN_BATCHES_MS = 500;
-const BETWEEN_AUTOLIKE_MS = 2000;
 const TIME_BUDGET_MS = 110_000;
 // Must match BATCH_SIZE in fetch-target-posts-batch — used only for chunking
 // the target list at this layer for progress reporting / cancellation.
