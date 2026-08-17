@@ -38,15 +38,16 @@ Deno.serve(async (req) => {
     const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
 
     let onlyWorkspaceId: string | null = null;
-    let onlyPublisherId: string | null = null;
+    let onlyPublisherId: string | null = GERY_PUBLISHER_ID;
     let trigger = 'cron';
     if (req.method === 'POST') {
       try {
         const body = await req.json();
         onlyWorkspaceId = body?.workspace_id ?? null;
-        onlyPublisherId = body?.publisher_id ?? null;
+        // Allow explicit publisher override (including null to mean "all publishers").
+        onlyPublisherId = body?.publisher_id ?? GERY_PUBLISHER_ID;
         trigger = body?.trigger ?? (onlyWorkspaceId ? 'manual' : 'cron');
-      } catch (_) { /* no body */ }
+      } catch (_) { /* no body — keep Gery default */ }
     }
 
     let q = supabase
