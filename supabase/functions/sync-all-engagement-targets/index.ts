@@ -204,23 +204,10 @@ Deno.serve(async (req) => {
         await sleep(BETWEEN_BATCHES_MS);
       }
 
-      // Fire auto-like for successfully synced targets (fire-and-forget-ish per target)
-      for (const target_id of autoLikeTargets) {
-        try {
-          await fetch(`${SUPABASE_URL}/functions/v1/auto-like-target-posts`, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${SERVICE_KEY}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ workspace_id, target_id, trigger }),
-          });
-        } catch (err) {
-          console.error('auto-like invoke failed for target', target_id, err);
-        }
-        await sleep(BETWEEN_AUTOLIKE_MS);
-        if (Date.now() - startedAtMs > TIME_BUDGET_MS) { budgetExceeded = true; break; }
-      }
+      // Auto-like no longer runs here: it has its own cron entry point
+      // (run-auto-likes) so fetching can never starve it of budget.
+      void autoLikeTargets;
+
 
       const summary = {
         total: wsTargets.length,
