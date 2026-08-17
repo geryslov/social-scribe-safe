@@ -117,7 +117,7 @@ async function fetchDataset(datasetId: string, token: string): Promise<Record<st
 async function processBatch(
   supabase: ReturnType<typeof createClient>,
   workspace_id: string,
-  targets: Array<{ id: string; linkedin_url: string }>,
+  targets: Array<{ id: string; linkedin_url: string; auto_sync?: boolean }>,
   apifyToken: string,
 ) {
   const markBatchFailed = async (reason: string) => {
@@ -163,8 +163,9 @@ async function processBatch(
     const uname = extractUsername(target.linkedin_url)?.toLowerCase();
     const tItems = uname ? (byUsername.get(uname) ?? []) : [];
 
-    // Insert posts
-    if (tItems.length > 0) {
+    // Insert posts — only for targets that still have auto-sync on. Enrichment
+    // must not double as a content sync for profiles the user switched off.
+    if (tItems.length > 0 && target.auto_sync !== false) {
       const rows = tItems.map((it) => {
         const eng = (it.engagement || {}) as Record<string, unknown>;
         const author = (it.author || {}) as Record<string, unknown>;
@@ -199,11 +200,13 @@ async function processBatch(
     // private profile) fails on its own — it no longer drags its 19 batch-mates
     // down with it.
     const update: Record<string, unknown> = {
-      last_fetched_at: new Date().toISOString(),
       linkedin_username: uname,
       enrichment_status: tItems.length > 0 ? 'succeeded' : 'failed',
       enriched_at: new Date().toISOString(),
     };
+    // last_fetched_at means "content sync ran"; only stamp it when we actually
+    // ingested posts, otherwise auto-sync-off profiles look synced.
+    if (target.auto_sync !== false) update.last_fetched_at = new Date().toISOString();
     if (tItems.length > 0) {
       const author = (tItems[0].author || {}) as Record<string, unknown>;
       const avatar = pickAvatar(author);
@@ -235,7 +238,7 @@ async function processBatch(
 // got killed mid-flight, stranding its targets in `processing` forever.
 async function processWave(
   workspace_id: string,
-  targets: Array<{ id: string; linkedin_url: string }>,
+  targets: Array<{ id: string; linkedin_url: string; auto_sync?: boolean }>,
   batchSize: number,
   parallelBatches: number,
   apifyToken: string,
@@ -330,7 +333,7 @@ Deno.serve(async (req) => {
 
     let query = supabase
       .from('engagement_targets')
-      .select('id, linkedin_url')
+      .select('id, linkedin_url, auto_sync')
       .eq('workspace_id', workspace_id);
 
     if (target_ids?.length) {
@@ -345,7 +348,7 @@ Deno.serve(async (req) => {
 
     const { data: targets, error } = await query;
     if (error) throw error;
-    const list = (targets ?? []).filter((t: { linkedin_url: string }) => !!t.linkedin_url) as Array<{ id: string; linkedin_url: string }>;
+    const list = (targets ?? []).filter((t: { linkedin_url: string }) => !!t.linkedin_url) as Array<{ id: string; linkedin_url: string; auto_sync?: boolean }>;
 
     if (list.length === 0) {
       return new Response(JSON.stringify({ success: true, queued: 0 }), {
