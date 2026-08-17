@@ -1,15 +1,18 @@
 // =============================================================================
 // run-auto-likes
 //
-// Dedicated auto-like scheduler. Previously auto-like ran at the tail of
-// sync-all-engagement-targets and got starved by the fetch time budget.
-// This function has its own budget: it walks every auto_like target that has
-// not used its daily quota (1 post + 1 comment per target per day) and invokes
+// Dedicated auto-like scheduler scoped to Gery's publisher profile by default.
+// Previously auto-like ran at the tail of sync-all-engagement-targets and got
+// starved by the fetch time budget. This function has its own budget: it walks
+// every auto_like target under Gery's publisher that has not used its daily
+// quota (1 post + 1 comment per target per day) and invokes
 // auto-like-target-posts for each, with jittered spacing.
 //
 // Input:  { workspace_id?, publisher_id?, trigger? }
 // Output: { success, processed, quota_done, rechained }
 // =============================================================================
+
+const GERY_PUBLISHER_ID = '7d2b0e2c-adec-43bf-a6df-6f8bb5f59b8a';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -35,15 +38,16 @@ Deno.serve(async (req) => {
     const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
 
     let onlyWorkspaceId: string | null = null;
-    let onlyPublisherId: string | null = null;
+    let onlyPublisherId: string | null = GERY_PUBLISHER_ID;
     let trigger = 'cron';
     if (req.method === 'POST') {
       try {
         const body = await req.json();
         onlyWorkspaceId = body?.workspace_id ?? null;
-        onlyPublisherId = body?.publisher_id ?? null;
+        // Allow explicit publisher override (including null to mean "all publishers").
+        onlyPublisherId = body?.publisher_id ?? GERY_PUBLISHER_ID;
         trigger = body?.trigger ?? (onlyWorkspaceId ? 'manual' : 'cron');
-      } catch (_) { /* no body */ }
+      } catch (_) { /* no body — keep Gery default */ }
     }
 
     let q = supabase
