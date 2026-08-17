@@ -1,15 +1,18 @@
 // =============================================================================
 // run-auto-likes
 //
-// Dedicated auto-like scheduler. Previously auto-like ran at the tail of
-// sync-all-engagement-targets and got starved by the fetch time budget.
-// This function has its own budget: it walks every auto_like target that has
-// not used its daily quota (1 post + 1 comment per target per day) and invokes
+// Dedicated auto-like scheduler scoped to Gery's publisher profile by default.
+// Previously auto-like ran at the tail of sync-all-engagement-targets and got
+// starved by the fetch time budget. This function has its own budget: it walks
+// every auto_like target under Gery's publisher that has not used its daily
+// quota (1 post + 1 comment per target per day) and invokes
 // auto-like-target-posts for each, with jittered spacing.
 //
 // Input:  { workspace_id?, publisher_id?, trigger? }
 // Output: { success, processed, quota_done, rechained }
 // =============================================================================
+
+const GERY_PUBLISHER_ID = '7d2b0e2c-adec-43bf-a6df-6f8bb5f59b8a';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
