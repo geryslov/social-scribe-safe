@@ -182,23 +182,10 @@ Deno.serve(async (req) => {
           }
         }
 
-        // Fetch the same targets' comments on other people's posts, on the same
-        // cadence as posts. Non-fatal: a comment-fetch failure never fails the
-        // post sync — comments are supplementary activity.
-        try {
-          const cres = await fetch(`${SUPABASE_URL}/functions/v1/fetch-target-comments-batch`, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${SERVICE_KEY}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ workspace_id, target_ids }),
-          });
-          const cbody = await cres.json().catch(() => ({}));
-          newComments += Number(cbody?.new_comments || 0);
-        } catch (err) {
-          console.error('fetch-target-comments-batch invoke failed:', err);
-        }
+        // Comment fetching moved to its own cron entry point
+        // (sync-target-comments) — inline it starved on this function's budget
+        // and comments were effectively never fetched.
+
 
         await sleep(BETWEEN_BATCHES_MS);
       }
