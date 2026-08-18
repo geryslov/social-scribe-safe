@@ -49,3 +49,7 @@ verify_jwt = false
 
 [functions.run-auto-likes]
 verify_jwt = false
+
+[functions.sync-target-comments]
+verify_jwt = false
+
