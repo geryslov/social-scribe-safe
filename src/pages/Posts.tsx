@@ -63,6 +63,7 @@ const Posts = () => {
   const [reactorsPanelTab, setReactorsPanelTab] = useState<'profiles' | 'comments'>('profiles');
   const { createDocument } = useDocuments();
   const { currentWorkspace } = useWorkspace();
+  const { can } = useWorkspacePermissions();
   const mineOsCreatorUrls = MINEOS_CREATOR_LINKEDIN_URLS.map(normalizeLinkedInUrl);
   const isMineOsLinkedInCreator = !!user && currentWorkspace?.slug === 'mineos' && dbPublishers.some(p =>
     p.user_id === user.id && mineOsCreatorUrls.includes(normalizeLinkedInUrl(p.linkedin_url))
