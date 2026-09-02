@@ -477,6 +477,7 @@ const Posts = () => {
         onOpenChange={setIsDocUploadOpen}
         onSave={handleCreateDocument}
         showAiCreate={canUseAiCreate}
+        publishers={dbPublishers}
       />
       <AllReactorsPanel
         open={showReactorsPanel}
