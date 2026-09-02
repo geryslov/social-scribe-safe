@@ -17,6 +17,7 @@ import { TrackExternalPostModal } from '@/components/TrackExternalPostModal';
 import { DocumentUploadModal } from '@/components/DocumentUploadModal';
 import { useDocuments } from '@/hooks/useDocuments';
 import { useWorkspace } from '@/hooks/useWorkspace';
+import { useWorkspacePermissions } from '@/hooks/useWorkspacePermissions';
 
 import { Button } from '@/components/ui/button';
 import { Plus, Inbox, ExternalLink, Loader2, Upload, Users, Eye, Heart, TrendingUp, MessageCircle, Repeat2, LinkIcon, Menu, X, LayoutDashboard, Download } from 'lucide-react';
@@ -66,8 +67,8 @@ const Posts = () => {
   const isMineOsLinkedInCreator = !!user && currentWorkspace?.slug === 'mineos' && dbPublishers.some(p =>
     p.user_id === user.id && mineOsCreatorUrls.includes(normalizeLinkedInUrl(p.linkedin_url))
   );
-  const canCreateContent = isAdmin || isMineOsLinkedInCreator;
-  const canUseAiCreate = canCreateContent;
+  const canCreateContent = isAdmin || isMineOsLinkedInCreator || can.assign;
+  const canUseAiCreate = isAdmin || isMineOsLinkedInCreator || can.generateAi;
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
 
